@@ -1,5 +1,75 @@
 # SmartBox-Next Technical Wisdom
 
+## WinUI3 Implementation (Current)
+
+### Video Capture Performance (Session 6)
+
+#### MediaFrameReader Issues
+**Problem**: MediaFrameReader starts successfully but OnFrameArrived never fires
+**Symptoms**:
+- FrameSources found
+- CreateFrameReaderAsync succeeds
+- StartAsync returns Success
+- No frames delivered
+
+**Possible Causes**:
+1. Parallel MediaCapture usage (timer + FrameReader)
+2. Missing initialization parameters
+3. WinUI3 specific requirements differ from UWP
+
+**Current Workaround**: Timer-based with CapturePhotoToStreamAsync (5-10 FPS)
+
+#### Working Approaches
+1. **Timer-based**: Reliable but slow (5-10 FPS)
+2. **CapturePhotoToStorageFileAsync**: Works perfectly for single captures
+
+### Build Issues Fixed
+
+#### DateTimeOffset in WinUI3
+DatePicker.Date is nullable DateTimeOffset?
+```csharp
+// Correct handling
+DateTime? birthDate = null;
+if (BirthDate.Date != null)
+{
+    birthDate = BirthDate.Date.Value.DateTime;
+}
+```
+
+#### Async in DispatcherQueue
+Don't await DispatcherQueue.TryEnqueue:
+```csharp
+// Wrong
+await DispatcherQueue.TryEnqueue(async () => {});
+
+// Correct
+DispatcherQueue.TryEnqueue(async () => {});
+```
+
+#### DicomPixelData Creation
+```csharp
+// Wrong
+dataset.Add(new DicomPixelData(dataset) { ... });
+
+// Correct
+var dicomPixelData = DicomPixelData.Create(dataset, true);
+dicomPixelData.AddFrame(pixelDataBuffer);
+```
+
+### Performance Targets
+- Current: 5-10 FPS (timer-based)
+- Target: 25-60 FPS (MediaFrameReader)
+- Capture latency: <100ms
+- DICOM export: <2s
+
+### Architecture Decisions
+- WinUI3 over UWP for modern Windows development
+- .NET 8 for latest features
+- fo-dicom for DICOM handling
+- MediaCapture for camera access
+
+## Original Go/Wails Implementation
+
 ## DICOM Implementation Learnings
 
 ### What Doesn't Work

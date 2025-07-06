@@ -13,8 +13,6 @@ using Windows.Graphics.Imaging;
 using System.IO;
 using Windows.Storage.Pickers;
 using System.Linq;
-using Windows.Media.Capture.Frames;
-using Windows.Media;
 
 namespace SmartBoxNext
 {
@@ -25,13 +23,6 @@ namespace SmartBoxNext
         private bool _isPreviewing = false;
         private DispatcherQueueTimer? _timer;
         private int _frameCount = 0;
-        
-        // High-performance mode
-        private MediaFrameReader? _frameReader;
-        private SoftwareBitmapSource _bitmapSource = new SoftwareBitmapSource();
-        private bool _useFrameReader = false;
-        private DateTime _lastFpsUpdate = DateTime.Now;
-        private double _currentFps = 0;
 
         private void AddDebugMessage(string message)
         {
@@ -126,76 +117,17 @@ namespace SmartBoxNext
                 await _mediaCapture.InitializeAsync(settings);
                 AddDebugMessage("MediaCapture initialized successfully");
 
-                // Try to use MediaFrameReader for better performance
-                AddDebugMessage($"Available frame sources: {_mediaCapture.FrameSources.Count}");
-                foreach (var source in _mediaCapture.FrameSources.Values)
-                {
-                    AddDebugMessage($"  - {source.Info.Id}: {source.Info.SourceKind}, {source.Info.MediaStreamType}");
-                }
-                
-                var frameSourceInfo = _mediaCapture.FrameSources.Values
-                    .FirstOrDefault(source => source.Info.MediaStreamType == MediaStreamType.VideoPreview 
-                                           && source.Info.SourceKind == MediaFrameSourceKind.Color);
-
-                if (frameSourceInfo == null)
-                {
-                    // Fallback to any color source
-                    frameSourceInfo = _mediaCapture.FrameSources.Values
-                        .FirstOrDefault(source => source.Info.SourceKind == MediaFrameSourceKind.Color);
-                }
-
-                if (frameSourceInfo != null)
-                {
-                    try
-                    {
-                        AddDebugMessage($"Found frame source: {frameSourceInfo.Info.Id}");
-                        AddDebugMessage($"Source kind: {frameSourceInfo.Info.SourceKind}");
-                        AddDebugMessage($"Media stream type: {frameSourceInfo.Info.MediaStreamType}");
-                        
-                        _frameReader = await _mediaCapture.CreateFrameReaderAsync(frameSourceInfo);
-                        _frameReader.FrameArrived += OnFrameArrived;
-                        
-                        var status = await _frameReader.StartAsync();
-                        AddDebugMessage($"FrameReader start status: {status}");
-                        
-                        if (status == MediaFrameReaderStartStatus.Success)
-                        {
-                            _useFrameReader = true;
-                            AddDebugMessage("HIGH PERFORMANCE MODE: Using MediaFrameReader for 30-60 FPS!");
-                        }
-                        else
-                        {
-                            AddDebugMessage($"MediaFrameReader failed to start: {status}. Falling back to timer mode.");
-                            _frameReader = null;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        AddDebugMessage($"MediaFrameReader error: {ex.Message}");
-                        AddDebugMessage($"Stack trace: {ex.StackTrace}");
-                        _frameReader = null;
-                    }
-                }
-                else
-                {
-                    AddDebugMessage("No suitable frame source found for MediaFrameReader");
-                }
-
-                // If MediaFrameReader didn't work, use timer-based approach
-                if (!_useFrameReader)
-                {
-                    _timer = DispatcherQueue.CreateTimer();
-                    _timer.Interval = TimeSpan.FromMilliseconds(50); // 20 FPS
-                    _timer.Tick += async (s, e) => await UpdatePreviewAsync();
-                    _timer.Start();
-                    AddDebugMessage("Using timer-based preview (5-10 FPS)");
-                }
+                // Start a timer to capture frames periodically for preview
+                _timer = DispatcherQueue.CreateTimer();
+                _timer.Interval = TimeSpan.FromMilliseconds(50); // 20 FPS
+                _timer.Tick += async (s, e) => await UpdatePreviewAsync();
+                _timer.Start();
 
                 _isPreviewing = true;
                 _isInitialized = true;
                 
                 WebcamPlaceholder.Visibility = Visibility.Collapsed;
-                AddDebugMessage("Webcam initialization complete!");
+                AddDebugMessage("Webcam initialization complete! Preview timer started.");
             }
             catch (UnauthorizedAccessException)
             {
@@ -205,86 +137,6 @@ namespace SmartBoxNext
             {
                 AddDebugMessage($"Error: {ex.GetType().Name} - {ex.Message}");
                 await ShowErrorDialog($"Failed to initialize webcam: {ex.Message}\n\nDetails: {ex.GetType().Name}");
-            }
-        }
-
-        private async void OnFrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs args)
-        {
-            // Log first frame arrival
-            if (_frameCount == 0)
-            {
-                AddDebugMessage("First frame arrived from MediaFrameReader!");
-            }
-            
-            using (var frame = sender.TryAcquireLatestFrame())
-            {
-                if (frame?.VideoMediaFrame?.SoftwareBitmap != null)
-                {
-                    var softwareBitmap = frame.VideoMediaFrame.SoftwareBitmap;
-                    
-                    // Log frame details on first frame
-                    if (_frameCount == 0)
-                    {
-                        AddDebugMessage($"Frame format: {softwareBitmap.BitmapPixelFormat}, Alpha: {softwareBitmap.BitmapAlphaMode}");
-                        AddDebugMessage($"Frame size: {softwareBitmap.PixelWidth}x{softwareBitmap.PixelHeight}");
-                    }
-                    
-                    // Convert to BGRA8 with premultiplied alpha if needed
-                    if (softwareBitmap.BitmapPixelFormat != BitmapPixelFormat.Bgra8 || 
-                        softwareBitmap.BitmapAlphaMode != BitmapAlphaMode.Premultiplied)
-                    {
-                        softwareBitmap = SoftwareBitmap.Convert(
-                            softwareBitmap, 
-                            BitmapPixelFormat.Bgra8, 
-                            BitmapAlphaMode.Premultiplied);
-                    }
-                    
-                    // Update UI on dispatcher thread
-                    DispatcherQueue.TryEnqueue(async () =>
-                    {
-                        try
-                        {
-                            await _bitmapSource.SetBitmapAsync(softwareBitmap);
-                            WebcamPreview.Source = _bitmapSource;
-                            
-                            // Update FPS counter
-                            UpdateFpsCounter();
-                        }
-                        catch (Exception ex)
-                        {
-                            // Only log first error to avoid spam
-                            if (_frameCount == 0)
-                            {
-                                AddDebugMessage($"Frame display error: {ex.Message}");
-                            }
-                        }
-                    });
-                    
-                    softwareBitmap?.Dispose();
-                }
-                else
-                {
-                    // Log why frame is null
-                    if (_frameCount % 100 == 0)
-                    {
-                        AddDebugMessage($"Frame null - Frame: {frame != null}, VideoMediaFrame: {frame?.VideoMediaFrame != null}, SoftwareBitmap: {frame?.VideoMediaFrame?.SoftwareBitmap != null}");
-                    }
-                }
-            }
-        }
-
-        private void UpdateFpsCounter()
-        {
-            _frameCount++;
-            var now = DateTime.Now;
-            var elapsed = (now - _lastFpsUpdate).TotalSeconds;
-            
-            if (elapsed >= 1.0)
-            {
-                _currentFps = _frameCount / elapsed;
-                AddDebugMessage($"FPS: {_currentFps:F1} (High Performance Mode)");
-                _frameCount = 0;
-                _lastFpsUpdate = now;
             }
         }
 
@@ -489,10 +341,7 @@ namespace SmartBoxNext
                 // Current status
                 debugInfo += $"\nInitialized: {_isInitialized}\n";
                 debugInfo += $"Previewing: {_isPreviewing}\n";
-                debugInfo += $"Mode: {(_useFrameReader ? "HIGH PERFORMANCE (MediaFrameReader)" : "Timer-based")}\n";
-                debugInfo += $"Current FPS: {_currentFps:F1}\n";
                 debugInfo += $"MediaCapture: {(_mediaCapture != null ? "Created" : "Null")}\n";
-                debugInfo += $"FrameReader: {(_frameReader != null ? "Active" : "Null")}\n";
                 debugInfo += $"Timer: {(_timer != null ? (_timer.IsRunning ? "Running" : "Stopped") : "Null")}\n";
                 debugInfo += $"Preview frames: {_frameCount}\n";
             }
@@ -555,20 +404,12 @@ namespace SmartBoxNext
             await dialog.ShowAsync();
         }
 
-        private async Task CleanupCameraAsync()
+        private Task CleanupCameraAsync()
         {
             try
             {
                 _isInitialized = false;
                 _isPreviewing = false;
-
-                if (_frameReader != null)
-                {
-                    await _frameReader.StopAsync();
-                    _frameReader.FrameArrived -= OnFrameArrived;
-                    _frameReader.Dispose();
-                    _frameReader = null;
-                }
 
                 if (_timer != null)
                 {
@@ -586,6 +427,8 @@ namespace SmartBoxNext
             {
                 System.Diagnostics.Debug.WriteLine($"Cleanup error: {ex.Message}");
             }
+            
+            return Task.CompletedTask;
         }
     }
 }

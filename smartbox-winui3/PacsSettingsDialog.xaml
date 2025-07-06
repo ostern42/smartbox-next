@@ -1,0 +1,53 @@
+<ContentDialog x:Class="SmartBoxNext.PacsSettingsDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Title="PACS Settings"
+             PrimaryButtonText="Save"
+             SecondaryButtonText="Test Connection"
+             CloseButtonText="Cancel"
+             DefaultButton="Primary">
+
+    <StackPanel Spacing="16" MinWidth="400">
+        <TextBlock Text="Configure PACS server connection" 
+                   Style="{StaticResource BodyTextBlockStyle}"/>
+        
+        <TextBox x:Name="AeTitleBox" 
+                 Header="Local AE Title" 
+                 PlaceholderText="SMARTBOX"
+                 Text="SMARTBOX"/>
+        
+        <TextBox x:Name="ServerAeTitleBox" 
+                 Header="Server AE Title" 
+                 PlaceholderText="PACS"
+                 Text="PACS"/>
+        
+        <TextBox x:Name="ServerHostBox" 
+                 Header="Server Host" 
+                 PlaceholderText="192.168.1.100 or pacs.hospital.com"
+                 Text="localhost"/>
+        
+        <NumberBox x:Name="ServerPortBox" 
+                   Header="Server Port" 
+                   PlaceholderText="104"
+                   Value="104"
+                   Minimum="1"
+                   Maximum="65535"
+                   SpinButtonPlacementMode="Inline"/>
+        
+        <NumberBox x:Name="LocalPortBox" 
+                   Header="Local Port (0 = auto)" 
+                   PlaceholderText="0"
+                   Value="0"
+                   Minimum="0"
+                   Maximum="65535"
+                   SpinButtonPlacementMode="Inline"/>
+        
+        <CheckBox x:Name="UseTlsBox" 
+                  Content="Use TLS/SSL encryption"
+                  IsChecked="False"/>
+        
+        <InfoBar x:Name="StatusBar" 
+                 IsOpen="False"
+                 Severity="Informational"/>
+    </StackPanel>
+</ContentDialog>

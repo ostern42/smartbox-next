@@ -1,0 +1,427 @@
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
+using System;
+using System.Threading.Tasks;
+using Windows.Media.Capture;
+using Windows.Media.MediaProperties;
+using Windows.Storage;
+using Windows.Security.Authorization.AppCapabilityAccess;
+using Windows.Storage.Streams;
+using Microsoft.UI.Dispatching;
+using Windows.Graphics.Imaging;
+using System.IO;
+using Windows.Storage.Pickers;
+using System.Linq;
+using Windows.Media.Capture.Frames;
+using Windows.Media;
+
+namespace SmartBoxNext
+{
+    public sealed partial class MainWindow : Window
+    {
+        private MediaCapture? _mediaCapture;
+        private bool _isInitialized = false;
+        private bool _isPreviewing = false;
+        private MediaFrameReader? _frameReader;
+        private SoftwareBitmapSource _bitmapSource = new SoftwareBitmapSource();
+        
+        // Performance monitoring
+        private int _frameCount = 0;
+        private DateTime _lastFpsUpdate = DateTime.Now;
+        private double _currentFps = 0;
+
+        private void AddDebugMessage(string message)
+        {
+            var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (DebugInfo != null)
+                {
+                    DebugInfo.Text = $"[{timestamp}] {message}\n" + DebugInfo.Text;
+                    // Keep only last 20 messages to prevent UI slowdown
+                    var lines = DebugInfo.Text.Split('\n');
+                    if (lines.Length > 20)
+                    {
+                        DebugInfo.Text = string.Join('\n', lines.Take(20));
+                    }
+                }
+            });
+            System.Diagnostics.Debug.WriteLine($"[{timestamp}] {message}");
+        }
+
+        public MainWindow()
+        {
+            this.InitializeComponent();
+            this.Title = "SmartBox Next - Medical Imaging";
+            
+            // Initialize on load
+            this.Loaded += async (s, e) => await InitializeWebcamAsync();
+            this.Closed += async (s, e) => await CleanupCameraAsync();
+        }
+
+        private async Task InitializeWebcamAsync()
+        {
+            try
+            {
+                AddDebugMessage("Starting webcam initialization...");
+
+                // Check camera permission
+                var cameraCapability = AppCapability.Create("webcam");
+                var accessStatus = await cameraCapability.CheckAccess();
+                
+                if (accessStatus != AppCapabilityAccessStatus.Allowed)
+                {
+                    AddDebugMessage($"Camera access status: {accessStatus}");
+                    await ShowErrorDialog("Camera access is not allowed. Please enable camera access in Windows Settings.");
+                    return;
+                }
+
+                // Initialize MediaCapture
+                _mediaCapture = new MediaCapture();
+                var settings = new MediaCaptureInitializationSettings
+                {
+                    StreamingCaptureMode = StreamingCaptureMode.Video,
+                    MediaCategory = MediaCategory.Other,
+                    VideoProcessorId = string.Empty
+                };
+
+                await _mediaCapture.InitializeAsync(settings);
+                AddDebugMessage("MediaCapture initialized successfully");
+
+                // Get available frame sources
+                var frameSourceInfo = _mediaCapture.FrameSources.Values
+                    .FirstOrDefault(source => source.Info.MediaStreamType == MediaStreamType.VideoPreview 
+                                           && source.Info.SourceKind == MediaFrameSourceKind.Color);
+
+                if (frameSourceInfo == null)
+                {
+                    // Fallback to any color source
+                    frameSourceInfo = _mediaCapture.FrameSources.Values
+                        .FirstOrDefault(source => source.Info.SourceKind == MediaFrameSourceKind.Color);
+                }
+
+                if (frameSourceInfo != null)
+                {
+                    AddDebugMessage($"Using frame source: {frameSourceInfo.Info.Id}");
+                    AddDebugMessage($"Resolution: {frameSourceInfo.Info.VideoProfileMediaDescription[0].Width}x{frameSourceInfo.Info.VideoProfileMediaDescription[0].Height}");
+                    
+                    // Create frame reader
+                    _frameReader = await _mediaCapture.CreateFrameReaderAsync(frameSourceInfo);
+                    _frameReader.FrameArrived += FrameReader_FrameArrived;
+                    
+                    // Start frame reader
+                    var status = await _frameReader.StartAsync();
+                    if (status == MediaFrameReaderStartStatus.Success)
+                    {
+                        _isPreviewing = true;
+                        _isInitialized = true;
+                        WebcamPlaceholder.Visibility = Visibility.Collapsed;
+                        AddDebugMessage("Frame reader started successfully - High performance mode active!");
+                    }
+                    else
+                    {
+                        AddDebugMessage($"Failed to start frame reader: {status}");
+                        await ShowErrorDialog($"Failed to start video preview: {status}");
+                    }
+                }
+                else
+                {
+                    AddDebugMessage("No suitable frame source found");
+                    await ShowErrorDialog("No suitable camera frame source found");
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                await ShowErrorDialog("Webcam access denied. Please check Windows privacy settings:\n\nSettings > Privacy > Camera > Allow apps to access your camera");
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"Error: {ex.GetType().Name} - {ex.Message}");
+                await ShowErrorDialog($"Failed to initialize webcam: {ex.Message}\n\nDetails: {ex.GetType().Name}");
+            }
+        }
+
+        private async void FrameReader_FrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs args)
+        {
+            using (var frame = sender.TryAcquireLatestFrame())
+            {
+                if (frame?.VideoMediaFrame?.SoftwareBitmap != null)
+                {
+                    var softwareBitmap = frame.VideoMediaFrame.SoftwareBitmap;
+                    
+                    // Convert to BGRA8 with premultiplied alpha if needed
+                    if (softwareBitmap.BitmapPixelFormat != BitmapPixelFormat.Bgra8 || 
+                        softwareBitmap.BitmapAlphaMode != BitmapAlphaMode.Premultiplied)
+                    {
+                        softwareBitmap = SoftwareBitmap.Convert(
+                            softwareBitmap, 
+                            BitmapPixelFormat.Bgra8, 
+                            BitmapAlphaMode.Premultiplied);
+                    }
+                    
+                    // Update UI on dispatcher thread
+                    await DispatcherQueue.TryEnqueue(async () =>
+                    {
+                        try
+                        {
+                            await _bitmapSource.SetBitmapAsync(softwareBitmap);
+                            WebcamPreview.Source = _bitmapSource;
+                            
+                            // Update FPS counter
+                            UpdateFpsCounter();
+                        }
+                        catch (Exception ex)
+                        {
+                            // Only log first error to avoid spam
+                            if (_frameCount == 0)
+                            {
+                                AddDebugMessage($"Frame display error: {ex.Message}");
+                            }
+                        }
+                    });
+                    
+                    softwareBitmap?.Dispose();
+                }
+            }
+        }
+
+        private void UpdateFpsCounter()
+        {
+            _frameCount++;
+            var now = DateTime.Now;
+            var elapsed = (now - _lastFpsUpdate).TotalSeconds;
+            
+            if (elapsed >= 1.0)
+            {
+                _currentFps = _frameCount / elapsed;
+                AddDebugMessage($"FPS: {_currentFps:F1} - Frame count: {_frameCount}");
+                _frameCount = 0;
+                _lastFpsUpdate = now;
+            }
+        }
+
+        private async void CaptureButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_mediaCapture == null || !_isInitialized)
+            {
+                await ShowErrorDialog("Camera is not initialized. Please wait or restart the application.");
+                return;
+            }
+
+            try
+            {
+                AddDebugMessage("Capturing photo...");
+
+                // Create folder in Pictures
+                var myPictures = await StorageLibrary.GetLibraryAsync(KnownLibraryId.Pictures);
+                var folder = await myPictures.SaveFolder.CreateFolderAsync("SmartBoxNext", CreationCollisionOption.OpenIfExists);
+                
+                // Generate filename with timestamp
+                var fileName = $"Capture_{DateTime.Now:yyyyMMdd_HHmmss}.jpg";
+                var file = await folder.CreateFileAsync(fileName, CreationCollisionOption.GenerateUniqueName);
+
+                // Capture photo
+                var encodingProperties = ImageEncodingProperties.CreateJpeg();
+                encodingProperties.Width = 1920;
+                encodingProperties.Height = 1080;
+                
+                await _mediaCapture.CapturePhotoToStorageFileAsync(encodingProperties, file);
+                
+                AddDebugMessage($"Photo saved: {file.Path}");
+                
+                // Show success message
+                var dialog = new ContentDialog
+                {
+                    Title = "Photo Captured",
+                    Content = $"Photo saved to:\n{file.Path}",
+                    CloseButtonText = "OK",
+                    XamlRoot = this.Content.XamlRoot
+                };
+                await dialog.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"Capture error: {ex.Message}");
+                await ShowErrorDialog($"Failed to capture photo: {ex.Message}");
+            }
+        }
+
+        private async void ExportDicomButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                AddDebugMessage("Starting DICOM export...");
+
+                // Get the most recent capture
+                var myPictures = await StorageLibrary.GetLibraryAsync(KnownLibraryId.Pictures);
+                var folder = await myPictures.SaveFolder.GetFolderAsync("SmartBoxNext");
+                var files = await folder.GetFilesAsync();
+                
+                if (files.Count == 0)
+                {
+                    await ShowErrorDialog("No captured images found. Please capture an image first.");
+                    return;
+                }
+
+                // Get most recent file
+                var mostRecentFile = files.OrderByDescending(f => f.DateCreated).First();
+                
+                // Show patient info dialog
+                var patientDialog = new ContentDialog
+                {
+                    Title = "Patient Information",
+                    XamlRoot = this.Content.XamlRoot,
+                    PrimaryButtonText = "Export",
+                    CloseButtonText = "Cancel"
+                };
+
+                var stackPanel = new StackPanel { Spacing = 8 };
+                
+                var patientNameBox = new TextBox { Header = "Patient Name", PlaceholderText = "Last, First" };
+                var patientIdBox = new TextBox { Header = "Patient ID", PlaceholderText = "12345678" };
+                var birthDatePicker = new DatePicker { Header = "Birth Date" };
+                var genderBox = new ComboBox 
+                { 
+                    Header = "Gender",
+                    ItemsSource = new[] { "M", "F", "O" },
+                    SelectedIndex = 0
+                };
+                
+                stackPanel.Children.Add(patientNameBox);
+                stackPanel.Children.Add(patientIdBox);
+                stackPanel.Children.Add(birthDatePicker);
+                stackPanel.Children.Add(genderBox);
+                
+                patientDialog.Content = stackPanel;
+                
+                if (await patientDialog.ShowAsync() == ContentDialogResult.Primary)
+                {
+                    AddDebugMessage($"Exporting {mostRecentFile.Name} to DICOM...");
+
+                    // Get patient information from dialog
+                    var patientName = patientNameBox.Text;
+                    var patientId = patientIdBox.Text;
+                    DateTime? birthDate = null;
+                    if (birthDatePicker.Date != null)
+                    {
+                        birthDate = birthDatePicker.Date.DateTime;
+                    }
+                    var gender = genderBox.SelectedItem?.ToString() ?? "O";
+                    var studyDescription = "Endoscopy Study";
+                    var accessionNumber = $"ACC{DateTime.Now:yyyyMMddHHmmss}";
+
+                    // Export to DICOM
+                    var dicomFile = await DicomExporter.ExportToDicomAsync(
+                        mostRecentFile,
+                        patientName,
+                        patientId,
+                        birthDate,
+                        gender,
+                        studyDescription,
+                        accessionNumber
+                    );
+
+                    AddDebugMessage($"DICOM export complete: {dicomFile.Path}");
+
+                    // Show success dialog
+                    var successDialog = new ContentDialog
+                    {
+                        Title = "DICOM Export Complete",
+                        Content = $"DICOM file saved to:\n{dicomFile.Path}",
+                        CloseButtonText = "OK",
+                        XamlRoot = this.Content.XamlRoot
+                    };
+                    await successDialog.ShowAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"DICOM export error: {ex.Message}");
+                await ShowErrorDialog($"Failed to export DICOM: {ex.Message}");
+            }
+        }
+
+        private async void PacsSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new PacsSettingsDialog
+            {
+                XamlRoot = this.Content.XamlRoot
+            };
+            await dialog.ShowAsync();
+        }
+
+        private void DebugButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (DebugPanel.Visibility == Visibility.Visible)
+            {
+                DebugPanel.Visibility = Visibility.Collapsed;
+                DebugButton.Content = new StackPanel 
+                { 
+                    Orientation = Orientation.Horizontal, 
+                    Spacing = 8,
+                    Children = 
+                    {
+                        new FontIcon { Glyph = "\uE7C8" },
+                        new TextBlock { Text = "Show Debug Info" }
+                    }
+                };
+            }
+            else
+            {
+                DebugPanel.Visibility = Visibility.Visible;
+                DebugButton.Content = new StackPanel 
+                { 
+                    Orientation = Orientation.Horizontal, 
+                    Spacing = 8,
+                    Children = 
+                    {
+                        new FontIcon { Glyph = "\uE7C8" },
+                        new TextBlock { Text = "Hide Debug Info" }
+                    }
+                };
+                AddDebugMessage($"Debug panel opened - Current FPS: {_currentFps:F1}");
+            }
+        }
+
+        private async Task ShowErrorDialog(string message)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Error",
+                Content = message,
+                CloseButtonText = "OK",
+                XamlRoot = this.Content.XamlRoot
+            };
+            await dialog.ShowAsync();
+        }
+
+        private Task CleanupCameraAsync()
+        {
+            try
+            {
+                _isInitialized = false;
+                _isPreviewing = false;
+
+                if (_frameReader != null)
+                {
+                    _frameReader.FrameArrived -= FrameReader_FrameArrived;
+                    _frameReader.Dispose();
+                    _frameReader = null;
+                }
+
+                if (_mediaCapture != null)
+                {
+                    _mediaCapture.Dispose();
+                    _mediaCapture = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Cleanup error: {ex.Message}");
+            }
+            
+            return Task.CompletedTask;
+        }
+    }
+}

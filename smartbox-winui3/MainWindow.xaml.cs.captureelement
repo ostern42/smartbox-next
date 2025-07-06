@@ -1,0 +1,367 @@
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
+using System;
+using System.Threading.Tasks;
+using Windows.Media.Capture;
+using Windows.Media.MediaProperties;
+using Windows.Storage;
+using Windows.Security.Authorization.AppCapabilityAccess;
+using Windows.Storage.Streams;
+using Microsoft.UI.Dispatching;
+using Windows.Graphics.Imaging;
+using System.IO;
+using Windows.Storage.Pickers;
+using Windows.Media.Core;
+using Windows.Media.Playback;
+using System.Linq;
+
+namespace SmartBoxNext
+{
+    public sealed partial class MainWindow : Window
+    {
+        private MediaCapture? _mediaCapture;
+        private bool _isInitialized = false;
+        private bool _isPreviewing = false;
+        private CaptureElement? _captureElement;
+
+        private void AddDebugMessage(string message)
+        {
+            var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (DebugInfo != null)
+                {
+                    DebugInfo.Text = $"[{timestamp}] {message}\n" + DebugInfo.Text;
+                    if (DebugInfo.Text.Length > 2000)
+                    {
+                        DebugInfo.Text = DebugInfo.Text.Substring(0, 2000);
+                    }
+                }
+            });
+            System.Diagnostics.Debug.WriteLine($"[{timestamp}] {message}");
+        }
+
+        public MainWindow()
+        {
+            this.InitializeComponent();
+            this.Title = "SmartBox Next - Medical Imaging";
+            
+            // Set window size
+            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
+            var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
+            appWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1200, Height = 800 });
+            
+            // Cleanup on close
+            this.Closed += async (s, e) =>
+            {
+                await CleanupCameraAsync();
+            };
+        }
+
+        private async Task InitializeWebcamAsync()
+        {
+            try
+            {
+                AddDebugMessage("=== Starting webcam initialization (CaptureElement approach) ===");
+                
+                // Check camera permissions
+                var capability = AppCapability.Create("webcam");
+                var accessStatus = capability.CheckAccess();
+                AddDebugMessage($"Camera access status: {accessStatus}");
+                
+                if (accessStatus != AppCapabilityAccessStatus.Allowed)
+                {
+                    var dialog = new ContentDialog
+                    {
+                        Title = "Camera Access Required",
+                        Content = "Please grant camera access in Windows Settings > Privacy & Security > Camera",
+                        PrimaryButtonText = "Open Settings",
+                        CloseButtonText = "Cancel",
+                        XamlRoot = this.Content.XamlRoot
+                    };
+
+                    if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+                    {
+                        await Windows.System.Launcher.LaunchUriAsync(new Uri("ms-settings:privacy-webcam"));
+                    }
+                    return;
+                }
+
+                // Find camera devices
+                var devices = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync(
+                    Windows.Devices.Enumeration.DeviceClass.VideoCapture);
+                
+                AddDebugMessage($"Found {devices.Count} camera devices");
+                foreach (var device in devices)
+                {
+                    AddDebugMessage($"  - {device.Name} (ID: {device.Id})");
+                }
+                
+                if (devices.Count == 0)
+                {
+                    WebcamPlaceholder.Text = "No camera found";
+                    return;
+                }
+
+                // Initialize MediaCapture
+                _mediaCapture = new MediaCapture();
+                var settings = new MediaCaptureInitializationSettings
+                {
+                    VideoDeviceId = devices[0].Id,
+                    StreamingCaptureMode = StreamingCaptureMode.Video,
+                    MediaCategory = MediaCategory.Communications
+                };
+                
+                await _mediaCapture.InitializeAsync(settings);
+                AddDebugMessage("MediaCapture initialized successfully");
+
+                // Create CaptureElement and set source
+                _captureElement = new CaptureElement();
+                _captureElement.Source = _mediaCapture;
+                _captureElement.Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform;
+
+                // Replace the MediaPlayerElement with CaptureElement in the UI
+                var parent = WebcamPreview.Parent as Grid;
+                if (parent != null)
+                {
+                    parent.Children.Remove(WebcamPreview);
+                    parent.Children.Insert(0, _captureElement);
+                }
+
+                // Start preview
+                await _mediaCapture.StartPreviewAsync();
+                _isPreviewing = true;
+                _isInitialized = true;
+                
+                WebcamPlaceholder.Visibility = Visibility.Collapsed;
+                AddDebugMessage("Webcam initialization complete! Real-time preview started.");
+                
+                // Log supported video properties
+                var videoProperties = _mediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(MediaStreamType.VideoPreview);
+                AddDebugMessage($"Supported video formats: {videoProperties.Count}");
+                foreach (VideoEncodingProperties prop in videoProperties.Take(3))
+                {
+                    AddDebugMessage($"  - {prop.Width}x{prop.Height} @ {prop.FrameRate.Numerator}/{prop.FrameRate.Denominator} fps");
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                await ShowErrorDialog("Webcam access denied. Please check Windows privacy settings:\n\nSettings > Privacy > Camera > Allow apps to access your camera");
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"Error: {ex.GetType().Name} - {ex.Message}");
+                await ShowErrorDialog($"Failed to initialize webcam: {ex.Message}\n\nDetails: {ex.GetType().Name}");
+            }
+        }
+
+        private async void InitWebcamButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_isInitialized)
+            {
+                await InitializeWebcamAsync();
+            }
+            else
+            {
+                await ShowInfoDialog("Webcam is already initialized");
+            }
+        }
+
+        private async void CaptureButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_mediaCapture == null || !_isInitialized)
+            {
+                await ShowErrorDialog("Webcam not initialized");
+                return;
+            }
+
+            try
+            {
+                AddDebugMessage("Starting image capture...");
+                
+                // Create storage file
+                var myPictures = await StorageLibrary.GetLibraryAsync(KnownLibraryId.Pictures);
+                var captureFolder = await myPictures.SaveFolder.CreateFolderAsync("SmartBoxNext", CreationCollisionOption.OpenIfExists);
+                var photoFile = await captureFolder.CreateFileAsync($"Capture_{DateTime.Now:yyyyMMdd_HHmmss}.jpg", CreationCollisionOption.GenerateUniqueName);
+
+                // Capture photo
+                var imageEncodingProperties = ImageEncodingProperties.CreateJpeg();
+                imageEncodingProperties.Width = 1920;
+                imageEncodingProperties.Height = 1080;
+                await _mediaCapture.CapturePhotoToStorageFileAsync(imageEncodingProperties, photoFile);
+
+                AddDebugMessage($"Image captured: {photoFile.Name}");
+
+                // Load and display the captured image
+                using (var stream = await photoFile.OpenAsync(FileAccessMode.Read))
+                {
+                    var bitmapImage = new BitmapImage();
+                    await bitmapImage.SetSourceAsync(stream);
+                    
+                    var image = new Image
+                    {
+                        Source = bitmapImage,
+                        Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
+                        MaxHeight = 600,
+                        MaxWidth = 800
+                    };
+                    
+                    var dialog = new ContentDialog
+                    {
+                        Title = $"Captured Image: {photoFile.Name}",
+                        Content = new ScrollViewer { Content = image },
+                        PrimaryButtonText = "Save",
+                        CloseButtonText = "Close",
+                        XamlRoot = this.Content.XamlRoot
+                    };
+                    
+                    var result = await dialog.ShowAsync();
+                    if (result == ContentDialogResult.Primary)
+                    {
+                        AddDebugMessage("Image saved successfully");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"Capture error: {ex.Message}");
+                await ShowErrorDialog($"Capture failed: {ex.Message}");
+            }
+        }
+
+        private async void ExportDicomButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ShowInfoDialog("DICOM export will be implemented with fo-dicom");
+        }
+
+        private async void PacsSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ShowInfoDialog("PACS settings dialog coming soon");
+        }
+
+        private async void DebugButton_Click(object sender, RoutedEventArgs e)
+        {
+            var debugInfo = "=== Webcam Debug Info ===\n\n";
+            
+            try
+            {
+                // Check camera permissions
+                var capability = AppCapability.Create("webcam");
+                var accessStatus = capability.CheckAccess();
+                debugInfo += $"Camera Access: {accessStatus}\n\n";
+                
+                // List all cameras
+                var devices = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync(
+                    Windows.Devices.Enumeration.DeviceClass.VideoCapture);
+                debugInfo += $"Found {devices.Count} cameras:\n";
+                foreach (var device in devices)
+                {
+                    debugInfo += $"- {device.Name}\n  ID: {device.Id}\n\n";
+                }
+                
+                // Current status
+                debugInfo += $"\nInitialized: {_isInitialized}\n";
+                debugInfo += $"Previewing: {_isPreviewing}\n";
+                debugInfo += $"MediaCapture: {(_mediaCapture != null ? "Created" : "Null")}\n";
+                debugInfo += $"CaptureElement: {(_captureElement != null ? "Created" : "Null")}\n";
+                
+                if (_mediaCapture != null && _isInitialized)
+                {
+                    var videoProperties = _mediaCapture.VideoDeviceController.GetAvailableMediaStreamProperties(MediaStreamType.VideoPreview);
+                    debugInfo += $"\nSupported formats: {videoProperties.Count}\n";
+                }
+            }
+            catch (Exception ex)
+            {
+                debugInfo += $"\nError getting debug info: {ex.Message}\n";
+            }
+            
+            // Create a dialog with a TextBox for copyable text
+            var textBox = new TextBox
+            {
+                Text = debugInfo,
+                IsReadOnly = true,
+                TextWrapping = TextWrapping.Wrap,
+                AcceptsReturn = true,
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+                MinHeight = 400,
+                MaxHeight = 600
+            };
+            
+            var scrollViewer = new ScrollViewer
+            {
+                Content = textBox,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            };
+            
+            var dialog = new ContentDialog
+            {
+                Title = "Webcam Debug Information",
+                Content = scrollViewer,
+                CloseButtonText = "Close",
+                XamlRoot = this.Content.XamlRoot,
+                DefaultButton = ContentDialogButton.Close
+            };
+            
+            await dialog.ShowAsync();
+        }
+
+        private async Task ShowErrorDialog(string message)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Error",
+                Content = message,
+                CloseButtonText = "OK",
+                XamlRoot = this.Content.XamlRoot
+            };
+            await dialog.ShowAsync();
+        }
+
+        private async Task ShowInfoDialog(string message)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Information",
+                Content = message,
+                CloseButtonText = "OK",
+                XamlRoot = this.Content.XamlRoot
+            };
+            await dialog.ShowAsync();
+        }
+
+        private async Task CleanupCameraAsync()
+        {
+            try
+            {
+                AddDebugMessage("Cleaning up camera resources...");
+                _isInitialized = false;
+                _isPreviewing = false;
+
+                if (_mediaCapture != null)
+                {
+                    if (_isPreviewing)
+                    {
+                        await _mediaCapture.StopPreviewAsync();
+                    }
+                    _mediaCapture.Dispose();
+                    _mediaCapture = null;
+                }
+
+                if (_captureElement != null)
+                {
+                    _captureElement.Source = null;
+                    _captureElement = null;
+                }
+                
+                AddDebugMessage("Camera cleanup complete");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Cleanup error: {ex.Message}");
+            }
+        }
+    }
+}
