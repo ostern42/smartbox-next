@@ -1,10 +1,13 @@
 module smartbox-next
 
-go 1.23
+go 1.23.0
+
+toolchain go1.24.4
 
 require (
+	github.com/suyashkumar/dicom v1.0.7
 	github.com/wailsapp/wails/v2 v2.10.1
-	golang.org/x/sys v0.30.0
+	golang.org/x/sys v0.33.0
 )
 
 require (

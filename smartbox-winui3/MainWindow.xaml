@@ -1,0 +1,89 @@
+<Window x:Class="SmartBoxNext.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="SmartBox Next">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Background="{ThemeResource SystemControlBackgroundChromeMediumBrush}" Padding="16,8">
+            <TextBlock Text="SmartBox Next - Medical Imaging" Style="{StaticResource TitleTextBlockStyle}"/>
+        </Grid>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" Padding="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Webcam Preview -->
+            <Border Grid.Column="0" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                    BorderThickness="1" CornerRadius="4" Margin="0,0,8,0">
+                <Grid>
+                    <MediaPlayerElement x:Name="WebcamPreview" 
+                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                      AreTransportControlsEnabled="False"
+                                      AutoPlay="False"/>
+                    <TextBlock x:Name="WebcamPlaceholder" Text="Webcam Preview" 
+                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                             Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                </Grid>
+            </Border>
+
+            <!-- Patient Info -->
+            <ScrollViewer Grid.Column="1" Margin="8,0,0,0">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Patient Information" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                    
+                    <TextBox x:Name="PatientName" Header="Patient Name" PlaceholderText="Last, First"/>
+                    <TextBox x:Name="PatientID" Header="Patient ID" PlaceholderText="12345678"/>
+                    <DatePicker x:Name="BirthDate" Header="Birth Date"/>
+                    <ComboBox x:Name="Gender" Header="Gender" SelectedIndex="0">
+                        <ComboBoxItem>Male</ComboBoxItem>
+                        <ComboBoxItem>Female</ComboBoxItem>
+                        <ComboBoxItem>Other</ComboBoxItem>
+                    </ComboBox>
+                    
+                    <TextBlock Text="Study Information" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0"/>
+                    <TextBox x:Name="StudyDescription" Header="Study Description" PlaceholderText="Endoscopy"/>
+                    <TextBox x:Name="AccessionNumber" Header="Accession Number"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Action Buttons -->
+        <Grid Grid.Row="2" Background="{ThemeResource SystemControlBackgroundChromeMediumBrush}" Padding="16">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
+                <Button x:Name="CaptureButton" Click="CaptureButton_Click" Style="{StaticResource AccentButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE722;"/>
+                        <TextBlock Text="Capture"/>
+                    </StackPanel>
+                </Button>
+                
+                <Button x:Name="ExportDicomButton" Click="ExportDicomButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE898;"/>
+                        <TextBlock Text="Export DICOM"/>
+                    </StackPanel>
+                </Button>
+                
+                <Button x:Name="PacsSettingsButton" Click="PacsSettingsButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE713;"/>
+                        <TextBlock Text="PACS Settings"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

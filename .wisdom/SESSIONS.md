@@ -58,9 +58,35 @@ Final: jpeg_dicom.go with proper JPEG compression - SUCCESS!
 - Past-Me sometimes continues after documentation
 - Trust Oliver's memory over old docs
 
+## Session 2 Continued: The Great Pivot
+**Date**: 06.07.2025 (late afternoon)
+**Major Decision**: Go → C# .NET 8
+
+### What Happened
+- Go DICOM libraries all failed
+- Oliver: "lieber windows .net8"
+- Created WinUI 3 project
+- Webcam research revealed solutions
+- App runs but webcam not showing yet
+
+### Key Moments
+- "gibst du so einfach auf?" - Oliver reminded me to research
+- WinUI 3 XAML compiler issues (as predicted)
+- Found solution: MediaSource.CreateFromMediaFrameSource()
+- Unpackaged apps need Windows Privacy Settings
+
+### Learnings
+- Don't give up, research first!
+- WinUI 3 is tricky but workable
+- C# with fo-dicom is more stable
+- Listen to Oliver's instincts
+
 ## Overall Progress
-- ✓ Basic UI working
-- ✓ Webcam capture working
-- ✓ DICOM export working
+- ✓ Basic UI working (Vue.js)
+- ✓ Webcam capture working (Go)
+- ✓ DICOM export working (Go)
 - ✓ MicroDicom compatibility achieved
-- Ready for feature expansion!
+- ✓ PACS backend ready (Go)
+- 🔄 Pivoting to C# .NET 8 + WinUI 3
+- ⏳ Webcam in WinUI 3 (implemented, not tested)
+- Ready for C# implementation!

@@ -79,15 +79,30 @@ func (s *StoreService) TestConnection(ctx context.Context) error {
 		return errors.New("low memory - cannot test connection")
 	}
 	
-	// TODO: Implement actual C-ECHO when we have DICOM library
-	// For now, simulate
-	
-	// Simulate network check
+	// Validate configuration
 	if pacsConfig.Host == "" || pacsConfig.Port == 0 {
 		return errors.New("invalid PACS configuration")
 	}
 	
-	return nil
+	// TODO: Implement actual C-ECHO when we have DICOM library
+	// For now, simulate connection test
+	
+	// Build server address
+	serverAddr := fmt.Sprintf("%s:%d", pacsConfig.Host, pacsConfig.Port)
+	
+	// Simulate connection test with timeout
+	connectCtx, cancel := context.WithTimeout(ctx, time.Duration(pacsConfig.Timeout)*time.Second)
+	defer cancel()
+	
+	// For now, just check if context times out
+	select {
+	case <-connectCtx.Done():
+		return fmt.Errorf("connection test timeout to %s", serverAddr)
+	case <-time.After(100 * time.Millisecond):
+		// Simulate successful connection
+		// In real implementation, we would actually try to connect
+		return nil
+	}
 }
 
 // StoreFile sends a DICOM file to PACS with retry logic
@@ -203,21 +218,37 @@ func (s *StoreService) GetStatistics() map[string]interface{} {
 
 func (s *StoreService) attemptStore(ctx context.Context, dicomPath string, pacsConfig config.PACSConfig) error {
 	// TODO: Implement actual C-STORE when we have DICOM library
-	// For now, simulate various scenarios for testing
+	// For now, simulate the upload process
 	
-	// Simulate timeout
+	// Build server address
+	serverAddr := fmt.Sprintf("%s:%d", pacsConfig.Host, pacsConfig.Port)
+	
+	// Check if file exists
+	if _, err := os.Stat(dicomPath); os.IsNotExist(err) {
+		return fmt.Errorf("DICOM file not found: %s", dicomPath)
+	}
+	
+	// Simulate network operation with timeout
 	timeout := time.Duration(pacsConfig.Timeout) * time.Second
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 	
-	// Simulate network operation
+	// Simulate upload time based on file size
+	fileInfo, _ := os.Stat(dicomPath)
+	simulatedTime := time.Duration(fileInfo.Size()/1024/100) * time.Millisecond // 100KB/s simulation
+	if simulatedTime < 100*time.Millisecond {
+		simulatedTime = 100 * time.Millisecond
+	}
+	
 	select {
 	case <-timer.C:
 		return fmt.Errorf("timeout after %d seconds", pacsConfig.Timeout)
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-time.After(100 * time.Millisecond): // Simulate quick success for now
-		// TODO: Real implementation here
+	case <-time.After(simulatedTime):
+		// Simulate successful upload
+		// TODO: Replace with actual C-STORE implementation
+		fmt.Printf("STUB: Would upload %s to %s\n", filepath.Base(dicomPath), serverAddr)
 		return nil
 	}
 }

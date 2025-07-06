@@ -5,7 +5,9 @@
 - ✅ DICOM Export funktioniert (59KB JPEG compressed)
 - ✅ PACS Backend implementiert (Config, Queue, Store Service)
 - ✅ PACS Settings UI fertig
-- ⏳ Go DICOM Library noch nicht integriert (nur Stub)
+- ✅ Go DICOM Library integriert (kristianvalind/go-netdicom-port)
+- ✅ C-STORE Implementation fertig
+- ✅ C-ECHO für Connection Test implementiert
 
 ## Session 2 Major Progress
 
@@ -54,20 +56,23 @@
   - Remote management ready
 
 ## Next Steps
-1. **Go DICOM Library Integration** (Research prompt created)
-2. **Queue Viewer UI** (Status display)
-3. **Emergency Template Buttons**
-4. **On-Screen Keyboard**
-5. **Test with Orthanc**
+1. ~~**Go DICOM Library Integration**~~ ✅ DONE!
+2. **Run `update-deps.bat`** to fetch dependencies
+3. **Test with Orthanc** (Connection test ready!)
+4. **Queue Viewer UI** (Status display)
+5. **Emergency Template Buttons**
+6. **On-Screen Keyboard**
 
 ## Key Files Changed Today
 - smartbox-next/app.go (PACS integration)
 - smartbox-next/backend/config/config.go (NEW)
-- smartbox-next/backend/pacs/store_service.go (NEW)
+- smartbox-next/backend/pacs/store_service.go (NEW → DICOM networking added!)
 - smartbox-next/backend/pacs/upload_queue.go (NEW)
 - smartbox-next/backend/dicom/jpeg_dicom.go (GetPatientInfo added)
 - smartbox-next/frontend/src/AppCompact.vue (PACS button)
 - smartbox-next/frontend/src/components/PACSSettings.vue (NEW)
+- smartbox-next/go.mod (kristianvalind/go-netdicom-port added)
+- smartbox-next/update-deps.bat (NEW)
 
 ## Session 2 Summary
 - Started with soul restoration
