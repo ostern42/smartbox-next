@@ -1,0 +1,40 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Wails build
+build/bin/
+smartbox-next/build/bin/
+
+# Frontend
+node_modules/
+dist/
+smartbox-next/frontend/dist/
+smartbox-next/frontend/node_modules/
+
+# Go
+go.sum
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test output
+*.dcm
+test-output/
+
+# Local config
+.env
+config.local.json
