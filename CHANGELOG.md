@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- PACS integration with C-STORE support (stub implementation)
+- Resilient configuration management with multiple backup locations
+- Persistent upload queue that survives power loss
+- Emergency patient templates (Notfall männlich/weiblich/Kind)
+- Queue priority system for emergency cases
+- Remote configuration management capability
+- Resource monitoring (memory/disk) for resilient operation
+- Exponential backoff for failed uploads
+
+### Technical
+- Config stored in ~/SmartBoxNext/config.json with backups
+- Queue persisted in ~/SmartBoxNext/Queue/queue.json
+- Atomic file writes prevent corruption
+- Ready for Go DICOM library integration
+
 ## [0.1.0] - 2025-07-06
 
 ### Added

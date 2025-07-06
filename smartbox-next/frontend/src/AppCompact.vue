@@ -179,6 +179,13 @@
         >
           📁 DICOM Folder
         </button>
+        
+        <button 
+          class="btn btn-secondary" 
+          @click="showPACSSettings = true"
+        >
+          ⚙️ PACS Settings
+        </button>
       </section>
 
       <!-- Status Messages -->
@@ -203,11 +210,20 @@
         </details>
       </section>
     </main>
+    
+    <!-- PACS Settings Modal -->
+    <div v-if="showPACSSettings" class="modal-overlay" @click.self="showPACSSettings = false">
+      <PACSSettings 
+        @close="showPACSSettings = false"
+        @saved="onPACSSettingsSaved"
+      />
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import PACSSettings from './components/PACSSettings.vue'
 import { 
   GetSystemInfo, 
   SetPatientInfo, 
@@ -228,6 +244,7 @@ const isStreaming = ref(false)
 const videoElement = ref(null)
 const currentStream = ref(null)
 const showOverlay = ref(true)
+const showPACSSettings = ref(false)
 
 // Patient info
 const patient = ref({
@@ -411,6 +428,11 @@ const showMessage = (text, type = 'info') => {
   setTimeout(() => {
     message.value = ''
   }, 3000)
+}
+
+// PACS Settings saved callback
+const onPACSSettingsSaved = (config) => {
+  showMessage('PACS settings saved successfully', 'success')
 }
 
 // Load system info
@@ -808,31 +830,25 @@ section h2 {
 
 .shortcuts-grid kbd {
   background: #2d3748;
-  border: 1px solid #4a5568;
-  border-radius: 4px;
   padding: 0.25rem 0.5rem;
+  border-radius: 4px;
   font-family: monospace;
   font-size: 0.875rem;
+  border: 1px solid #4a5568;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #0a0e1a;
-    color: #e0e6ed;
-  }
-}
-
-/* Touch-friendly adjustments */
-@media (pointer: coarse) {
-  .btn {
-    min-height: 48px;
-    font-size: 1.125rem;
-  }
-  
-  .input {
-    min-height: 48px;
-    font-size: 1rem;
-  }
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
 }
 </style>
