@@ -28,9 +28,19 @@ func (w *JpegDicomWriter) SetPatientInfo(patient PatientInfo) {
 	w.patient = patient
 }
 
+// GetPatientInfo returns current patient information
+func (w *JpegDicomWriter) GetPatientInfo() PatientInfo {
+	return w.patient
+}
+
 // SetStudyInfo sets study information
 func (w *JpegDicomWriter) SetStudyInfo(study StudyInfo) {
 	w.study = study
+}
+
+// GetStudyInfo returns current study information
+func (w *JpegDicomWriter) GetStudyInfo() StudyInfo {
+	return w.study
 }
 
 // CreateFromDataURL creates a DICOM with JPEG compression

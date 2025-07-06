@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"smartbox-next/backend/capture"
+	"smartbox-next/backend/config"
 	"smartbox-next/backend/dicom"
+	"smartbox-next/backend/pacs"
 	"time"
 
 	"github.com/wailsapp/wails/v2"
@@ -25,6 +27,9 @@ type App struct {
 	captureManager *capture.CaptureManager
 	dicomCreator   *dicom.JpegDicomWriter
 	outputDir      string
+	configManager  *config.ConfigManager
+	storeService   *pacs.StoreService
+	uploadQueue    *pacs.UploadQueue
 }
 
 // NewApp creates a new App application struct
@@ -34,10 +39,21 @@ func NewApp() *App {
 	outputDir := filepath.Join(homeDir, "SmartBoxNext", "DICOM")
 	os.MkdirAll(outputDir, 0755)
 
+	// Create config manager
+	configPath := filepath.Join(homeDir, "SmartBoxNext", "config.json")
+	configManager := config.NewConfigManager(configPath)
+
+	// Create PACS services
+	storeService := pacs.NewStoreService(configManager)
+	uploadQueue, _ := pacs.NewUploadQueue(configManager, storeService)
+
 	return &App{
 		captureManager: capture.NewCaptureManager(),
 		dicomCreator:   dicom.NewJpegDicomWriter(),
 		outputDir:      outputDir,
+		configManager:  configManager,
+		storeService:   storeService,
+		uploadQueue:    uploadQueue,
 	}
 }
 
@@ -132,6 +148,19 @@ func (a *App) ExportDicom(imageDataURL string) (string, error) {
 		return "", fmt.Errorf("failed to create DICOM: %v", err)
 	}
 
+	// Add to PACS queue if enabled
+	pacsConfig := a.configManager.GetPACS()
+	if pacsConfig.Enabled && a.uploadQueue != nil {
+		patientInfo := map[string]string{
+			"patientName": a.dicomCreator.GetPatientInfo().Name,
+			"patientId":   a.dicomCreator.GetPatientInfo().ID,
+			"studyDate":   time.Now().Format("20060102"),
+		}
+		
+		// Add with normal priority (emergency would be higher)
+		a.uploadQueue.Add(outputPath, patientInfo, pacs.PriorityNormal)
+	}
+
 	return outputPath, nil
 }
 
@@ -141,8 +170,100 @@ func (a *App) OpenDicomFolder() error {
 	return nil
 }
 
+// PACS Configuration Methods
+
+// GetPACSConfig returns current PACS configuration
+func (a *App) GetPACSConfig() config.PACSConfig {
+	return a.configManager.GetPACS()
+}
+
+// SetPACSConfig updates PACS configuration
+func (a *App) SetPACSConfig(pacsConfig config.PACSConfig) error {
+	return a.configManager.SetPACS(pacsConfig)
+}
+
+// TestPACSConnection tests PACS connectivity
+func (a *App) TestPACSConnection() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	
+	return a.storeService.TestConnection(ctx)
+}
+
+// GetQueueStatus returns upload queue status
+func (a *App) GetQueueStatus() map[string]interface{} {
+	return a.uploadQueue.GetStatus()
+}
+
+// GetQueueItems returns queue items
+func (a *App) GetQueueItems(statusFilter string, limit int) []*pacs.QueueItem {
+	var status *pacs.Status
+	if statusFilter != "" {
+		s := pacs.Status(statusFilter)
+		status = &s
+	}
+	return a.uploadQueue.GetItems(status, limit)
+}
+
+// RetryQueueItem retries a failed upload
+func (a *App) RetryQueueItem(id string) error {
+	return a.uploadQueue.Retry(id)
+}
+
+// CancelQueueItem cancels a pending upload
+func (a *App) CancelQueueItem(id string) error {
+	return a.uploadQueue.Cancel(id)
+}
+
+// Emergency Patient Methods
+
+// GetEmergencyTemplates returns available emergency templates
+func (a *App) GetEmergencyTemplates() []config.PatientTemplate {
+	return a.configManager.GetEmergencyTemplates()
+}
+
+// ApplyEmergencyTemplate applies an emergency template
+func (a *App) ApplyEmergencyTemplate(templateID string) (dicom.PatientInfo, dicom.StudyInfo, error) {
+	templates := a.configManager.GetEmergencyTemplates()
+	
+	for _, template := range templates {
+		if template.ID == templateID {
+			// Calculate birth date if relative
+			birthDate := template.BirthDate
+			if birthDate == "TODAY-40Y" {
+				birthDate = time.Now().AddDate(-40, 0, 0).Format("20060102")
+			} else if birthDate == "TODAY-10Y" {
+				birthDate = time.Now().AddDate(-10, 0, 0).Format("20060102")
+			}
+			
+			patient := dicom.PatientInfo{
+				Name:      template.PatientName,
+				ID:        template.PatientID + "-" + time.Now().Format("150405"),
+				BirthDate: birthDate,
+				Sex:       template.Sex,
+			}
+			
+			study := dicom.StudyInfo{
+				Description:     template.StudyDesc,
+				AccessionNumber: "EMRG-" + time.Now().Format("20060102150405"),
+			}
+			
+			// Apply to current DICOM creator
+			a.dicomCreator.SetPatientInfo(patient)
+			a.dicomCreator.SetStudyInfo(study)
+			
+			return patient, study, nil
+		}
+	}
+	
+	return dicom.PatientInfo{}, dicom.StudyInfo{}, fmt.Errorf("template not found: %s", templateID)
+}
+
 // Quit exits the application
 func (a *App) Quit() {
+	if a.uploadQueue != nil {
+		a.uploadQueue.Stop()
+	}
 	runtime.Quit(a.ctx)
 }
 
