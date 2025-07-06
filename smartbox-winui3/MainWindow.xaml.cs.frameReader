@@ -7,20 +7,22 @@ using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.Storage;
 using Windows.Security.Authorization.AppCapabilityAccess;
-using Windows.Storage.Streams;
-using Microsoft.UI.Dispatching;
+using Windows.Media.Capture.Frames;
 using Windows.Graphics.Imaging;
-using System.IO;
-using Windows.Storage.Pickers;
+using System.Linq;
+using Windows.Storage.Streams;
+using System.Runtime.InteropServices.WindowsRuntime;
+using Microsoft.UI.Dispatching;
 
 namespace SmartBoxNext
 {
     public sealed partial class MainWindow : Window
     {
         private MediaCapture? _mediaCapture;
+        private MediaFrameReader? _frameReader;
         private bool _isInitialized = false;
         private bool _isPreviewing = false;
-        private DispatcherQueueTimer? _timer;
+        private SoftwareBitmapSource _imageSource = new SoftwareBitmapSource();
         private int _frameCount = 0;
 
         private void AddDebugMessage(string message)
@@ -44,6 +46,8 @@ namespace SmartBoxNext
             var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
             appWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1200, Height = 800 });
             
+            // Initialize webcam manually via button for now
+            
             // Cleanup on close
             this.Closed += async (s, e) =>
             {
@@ -55,9 +59,9 @@ namespace SmartBoxNext
         {
             try
             {
-                AddDebugMessage("=== Starting webcam initialization (Simple approach) ===");
+                AddDebugMessage("=== Starting webcam initialization ===");
                 
-                // Check camera permissions
+                // Check camera permissions for unpackaged app
                 var capability = AppCapability.Create("webcam");
                 var accessStatus = capability.CheckAccess();
                 AddDebugMessage($"Camera access status: {accessStatus}");
@@ -101,23 +105,47 @@ namespace SmartBoxNext
                 var settings = new MediaCaptureInitializationSettings
                 {
                     VideoDeviceId = devices[0].Id,
-                    StreamingCaptureMode = StreamingCaptureMode.Video
+                    StreamingCaptureMode = StreamingCaptureMode.Video,
+                    MemoryPreference = MediaCaptureMemoryPreference.Auto
                 };
                 
                 await _mediaCapture.InitializeAsync(settings);
                 AddDebugMessage("MediaCapture initialized successfully");
 
-                // Start a timer to capture frames periodically for preview
-                _timer = DispatcherQueue.CreateTimer();
-                _timer.Interval = TimeSpan.FromMilliseconds(50); // 20 FPS
-                _timer.Tick += async (s, e) => await UpdatePreviewAsync();
-                _timer.Start();
+                // Find a suitable frame source
+                var frameSource = _mediaCapture.FrameSources.Values.FirstOrDefault(source =>
+                    source.Info.MediaStreamType == MediaStreamType.VideoPreview &&
+                    source.Info.SourceKind == MediaFrameSourceKind.Color);
+
+                if (frameSource == null)
+                {
+                    frameSource = _mediaCapture.FrameSources.Values.FirstOrDefault(source =>
+                        source.Info.SourceKind == MediaFrameSourceKind.Color);
+                }
+
+                if (frameSource == null)
+                {
+                    await ShowErrorDialog("No suitable video source found");
+                    return;
+                }
+
+                AddDebugMessage($"Using frame source: {frameSource.Info.Id}");
+
+                // Create frame reader
+                _frameReader = await _mediaCapture.CreateFrameReaderAsync(frameSource);
+                _frameReader.FrameArrived += FrameReader_FrameArrived;
+
+                // Start the frame reader
+                await _frameReader.StartAsync();
+                AddDebugMessage("Frame reader started");
 
                 _isPreviewing = true;
                 _isInitialized = true;
                 
                 WebcamPlaceholder.Visibility = Visibility.Collapsed;
-                AddDebugMessage("Webcam initialization complete! Preview timer started.");
+                WebcamPreview.Source = _imageSource;
+                
+                AddDebugMessage("Webcam initialization complete!");
             }
             catch (UnauthorizedAccessException)
             {
@@ -125,42 +153,39 @@ namespace SmartBoxNext
             }
             catch (Exception ex)
             {
-                AddDebugMessage($"Error: {ex.GetType().Name} - {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.GetType().Name} - {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
                 await ShowErrorDialog($"Failed to initialize webcam: {ex.Message}\n\nDetails: {ex.GetType().Name}");
             }
         }
 
-        private async Task UpdatePreviewAsync()
+        private async void FrameReader_FrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs args)
         {
-            if (_mediaCapture == null || !_isPreviewing) return;
-
-            try
+            _frameCount++;
+            
+            var frame = sender.TryAcquireLatestFrame();
+            if (frame?.VideoMediaFrame?.SoftwareBitmap != null)
             {
-                _frameCount++;
+                var softwareBitmap = frame.VideoMediaFrame.SoftwareBitmap;
                 
-                // Capture to memory stream
-                var stream = new InMemoryRandomAccessStream();
-                await _mediaCapture.CapturePhotoToStreamAsync(ImageEncodingProperties.CreateJpeg(), stream);
-                stream.Seek(0);
-
-                // Create bitmap and display
-                var bitmapImage = new BitmapImage();
-                await bitmapImage.SetSourceAsync(stream);
-                WebcamPreview.Source = bitmapImage;
-
-                // Update debug info every 10 frames
-                if (_frameCount % 10 == 0)
+                // Convert to BGRA8 format with premultiplied alpha if needed
+                if (softwareBitmap.BitmapPixelFormat != BitmapPixelFormat.Bgra8 || 
+                    softwareBitmap.BitmapAlphaMode != BitmapAlphaMode.Premultiplied)
                 {
-                    AddDebugMessage($"Preview frames: {_frameCount}");
+                    softwareBitmap = SoftwareBitmap.Convert(softwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
                 }
-            }
-            catch (Exception ex)
-            {
-                // Don't spam errors, just log once
-                if (_frameCount == 1)
+
+                // Update the image on the UI thread
+                DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, async () =>
                 {
-                    AddDebugMessage($"Preview error: {ex.Message}");
-                }
+                    await _imageSource.SetBitmapAsync(softwareBitmap);
+                    
+                    // Update frame count in placeholder text every 30 frames
+                    if (_frameCount % 30 == 0)
+                    {
+                        AddDebugMessage($"Frames received: {_frameCount}");
+                    }
+                });
             }
         }
 
@@ -178,7 +203,7 @@ namespace SmartBoxNext
 
         private async void CaptureButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_mediaCapture == null || !_isInitialized)
+            if (_mediaCapture == null || !_isPreviewing)
             {
                 await ShowErrorDialog("Webcam not initialized");
                 return;
@@ -228,11 +253,13 @@ namespace SmartBoxNext
 
         private async void ExportDicomButton_Click(object sender, RoutedEventArgs e)
         {
+            // TODO: Implement DICOM export with fo-dicom
             await ShowInfoDialog("DICOM export will be implemented with fo-dicom");
         }
 
         private async void PacsSettingsButton_Click(object sender, RoutedEventArgs e)
         {
+            // TODO: Show PACS settings dialog
             await ShowInfoDialog("PACS settings dialog coming soon");
         }
 
@@ -260,8 +287,18 @@ namespace SmartBoxNext
                 debugInfo += $"\nInitialized: {_isInitialized}\n";
                 debugInfo += $"Previewing: {_isPreviewing}\n";
                 debugInfo += $"MediaCapture: {(_mediaCapture != null ? "Created" : "Null")}\n";
-                debugInfo += $"Timer: {(_timer != null ? (_timer.IsRunning ? "Running" : "Stopped") : "Null")}\n";
-                debugInfo += $"Preview frames: {_frameCount}\n";
+                debugInfo += $"FrameReader: {(_frameReader != null ? "Created" : "Null")}\n";
+                debugInfo += $"ImageSource: {(_imageSource != null ? "Created" : "Null")}\n";
+                debugInfo += $"WebcamPreview.Source: {(WebcamPreview.Source != null ? "Set" : "Null")}\n";
+                
+                if (_mediaCapture != null && _mediaCapture.FrameSources.Count > 0)
+                {
+                    debugInfo += $"\nFrame Sources: {_mediaCapture.FrameSources.Count}\n";
+                    foreach (var source in _mediaCapture.FrameSources)
+                    {
+                        debugInfo += $"- {source.Key}: {source.Value.Info.MediaStreamType}, {source.Value.Info.SourceKind}\n";
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -329,10 +366,12 @@ namespace SmartBoxNext
                 _isInitialized = false;
                 _isPreviewing = false;
 
-                if (_timer != null)
+                if (_frameReader != null)
                 {
-                    _timer.Stop();
-                    _timer = null;
+                    _frameReader.FrameArrived -= FrameReader_FrameArrived;
+                    await _frameReader.StopAsync();
+                    _frameReader.Dispose();
+                    _frameReader = null;
                 }
 
                 if (_mediaCapture != null)

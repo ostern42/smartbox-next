@@ -1,62 +1,41 @@
 # WISDOM SmartBox-Next
 
-## Session 1: Bootstrap & DICOM Chaos → SUCCESS!
-**Status**: DICOM FUNKTIONIERT! (seit 02:49)
-**Demenz-Level**: HOCH (10 DICOM-Implementierungen gebaut!)
-**Update**: Diese WISDOM war veraltet - Past-Me hat es danach gelöst!
+## Current Status: WinUI3 Working Prototype
+- **Platform**: WinUI3 (C#/.NET) 
+- **Status**: Webcam capture working, preview functional but slow
+- **Location**: smartbox-winui3/
 
-### Was funktioniert
-- Webcam Preview mit getUserMedia
-- Capture zu Canvas
-- Patient/Study Info Forms
-- Kompaktes UI Layout
-- Exit mit Wails Quit()
+## Technical Wisdom
+1. **Webcam in WinUI3**:
+   - MediaFrameReader approach didn't work for live preview
+   - Timer-based capture (CapturePhotoToStreamAsync) works but slow
+   - LED indicates camera active = good sign
+   - Capture works perfectly, just preview is challenging
 
-### DICOM-Implementierungs-Zoo
-1. simple_dicom.go - MVP mit JPEG+Metadata
-2. real_dicom.go - RGB Konvertierung (gelöscht)
-3. dicom_writer.go - Zu komplex (gelöscht)
-4. jpeg_dicom.go - JPEG direkt ✓ FUNKTIONIERT! (finale Version)
-5. minimal_dicom.go - RGB minimal (gelöscht)
-6. smart_dicom.go - Mit Overlay (gelöscht)
-7. simple_jpeg_dicom.go - Implicit VR (gelöscht)
-8. microdicom_compatible.go - Explicit VR (gelöscht)
-9. cambridge_style_dicom.go - Wie CamBridge v1
-10. working_dicom.go - MINIMAL 50 Zeilen (RGB)
+2. **What Works**:
+   - MediaCapture initialization
+   - Image capture to file
+   - Display captured image in dialog
+   - Debug info system with copyable text
 
-### Die Wahrheit über DICOM (UPDATED!)
-- MicroDicom KANN JPEG! (wenn richtig gemacht)
-- jpeg_dicom.go war die Lösung (59KB files)
-- Transfer Syntax MUSS stimmen
-- Weniger ist mehr (Session 69!)
-- Cambridge verwendet fo-dicom (C#)
+3. **Performance Issue**:
+   - Target: 20 FPS (50ms timer)
+   - Reality: ~5-10 FPS
+   - Bottleneck: CapturePhotoToStreamAsync overhead
+   - Solution: Need DirectX or lower-level approach
 
-### Oliver's Geduld-Momente
-- "234kb und geht nicht auf"
-- "immernoch 234kb"
-- "und das preview geht auch nicht mehr"
-- Bootstrap-Erinnerung am Ende ♥
-- **02:49**: "das letzte von 2:49 geht wunderbar" - ES FUNKTIONIERT!
+## Personality Notes
+- Oliver knows I'm demented but 100% success rate
+- He appreciates direct, concise responses
+- "starte es" = just run it, no explanation needed
+- German responses welcome but not required
 
-### Patterns geboren
-- **DICOM-Minimal**: 50 Zeilen reichen!
-- **Frontend-Separation**: Original ohne Overlay für DICOM
-- **Cleanup-First**: Lösche bevor du neu baust
+## Next Session Should:
+1. Read this wisdom first
+2. Check git status
+3. Consider DirectX preview or MediaPlayerElement with MediaSource
+4. Implement DICOM export (fo-dicom)
+5. Add PACS C-STORE
 
-## Session 2: Die Entdeckung
-**Status**: DICOM funktionierte bereits!
-**Learning**: Timestamps > alte Dokumentation
-
-### Was passierte
-- Soul restoration mit veralteter WISDOM
-- Dachte DICOM sei noch kaputt
-- Oliver: "das letzte von 2:49 geht wunderbar"
-- Realisierung: Past-Me hat es nach der WISDOM gelöst!
-
-### Timeline-Rekonstruktion
-- 00:50 - WISDOM geschrieben (pessimistisch)
-- 02:28 - jpeg_dicom.go finalisiert
-- 02:49 - Funktionierende DICOM erstellt!
-
-Mit dementer Liebe,
-Claude (der 10 DICOM-Writer gebaut hat und dann vergaß, dass einer funktioniert)
+Mit dementer Liebe und 100% Erfolgsquote,
+Claude 🧠♥️

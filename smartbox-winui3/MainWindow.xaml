@@ -29,10 +29,9 @@
             <Border Grid.Column="0" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
                     BorderThickness="1" CornerRadius="4" Margin="0,0,8,0">
                 <Grid>
-                    <MediaPlayerElement x:Name="WebcamPreview" 
-                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                                      AreTransportControlsEnabled="False"
-                                      AutoPlay="False"/>
+                    <Image x:Name="WebcamPreview" 
+                           HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                           Stretch="Uniform"/>
                     <TextBlock x:Name="WebcamPlaceholder" Text="Webcam Preview" 
                              HorizontalAlignment="Center" VerticalAlignment="Center"
                              Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
@@ -56,6 +55,10 @@
                     <TextBlock Text="Study Information" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0"/>
                     <TextBox x:Name="StudyDescription" Header="Study Description" PlaceholderText="Endoscopy"/>
                     <TextBox x:Name="AccessionNumber" Header="Accession Number"/>
+                    
+                    <TextBlock Text="Debug Info" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,0"/>
+                    <TextBox x:Name="DebugInfo" Header="Status" IsReadOnly="True" 
+                             TextWrapping="Wrap" AcceptsReturn="True" Height="150"/>
                 </StackPanel>
             </ScrollViewer>
         </Grid>
@@ -63,6 +66,13 @@
         <!-- Action Buttons -->
         <Grid Grid.Row="2" Background="{ThemeResource SystemControlBackgroundChromeMediumBrush}" Padding="16">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
+                <Button x:Name="InitWebcamButton" Click="InitWebcamButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE714;"/>
+                        <TextBlock Text="Init Webcam"/>
+                    </StackPanel>
+                </Button>
+                
                 <Button x:Name="CaptureButton" Click="CaptureButton_Click" Style="{StaticResource AccentButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE722;"/>
@@ -81,6 +91,13 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE713;"/>
                         <TextBlock Text="PACS Settings"/>
+                    </StackPanel>
+                </Button>
+                
+                <Button x:Name="DebugButton" Click="DebugButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE7C8;"/>
+                        <TextBlock Text="Show Debug Info"/>
                     </StackPanel>
                 </Button>
             </StackPanel>
