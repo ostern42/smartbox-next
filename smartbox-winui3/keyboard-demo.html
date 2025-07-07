@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBox Touch Keyboard Demo</title>
+    <link rel="stylesheet" href="wwwroot/styles.css">
+    <link rel="stylesheet" href="wwwroot/keyboard.css">
+    <style>
+        body {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .demo-section {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .demo-section h2 {
+            margin-top: 0;
+            color: #0078d4;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            color: #5c5c5c;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            transition: border-color 0.2s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #0078d4;
+        }
+        
+        .form-group input.use-keyboard {
+            background-color: #f0f8ff;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            padding: 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            padding: 8px 0;
+            padding-left: 24px;
+            position: relative;
+        }
+        
+        .feature-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        .keyboard-trigger {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #0078d4;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        
+        .keyboard-trigger:hover {
+            background: #106ebe;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎹 SmartBox Touch Keyboard Demo</h1>
+    
+    <div class="demo-section">
+        <h2>Über die Bildschirmtastatur</h2>
+        <div class="info-box">
+            <p><strong>Automatische Erkennung:</strong> Die Tastatur erscheint automatisch bei Touch-Geräten oder wenn ein Input-Feld die Klasse <code>use-keyboard</code> hat.</p>
+            <p><strong>Smart Input:</strong> Bei IP-Adressen und Ports wird automatisch die numerische Tastatur angezeigt!</p>
+        </div>
+        
+        <h3>Features:</h3>
+        <ul class="feature-list">
+            <li>QWERTZ-Layout für deutsche Benutzer</li>
+            <li>Große Touch-Targets (48x48px minimum)</li>
+            <li>Spezielle numerische Tastatur für IP/Port-Eingaben</li>
+            <li>Smooth Animationen mit Haptic Feedback</li>
+            <li>Windows 11 Design mit Blur-Effekt</li>
+            <li>Dark Mode Support</li>
+            <li>Shift und Caps Lock Unterstützung</li>
+            <li>Responsive für alle Bildschirmgrößen</li>
+        </ul>
+    </div>
+    
+    <div class="demo-section">
+        <h2>QWERTZ Tastatur Demo</h2>
+        <p>Klicken Sie in die Eingabefelder um die Tastatur zu testen:</p>
+        
+        <div class="form-group">
+            <label for="patient-name">Patientenname:</label>
+            <input type="text" id="patient-name" class="use-keyboard" placeholder="Nachname, Vorname">
+        </div>
+        
+        <div class="form-group">
+            <label for="notes">Notizen:</label>
+            <input type="text" id="notes" class="use-keyboard" placeholder="Medizinische Notizen eingeben...">
+        </div>
+        
+        <div class="form-group">
+            <label for="email">E-Mail:</label>
+            <input type="email" id="email" class="use-keyboard" placeholder="arzt@klinik.de">
+        </div>
+    </div>
+    
+    <div class="demo-section">
+        <h2>Numerische Tastatur Demo</h2>
+        <p>Diese Felder aktivieren automatisch die numerische Tastatur:</p>
+        
+        <div class="form-group">
+            <label for="server-ip">PACS Server IP:</label>
+            <input type="text" id="server-ip" class="use-keyboard numeric-input" placeholder="192.168.1.100">
+        </div>
+        
+        <div class="form-group">
+            <label for="server-port">PACS Port:</label>
+            <input type="text" id="server-port" class="use-keyboard numeric-input" placeholder="104">
+        </div>
+        
+        <div class="form-group">
+            <label for="patient-id">Patienten-ID:</label>
+            <input type="number" id="patient-id" class="use-keyboard" placeholder="12345678">
+        </div>
+    </div>
+    
+    <div class="demo-section">
+        <h2>Manuelle Aktivierung</h2>
+        <p>Sie können die Tastatur auch manuell aktivieren:</p>
+        
+        <div class="form-group">
+            <label for="manual-input">Test-Eingabe:</label>
+            <input type="text" id="manual-input" placeholder="Klicken Sie den Button...">
+        </div>
+        
+        <span class="keyboard-trigger" onclick="showKeyboardManually()">
+            Tastatur manuell öffnen
+        </span>
+    </div>
+
+    <script src="wwwroot/keyboard.js"></script>
+    <script>
+        // Force keyboard for demo purposes
+        document.addEventListener('DOMContentLoaded', () => {
+            // Make all inputs use keyboard for demo
+            document.querySelectorAll('input').forEach(input => {
+                input.classList.add('use-keyboard');
+            });
+        });
+        
+        function showKeyboardManually() {
+            const input = document.getElementById('manual-input');
+            input.focus();
+            window.touchKeyboard.showKeyboard(input, 'qwertz');
+        }
+        
+        // Add some demo interactions
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', (e) => {
+                console.log(`Input changed: ${e.target.id} = ${e.target.value}`);
+            });
+        });
+    </script>
+</body>
+</html>

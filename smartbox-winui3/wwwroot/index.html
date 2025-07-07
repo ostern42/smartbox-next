@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBox Next - Medical Imaging</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="keyboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/segoe-fluent-icons/font/SegoeFluentIcons.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>SmartBox Next - Medical Imaging</h1>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Webcam Preview -->
+            <section class="webcam-section">
+                <div class="webcam-container">
+                    <video id="webcamPreview" autoplay playsinline></video>
+                    <canvas id="captureCanvas" style="display: none;"></canvas>
+                    <div id="webcamPlaceholder" class="placeholder">
+                        <span>Webcam Preview</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Patient Info -->
+            <aside class="patient-info">
+                <div class="info-section">
+                    <h2>Patient Information</h2>
+                    
+                    <div class="form-group">
+                        <label for="patientName">Patient Name</label>
+                        <input type="text" id="patientName" placeholder="Last, First">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="patientID">Patient ID</label>
+                        <input type="text" id="patientID" placeholder="12345678">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="birthDate">Birth Date</label>
+                        <input type="date" id="birthDate">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="gender">Gender</label>
+                        <select id="gender">
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="O">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h2>Study Information</h2>
+                    
+                    <div class="form-group">
+                        <label for="studyDescription">Study Description</label>
+                        <input type="text" id="studyDescription" placeholder="Endoscopy">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="accessionNumber">Accession Number</label>
+                        <input type="text" id="accessionNumber">
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h2>Debug Info</h2>
+                    <div class="form-group">
+                        <label for="debugInfo">Status</label>
+                        <textarea id="debugInfo" readonly rows="6"></textarea>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Action Buttons -->
+        <footer class="action-bar">
+            <div class="button-group">
+                <button id="initWebcamButton" class="action-button">
+                    <i class="ms-Icon ms-Icon--Camera"></i>
+                    <span>Init Webcam</span>
+                </button>
+                
+                <button id="captureButton" class="action-button accent">
+                    <i class="ms-Icon ms-Icon--Photo2"></i>
+                    <span>Capture Photo</span>
+                </button>
+                
+                <button id="recordButton" class="action-button">
+                    <i class="ms-Icon ms-Icon--CircleRing record-icon"></i>
+                    <span id="recordText">Start Recording</span>
+                </button>
+                
+                <button id="exportDicomButton" class="action-button">
+                    <i class="ms-Icon ms-Icon--Export"></i>
+                    <span>Export DICOM</span>
+                </button>
+                
+                <button id="settingsButton" class="action-button">
+                    <i class="ms-Icon ms-Icon--Settings"></i>
+                    <span>Settings</span>
+                </button>
+                
+                <button id="debugButton" class="action-button">
+                    <i class="ms-Icon ms-Icon--DeveloperTools"></i>
+                    <span>Show Debug Info</span>
+                </button>
+                
+                <button id="analyzeButton" class="action-button">
+                    <i class="ms-Icon ms-Icon--Processing"></i>
+                    <span>Analyze Camera</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+    <script src="keyboard.js"></script>
+</body>
+</html>

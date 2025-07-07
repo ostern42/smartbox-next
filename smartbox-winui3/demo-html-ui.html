@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SmartBox Next - HTML UI Demo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Include the styles inline for demo */
+        :root {
+            --accent-color: #0078d4;
+            --accent-hover: #106ebe;
+            --accent-pressed: #005a9e;
+            --background-primary: #f3f3f3;
+            --background-secondary: #ffffff;
+            --background-tertiary: #f9f9f9;
+            --text-primary: #000000;
+            --text-secondary: #5c5c5c;
+            --border-color: #e0e0e0;
+            --shadow-color: rgba(0, 0, 0, 0.08);
+            --radius-small: 4px;
+            --radius-medium: 8px;
+            --spacing-small: 8px;
+            --spacing-medium: 16px;
+            --spacing-large: 24px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--background-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .app-header {
+            background-color: var(--background-secondary);
+            padding: var(--spacing-medium);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px var(--shadow-color);
+        }
+
+        .app-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            padding: var(--spacing-medium);
+            gap: var(--spacing-medium);
+            overflow: hidden;
+        }
+
+        .webcam-section {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .webcam-container {
+            flex: 1;
+            background-color: var(--background-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-medium);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #webcamPreview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background-color: #000;
+        }
+
+        .placeholder {
+            position: absolute;
+            color: var(--text-secondary);
+            font-size: 18px;
+            pointer-events: none;
+        }
+
+        .placeholder.hidden {
+            display: none;
+        }
+
+        .patient-info {
+            flex: 1;
+            background-color: var(--background-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-medium);
+            padding: var(--spacing-large);
+            overflow-y: auto;
+        }
+
+        .info-section {
+            margin-bottom: var(--spacing-large);
+        }
+
+        .info-section h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-medium);
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-medium);
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: var(--text-secondary);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            font-size: 14px;
+            font-family: inherit;
+            background-color: var(--background-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-small);
+            transition: all 0.2s ease;
+        }
+
+        .action-bar {
+            background-color: var(--background-secondary);
+            padding: var(--spacing-medium);
+            border-top: 1px solid var(--border-color);
+            box-shadow: 0 -1px 3px var(--shadow-color);
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-medium);
+            flex-wrap: wrap;
+        }
+
+        .action-button {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-small);
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: inherit;
+            background-color: var(--background-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-small);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 44px;
+        }
+
+        .action-button:hover {
+            background-color: var(--background-primary);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+
+        .action-button.accent {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .action-button.accent:hover {
+            background-color: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+
+        .demo-info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 12px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 300px;
+        }
+
+        .demo-info h3 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+        }
+
+        .demo-info ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .fps-counter {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: #00ff00;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Cascadia Code', monospace;
+            font-size: 14px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>SmartBox Next - Medical Imaging (HTML UI Demo)</h1>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Webcam Preview -->
+            <section class="webcam-section">
+                <div class="webcam-container">
+                    <video id="webcamPreview" autoplay playsinline></video>
+                    <div id="webcamPlaceholder" class="placeholder">
+                        <span>Click "Init Webcam" to start</span>
+                    </div>
+                    <div id="fpsCounter" class="fps-counter" style="display: none;">
+                        FPS: <span id="fpsValue">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Patient Info -->
+            <aside class="patient-info">
+                <div class="info-section">
+                    <h2>Patient Information</h2>
+                    
+                    <div class="form-group">
+                        <label for="patientName">Patient Name</label>
+                        <input type="text" id="patientName" placeholder="Last, First" value="Mustermann, Max">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="patientID">Patient ID</label>
+                        <input type="text" id="patientID" placeholder="12345678" value="12345678">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="birthDate">Birth Date</label>
+                        <input type="date" id="birthDate" value="1980-01-01">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="gender">Gender</label>
+                        <select id="gender">
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="O">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h2>Study Information</h2>
+                    
+                    <div class="form-group">
+                        <label for="studyDescription">Study Description</label>
+                        <input type="text" id="studyDescription" placeholder="Endoscopy" value="Upper GI Endoscopy">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="accessionNumber">Accession Number</label>
+                        <input type="text" id="accessionNumber" value="ACC123456">
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h2>Status</h2>
+                    <div class="form-group">
+                        <textarea id="statusInfo" readonly rows="4">Ready to capture medical images.
+WebRTC enabled for 60+ FPS performance.
+Click "Init Webcam" to begin.</textarea>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Action Buttons -->
+        <footer class="action-bar">
+            <div class="button-group">
+                <button id="initWebcamButton" class="action-button" onclick="initWebcam()">
+                    <span>📷</span>
+                    <span>Init Webcam</span>
+                </button>
+                
+                <button id="captureButton" class="action-button accent" onclick="capturePhoto()" disabled>
+                    <span>📸</span>
+                    <span>Capture Photo</span>
+                </button>
+                
+                <button id="recordButton" class="action-button" onclick="toggleRecording()" disabled>
+                    <span>🔴</span>
+                    <span id="recordText">Start Recording</span>
+                </button>
+                
+                <button id="exportDicomButton" class="action-button" onclick="exportDicom()">
+                    <span>💾</span>
+                    <span>Export DICOM</span>
+                </button>
+                
+                <button id="settingsButton" class="action-button" onclick="showSettings()">
+                    <span>⚙️</span>
+                    <span>Settings</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <div class="demo-info">
+        <h3>🎯 HTML UI Demo</h3>
+        <p>This demonstrates the HTML-based UI for SmartBox Next:</p>
+        <ul>
+            <li>✅ Modern Windows 11 styling</li>
+            <li>✅ WebRTC video capture (60+ FPS)</li>
+            <li>✅ Touch-friendly interface</li>
+            <li>✅ Responsive design</li>
+            <li>✅ Ready for WebView2 integration</li>
+        </ul>
+        <p style="margin-top: 8px;"><strong>Next step:</strong> Run this in the WinUI3 app with WebView2!</p>
+    </div>
+
+    <script>
+        let stream = null;
+        let isRecording = false;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let fpsInterval = null;
+
+        function updateStatus(message) {
+            const status = document.getElementById('statusInfo');
+            const timestamp = new Date().toLocaleTimeString();
+            status.value = `[${timestamp}] ${message}\n` + status.value;
+        }
+
+        async function initWebcam() {
+            try {
+                updateStatus('Requesting camera access...');
+                
+                const constraints = {
+                    video: {
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        frameRate: { ideal: 60, min: 30 }
+                    },
+                    audio: false
+                };
+                
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const video = document.getElementById('webcamPreview');
+                video.srcObject = stream;
+                
+                // Get actual settings
+                const track = stream.getVideoTracks()[0];
+                const settings = track.getSettings();
+                
+                updateStatus(`Webcam initialized: ${settings.width}x${settings.height} @ ${settings.frameRate}fps`);
+                
+                // Hide placeholder
+                document.getElementById('webcamPlaceholder').classList.add('hidden');
+                
+                // Enable buttons
+                document.getElementById('captureButton').disabled = false;
+                document.getElementById('recordButton').disabled = false;
+                document.getElementById('initWebcamButton').disabled = true;
+                
+                // Start FPS counter
+                startFPSCounter();
+                
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`);
+            }
+        }
+
+        function startFPSCounter() {
+            document.getElementById('fpsCounter').style.display = 'block';
+            let frameCount = 0;
+            let lastTime = performance.now();
+            
+            function countFrames() {
+                if (!stream) return;
+                
+                frameCount++;
+                const currentTime = performance.now();
+                const elapsed = currentTime - lastTime;
+                
+                if (elapsed >= 1000) {
+                    const fps = Math.round((frameCount * 1000) / elapsed);
+                    document.getElementById('fpsValue').textContent = fps;
+                    frameCount = 0;
+                    lastTime = currentTime;
+                }
+                
+                requestAnimationFrame(countFrames);
+            }
+            
+            requestAnimationFrame(countFrames);
+        }
+
+        function capturePhoto() {
+            if (!stream) return;
+            
+            updateStatus('Photo captured! (In real app, this would save to disk)');
+            
+            // Flash effect
+            const container = document.querySelector('.webcam-container');
+            container.style.backgroundColor = 'white';
+            setTimeout(() => {
+                container.style.backgroundColor = '';
+            }, 100);
+        }
+
+        function toggleRecording() {
+            if (!isRecording) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        function startRecording() {
+            if (!stream) return;
+            
+            isRecording = true;
+            document.getElementById('recordText').textContent = 'Stop Recording';
+            document.getElementById('recordButton').style.backgroundColor = '#d13438';
+            updateStatus('Recording started...');
+            
+            // In real app, would use MediaRecorder API
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            document.getElementById('recordText').textContent = 'Start Recording';
+            document.getElementById('recordButton').style.backgroundColor = '';
+            updateStatus('Recording stopped! (In real app, video would be saved)');
+        }
+
+        function exportDicom() {
+            updateStatus('DICOM export would happen here with patient data');
+        }
+
+        function showSettings() {
+            updateStatus('Settings dialog would open here');
+        }
+
+        // Auto-init on load for demo
+        window.addEventListener('load', () => {
+            updateStatus('HTML UI loaded successfully!');
+            updateStatus('This UI can run in WebView2 inside the WinUI3 app');
+        });
+    </script>
+</body>
+</html>

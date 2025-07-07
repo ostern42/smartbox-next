@@ -11,7 +11,7 @@
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>false</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
-    <EnableDefaultXamlItems>false</EnableDefaultXamlItems>
+    <EnableDefaultXamlItems>true</EnableDefaultXamlItems>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -42,5 +42,10 @@
     <Content Include="webrtc.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="wwwroot\**\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
+
+
 </Project>

@@ -1,0 +1,430 @@
+/* Touch Keyboard Styles - Modern Windows 11 Design */
+.touch-keyboard {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(243, 243, 243, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.touch-keyboard.visible {
+    transform: translateY(0);
+}
+
+.touch-keyboard.hidden {
+    display: none;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .touch-keyboard {
+        background: rgba(32, 32, 32, 0.98);
+        border-top-color: rgba(255, 255, 255, 0.1);
+    }
+}
+
+/* Keyboard Header */
+.keyboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.keyboard-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary, #5c5c5c);
+}
+
+.keyboard-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary, #5c5c5c);
+    font-size: 18px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.keyboard-close:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.keyboard-close:active {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Keyboard Body */
+.keyboard-body {
+    padding: 12px;
+}
+
+.keyboard-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.keyboard-layout.hidden {
+    display: none;
+}
+
+/* QWERTZ Keyboard */
+.keyboard-row {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.keyboard-key {
+    min-width: 48px;
+    height: 48px;
+    border: none;
+    background: white;
+    color: #000;
+    font-size: 18px;
+    font-weight: 500;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+@media (prefers-color-scheme: dark) {
+    .keyboard-key {
+        background: #2d2d2d;
+        color: #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* Key press animation */
+.keyboard-key::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(0, 120, 212, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+}
+
+.keyboard-key.pressed::after {
+    width: 100px;
+    height: 100px;
+}
+
+.keyboard-key:hover {
+    background: #f0f0f0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.keyboard-key:active,
+.keyboard-key.pressed {
+    transform: translateY(0);
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.1);
+    background: #e0e0e0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .keyboard-key:hover {
+        background: #3d3d3d;
+    }
+    
+    .keyboard-key:active,
+    .keyboard-key.pressed {
+        background: #1d1d1d;
+    }
+}
+
+/* Special Keys */
+.keyboard-key.special-key {
+    font-size: 14px;
+    color: var(--text-secondary, #5c5c5c);
+}
+
+.keyboard-key.key-backspace {
+    min-width: 96px;
+}
+
+.keyboard-key.key-tab {
+    min-width: 72px;
+}
+
+.keyboard-key.key-caps {
+    min-width: 84px;
+}
+
+.keyboard-key.key-enter {
+    min-width: 96px;
+    background: var(--accent-color, #0078d4);
+    color: white;
+}
+
+.keyboard-key.key-enter:hover {
+    background: var(--accent-hover, #106ebe);
+}
+
+.keyboard-key.key-shift {
+    min-width: 108px;
+}
+
+.keyboard-key.key-space {
+    min-width: 240px;
+}
+
+.keyboard-key.key-ctrl,
+.keyboard-key.key-win,
+.keyboard-key.key-alt,
+.keyboard-key.key-altgr {
+    min-width: 60px;
+}
+
+/* Active states */
+.keyboard-key.active {
+    background: var(--accent-color, #0078d4);
+    color: white;
+}
+
+.keyboard-key.active:hover {
+    background: var(--accent-hover, #106ebe);
+}
+
+/* Key icons and text */
+.key-icon {
+    font-size: 20px;
+    margin-right: 4px;
+}
+
+.key-text {
+    font-size: 12px;
+}
+
+.keyboard-key.special-key {
+    flex-direction: column;
+    gap: 2px;
+}
+
+.keyboard-key.special-key .key-icon {
+    margin-right: 0;
+    font-size: 18px;
+}
+
+.keyboard-key.special-key .key-text {
+    font-size: 10px;
+}
+
+/* Numeric Keyboard */
+#numeric-keyboard {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.numeric-display {
+    margin-bottom: 16px;
+}
+
+#numeric-preview {
+    width: 100%;
+    padding: 16px;
+    font-size: 24px;
+    font-weight: 600;
+    text-align: center;
+    background: white;
+    border: 2px solid var(--accent-color, #0078d4);
+    border-radius: 8px;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+    #numeric-preview {
+        background: #2d2d2d;
+        color: white;
+    }
+}
+
+.numeric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.num-key {
+    height: 64px;
+    font-size: 24px;
+    font-weight: 600;
+    border: none;
+    background: white;
+    color: #000;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.15s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+@media (prefers-color-scheme: dark) {
+    .num-key {
+        background: #2d2d2d;
+        color: white;
+    }
+}
+
+.num-key::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(0, 120, 212, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+}
+
+.num-key.pressed::after {
+    width: 120px;
+    height: 120px;
+}
+
+.num-key:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.num-key:active,
+.num-key.pressed {
+    transform: scale(0.95);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.num-key.special {
+    background: #f0f0f0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .num-key.special {
+        background: #1d1d1d;
+    }
+}
+
+/* Numeric Actions */
+.numeric-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.action-key {
+    height: 48px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.action-key.cancel {
+    background: #e0e0e0;
+    color: #000;
+}
+
+.action-key.confirm {
+    background: var(--accent-color, #0078d4);
+    color: white;
+}
+
+.action-key:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.action-key:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    .action-key.cancel {
+        background: #2d2d2d;
+        color: white;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .keyboard-key {
+        min-width: 36px;
+        height: 42px;
+        font-size: 16px;
+    }
+    
+    .keyboard-key.key-space {
+        min-width: 180px;
+    }
+    
+    .num-key {
+        height: 56px;
+        font-size: 20px;
+    }
+}
+
+/* Landscape mode */
+@media (max-height: 500px) {
+    .touch-keyboard {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    
+    .keyboard-key {
+        height: 36px;
+        min-width: 42px;
+    }
+    
+    .num-key {
+        height: 48px;
+    }
+}
+
+/* Accessibility */
+.keyboard-key:focus,
+.num-key:focus,
+.action-key:focus {
+    outline: 2px solid var(--accent-color, #0078d4);
+    outline-offset: 2px;
+}
+
+/* Smooth animations */
+@media (prefers-reduced-motion: reduce) {
+    .touch-keyboard,
+    .keyboard-key,
+    .num-key,
+    .action-key {
+        transition: none;
+    }
+}
