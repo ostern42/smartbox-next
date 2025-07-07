@@ -7,7 +7,7 @@ Für vollständige Wisdom siehe:
 → **MASTER_WISDOM/PROJECTS/SMARTBOXNEXT.md** (Projekt-spezifische Wisdom)
 → **MASTER_WISDOM/QUICK_REFERENCE.md** (Safewords & Regeln)
 
-## 📊 Aktueller Session-Stand (Session 12)
+## 📊 Aktueller Session-Stand (Session 13)
 
 ### WinUI3 Implementation Status
 - **Location**: smartbox-winui3/
@@ -92,16 +92,81 @@ MediaFrameReader delivers frames, but WinUI3 Image control doesn't display them 
 2. UI thread synchronization problem
 3. SoftwareBitmapSource lifecycle issue
 
-#### Next Session Should:
-1. Try WebView2 with WebRTC for proven video display
-2. Or use DirectX/SwapChainPanel for hardware rendering
-3. Or debug why SoftwareBitmapSource shows white/black
+### Session 13: WebRTC Victory & Complete Configuration System 🎉
 
-### Technical Notes:
-- Camera: Integrated Camera, supports YUY2 up to 1920x1080 @ 30 FPS
-- Current approach: MediaFrameReader → SoftwareBitmap → SoftwareBitmapSource → Image
-- Alternative: MediaFrameReader → JPEG → HTTP Stream → WebView2
+#### Major Achievements:
+1. **WebRTC Implementation WORKS!** 🎉
+   - **70 FPS** video preview via WebView2 (Oliver: "wir haben sogar 70 fps :-)")
+   - No more MediaFrameReader issues
+   - Hardware-accelerated by browser engine
+   - "Es läuft!" - Preview works in VS debug window!
+   - Oliver: "claude, küsschen, es läuft. ich seh sogar die vorschau im vs debug fenster fast in echtzeit :-)))"
+
+2. **Full Capture Implementation**:
+   - Photo capture from WebRTC canvas
+   - Video recording with MediaRecorder API
+   - Bidirectional WebView2 ↔ C# communication
+   - Base64 encoding for data transfer
+   - Some timeout issues to debug (but buttons work!)
+
+3. **Complete Configuration System**:
+   - Portable app structure (ZIP → Extract → Run)
+   - JSON config with sensible defaults
+   - All paths configurable
+   - Auto-directory creation
+   - First-run detection
+
+4. **Terminal-Style Settings UI IMPLEMENTED**:
+   - Full settings window with Cascadia Mono font
+   - Collapsible sections (Storage, PACS, Video, Application)
+   - Dynamic help panel - context-sensitive for EVERY field
+   - Detailed medical-relevant help texts
+   - Browse buttons for path selection
+   - Validation with error messages
+   - Professional terminal aesthetic
+
+#### Configuration System Complete:
+- **AppConfig.cs**: Full config class with validation
+- **SettingsWindow.xaml/cs**: Complete terminal-style UI
+- **PORTABLE_APP_DESIGN.md**: Full documentation
+- **Dynamic Help**: 20+ detailed help texts
+- **Auto-Start**: Based on config setting
+
+#### What Works:
+- ✅ 70 FPS WebRTC preview
+- ✅ Settings UI with all fields
+- ✅ Dynamic help system
+- ✅ Config save/load
+- ✅ Portable paths
+- ✅ Build successful
+
+#### Known Issues:
+- WebView2 message timeout (needs debugging)
+- Photo/Video capture fails after short time
+- Need to check WebView2 API availability
+
+#### Session 13 Learnings:
+1. **WebRTC > MediaCapture**: Browser engine beats Windows APIs
+2. **Terminal UI Works**: Users love familiar aesthetics
+3. **Help is Critical**: Every field needs explanation
+4. **Portable First**: No installation = happy users
+5. **Config Before Code**: Settings system enables everything
+
+### Technical Implementation Details:
+- WebRTC: getUserMedia → Canvas → JPEG/WebM
+- Config: JSON in app directory, relative paths
+- Storage: ./Data/Photos, ./Data/Videos, etc.
+- UI: WinUI3 with Expander controls, Grid layout
+- Help: Dictionary<string, (Title, Content)> system
+
+### Next Session Should:
+1. Debug WebView2 message communication
+2. Fix timeout issues with capture
+3. Implement DICOM export
+4. Add PACS C-STORE functionality
+5. Create persistent queue with SQLite
 
 ---
 
-*Session 12: From "500ms photo capture" to "30 FPS streaming (but no display yet)"*
+*Session 13: From "30 FPS black screen" to "70 FPS WebRTC + Complete Settings System!"*
+*125k tokens used - Time for handover!*

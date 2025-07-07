@@ -17,6 +17,7 @@ using Windows.Media.Capture.Frames;
 using Windows.Media;
 using System.Collections.Generic;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.Web.WebView2.Core;
 
 namespace SmartBoxNext
 {
@@ -25,8 +26,10 @@ namespace SmartBoxNext
         private MediaCapture? _mediaCapture;
         private bool _isInitialized = false;
         private bool _isPreviewing = false;
+        private bool _isRecording = false;
         private DispatcherQueueTimer? _timer;
         private int _frameCount = 0;
+        private AppConfig _config = new AppConfig();
         
         // High-performance mode
         private MediaFrameReader? _frameReader;
@@ -73,11 +76,48 @@ namespace SmartBoxNext
             var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
             appWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1200, Height = 800 });
             
+            // Load configuration
+            _ = LoadConfigurationAsync();
+            
             // Cleanup on close
             this.Closed += async (s, e) =>
             {
                 await CleanupCameraAsync();
             };
+        }
+        
+        private async Task LoadConfigurationAsync()
+        {
+            try
+            {
+                _config = await AppConfig.LoadAsync();
+                AddDebugMessage($"Configuration loaded. First run: {_config.IsFirstRun}");
+                
+                // Show debug info based on config
+                DebugInfo.Visibility = _config.Application.ShowDebugInfo ? Visibility.Visible : Visibility.Collapsed;
+                
+                // Check if first run
+                if (_config.IsFirstRun)
+                {
+                    // TODO: Show first run assistant
+                    AddDebugMessage("First run detected - assistant would show here");
+                    
+                    // Mark as not first run anymore
+                    _config.IsFirstRun = false;
+                    await _config.SaveAsync();
+                }
+                
+                // Auto-start camera if configured
+                if (_config.Application.AutoStartCapture && !_isInitialized)
+                {
+                    AddDebugMessage("Auto-starting camera...");
+                    await InitializeWebRTCAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"Failed to load configuration: {ex.Message}");
+            }
         }
 
         private async Task InitializeWebcamAsync()
@@ -627,7 +667,8 @@ namespace SmartBoxNext
         {
             if (!_isInitialized)
             {
-                await InitializeWebcamAsync();
+                // Direkt WebRTC initialisieren
+                await InitializeWebRTCAsync();
             }
             else
             {
@@ -637,6 +678,14 @@ namespace SmartBoxNext
 
         private async void CaptureButton_Click(object sender, RoutedEventArgs e)
         {
+            // Check if WebRTC is active
+            if (WebRTCPreview.Visibility == Visibility.Visible && WebRTCPreview.CoreWebView2 != null)
+            {
+                await CapturePhotoFromWebRTC();
+                return;
+            }
+            
+            // Fallback to MediaCapture
             if (_mediaCapture == null || !_isInitialized)
             {
                 await ShowErrorDialog("Webcam not initialized");
@@ -758,13 +807,16 @@ namespace SmartBoxNext
             }
         }
 
-        private async void PacsSettingsButton_Click(object sender, RoutedEventArgs e)
+        private async void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new PacsSettingsDialog
+            var settingsWindow = new SettingsWindow(_config);
+            settingsWindow.Activate();
+            
+            // Wait for window to close and reload config
+            settingsWindow.Closed += async (s, args) =>
             {
-                XamlRoot = this.Content.XamlRoot
+                await LoadConfigurationAsync();
             };
-            await dialog.ShowAsync();
         }
 
         private async void DebugButton_Click(object sender, RoutedEventArgs e)
@@ -1038,6 +1090,382 @@ namespace SmartBoxNext
             {
                 AddDebugMessage($"Silk.NET test failed: {ex.Message}");
                 await ShowErrorDialog($"Silk.NET test failed: {ex.Message}");
+            }
+        }
+
+        private async Task InitializeWebRTCAsync()
+        {
+            try
+            {
+                AddDebugMessage("=== Starting WebRTC initialization ===");
+                
+                // Ensure WebView2 is initialized
+                await WebRTCPreview.EnsureCoreWebView2Async();
+                
+                // Start local stream server if not already running
+                if (_streamServer == null)
+                {
+                    _streamServer = new LocalStreamServer();
+                    _streamServer.DebugMessage += AddDebugMessage;
+                    
+                    if (await _streamServer.StartAsync(8080))
+                    {
+                        AddDebugMessage("Stream server started on port 8080");
+                    }
+                }
+                
+                // Set up WebView2 message handling
+                WebRTCPreview.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+                
+                // Navigate to WebRTC page and wait for it to load
+                WebRTCPreview.NavigationCompleted += OnWebRTCNavigationCompleted;
+                WebRTCPreview.CoreWebView2.Navigate("http://localhost:8080/webrtc");
+                
+                // Show WebRTC preview, hide others
+                WebRTCPreview.Visibility = Visibility.Visible;
+                WebcamPreview.Visibility = Visibility.Collapsed;
+                SilkNetPreview.Visibility = Visibility.Collapsed;
+                WebcamPlaceholder.Visibility = Visibility.Collapsed;
+                
+                _isInitialized = true;
+                AddDebugMessage("WebRTC preview active! Browser-based 60 FPS capture!");
+                
+                // Monitor performance
+                WebRTCPreview.CoreWebView2.DocumentTitleChanged += (s, e) =>
+                {
+                    // We can use document title to pass FPS info from JavaScript
+                    var title = WebRTCPreview.CoreWebView2.DocumentTitle;
+                    if (title.StartsWith("FPS:"))
+                    {
+                        AddDebugMessage($"WebRTC {title}");
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"WebRTC initialization failed: {ex.Message}");
+                await ShowErrorDialog($"WebRTC initialization failed: {ex.Message}");
+            }
+        }
+        
+        private TaskCompletionSource<string>? _capturePhotoTcs;
+        private TaskCompletionSource<string>? _stopRecordingTcs;
+        
+        private void OnWebMessageReceived(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            try
+            {
+                var message = e.TryGetWebMessageAsString();
+                var json = System.Text.Json.JsonDocument.Parse(message);
+                var root = json.RootElement;
+                
+                var action = root.GetProperty("action").GetString();
+                var success = root.GetProperty("success").GetBoolean();
+                
+                switch (action)
+                {
+                    case "photoCapture":
+                        if (_capturePhotoTcs != null)
+                        {
+                            if (success)
+                            {
+                                var data = root.GetProperty("data").GetString();
+                                _capturePhotoTcs.SetResult(data!);
+                            }
+                            else
+                            {
+                                var error = root.GetProperty("error").GetString();
+                                _capturePhotoTcs.SetException(new Exception(error));
+                            }
+                        }
+                        break;
+                        
+                    case "recordingStopped":
+                        if (_stopRecordingTcs != null)
+                        {
+                            if (success)
+                            {
+                                var data = root.GetProperty("data").GetString();
+                                _stopRecordingTcs.SetResult(data!);
+                            }
+                            else
+                            {
+                                var error = root.GetProperty("error").GetString();
+                                _stopRecordingTcs.SetException(new Exception(error));
+                            }
+                        }
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"WebMessage error: {ex.Message}");
+            }
+        }
+        
+        private async Task CapturePhotoFromWebRTC()
+        {
+            try
+            {
+                AddDebugMessage("Capturing photo from WebRTC...");
+                
+                // Create task completion source
+                _capturePhotoTcs = new TaskCompletionSource<string>();
+                
+                // Send capture command to WebView2
+                var messageId = Guid.NewGuid().ToString();
+                var message = $"{{\"action\":\"capturePhoto\",\"id\":\"{messageId}\"}}";
+                WebRTCPreview.CoreWebView2.PostWebMessageAsString(message);
+                
+                // Wait for response (with timeout)
+                var timeoutTask = Task.Delay(5000);
+                var completedTask = await Task.WhenAny(_capturePhotoTcs.Task, timeoutTask);
+                
+                if (completedTask == timeoutTask)
+                {
+                    throw new TimeoutException("Photo capture timed out");
+                }
+                
+                var base64Data = await _capturePhotoTcs.Task;
+                
+                // Convert base64 to bytes
+                var imageBytes = Convert.FromBase64String(base64Data);
+                
+                // Save to configured path
+                var photosPath = _config.GetFullPath(_config.Storage.PhotosPath);
+                
+                // Ensure directory exists
+                if (!Directory.Exists(photosPath))
+                {
+                    Directory.CreateDirectory(photosPath);
+                }
+                
+                var photoFilePath = Path.Combine(photosPath, $"Capture_{DateTime.Now:yyyyMMdd_HHmmss}.jpg");
+                
+                await File.WriteAllBytesAsync(photoFilePath, imageBytes);
+                
+                AddDebugMessage($"Photo saved: {photoFilePath}");
+                
+                // Show preview dialog
+                await ShowCapturePreviewFromPath(photoFilePath);
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"WebRTC capture error: {ex.Message}");
+                await ShowErrorDialog($"Failed to capture photo: {ex.Message}");
+            }
+            finally
+            {
+                _capturePhotoTcs = null;
+            }
+        }
+        
+        private void OnWebRTCNavigationCompleted(WebView2 sender, Microsoft.UI.Xaml.Controls.CoreWebView2NavigationCompletedEventArgs args)
+        {
+            if (args.IsSuccess)
+            {
+                AddDebugMessage("WebRTC page loaded successfully");
+                // Inject a test to check if WebView2 API is available
+                _ = WebRTCPreview.CoreWebView2.ExecuteScriptAsync(@"
+                    if (window.chrome && window.chrome.webview) {
+                        console.log('WebView2 API is available');
+                    } else {
+                        console.error('WebView2 API is NOT available');
+                    }
+                ");
+            }
+            else
+            {
+                AddDebugMessage($"WebRTC navigation failed: {args.WebErrorStatus}");
+            }
+        }
+        
+        private async Task ShowCapturePreview(StorageFile photoFile)
+        {
+            try
+            {
+                using (var stream = await photoFile.OpenAsync(FileAccessMode.Read))
+                {
+                    var bitmapImage = new BitmapImage();
+                    await bitmapImage.SetSourceAsync(stream);
+                    
+                    var image = new Image
+                    {
+                        Source = bitmapImage,
+                        Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
+                        MaxWidth = 800,
+                        MaxHeight = 600
+                    };
+                    
+                    var dialog = new ContentDialog
+                    {
+                        Title = $"Captured Image: {photoFile.Name}",
+                        Content = new ScrollViewer { Content = image },
+                        CloseButtonText = "Close",
+                        XamlRoot = this.Content.XamlRoot
+                    };
+                    
+                    await dialog.ShowAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"Preview error: {ex.Message}");
+            }
+        }
+        
+        private async Task ShowCapturePreviewFromPath(string photoPath)
+        {
+            try
+            {
+                var bytes = await File.ReadAllBytesAsync(photoPath);
+                using (var stream = new MemoryStream(bytes))
+                {
+                    var bitmapImage = new BitmapImage();
+                    await bitmapImage.SetSourceAsync(stream.AsRandomAccessStream());
+                    
+                    var image = new Image
+                    {
+                        Source = bitmapImage,
+                        Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
+                        MaxWidth = 800,
+                        MaxHeight = 600
+                    };
+                    
+                    var dialog = new ContentDialog
+                    {
+                        Title = $"Captured Image: {Path.GetFileName(photoPath)}",
+                        Content = new ScrollViewer { Content = image },
+                        CloseButtonText = "Close",
+                        XamlRoot = this.Content.XamlRoot
+                    };
+                    
+                    await dialog.ShowAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"Preview error: {ex.Message}");
+            }
+        }
+        
+        private async void RecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_isRecording)
+            {
+                await StartVideoRecording();
+            }
+            else
+            {
+                await StopVideoRecording();
+            }
+        }
+        
+        private async Task StartVideoRecording()
+        {
+            try
+            {
+                // Check if WebRTC is active
+                if (WebRTCPreview.Visibility == Visibility.Visible && WebRTCPreview.CoreWebView2 != null)
+                {
+                    AddDebugMessage("Starting WebRTC video recording...");
+                    
+                    // Send start recording command
+                    var messageId = Guid.NewGuid().ToString();
+                    var message = $"{{\"action\":\"startRecording\",\"id\":\"{messageId}\"}}";
+                    WebRTCPreview.CoreWebView2.PostWebMessageAsString(message);
+                    
+                    _isRecording = true;
+                    
+                    // Update UI
+                    RecordText.Text = "Stop Recording";
+                    RecordIcon.Glyph = "\uE71A"; // Stop icon
+                    RecordButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+                    
+                    AddDebugMessage("Recording started!");
+                }
+                else if (_mediaCapture != null && _isInitialized)
+                {
+                    // Fallback to MediaCapture recording
+                    await ShowInfoDialog("Video recording with MediaCapture not implemented yet");
+                }
+                else
+                {
+                    await ShowErrorDialog("Webcam not initialized");
+                }
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"Start recording error: {ex.Message}");
+                await ShowErrorDialog($"Failed to start recording: {ex.Message}");
+            }
+        }
+        
+        private async Task StopVideoRecording()
+        {
+            try
+            {
+                if (WebRTCPreview.Visibility == Visibility.Visible && WebRTCPreview.CoreWebView2 != null)
+                {
+                    AddDebugMessage("Stopping WebRTC video recording...");
+                    
+                    // Create task completion source
+                    _stopRecordingTcs = new TaskCompletionSource<string>();
+                    
+                    // Send stop recording command
+                    var messageId = Guid.NewGuid().ToString();
+                    var message = $"{{\"action\":\"stopRecording\",\"id\":\"{messageId}\"}}";
+                    WebRTCPreview.CoreWebView2.PostWebMessageAsString(message);
+                    
+                    // Wait for response (with timeout)
+                    var timeoutTask = Task.Delay(10000); // 10 seconds for video
+                    var completedTask = await Task.WhenAny(_stopRecordingTcs.Task, timeoutTask);
+                    
+                    if (completedTask == timeoutTask)
+                    {
+                        throw new TimeoutException("Stop recording timed out");
+                    }
+                    
+                    var base64Data = await _stopRecordingTcs.Task;
+                    
+                    // Convert base64 to bytes
+                    var videoBytes = Convert.FromBase64String(base64Data);
+                    
+                    // Save to configured path
+                    var videosPath = _config.GetFullPath(_config.Storage.VideosPath);
+                    
+                    // Ensure directory exists
+                    if (!Directory.Exists(videosPath))
+                    {
+                        Directory.CreateDirectory(videosPath);
+                    }
+                    
+                    var videoFilePath = Path.Combine(videosPath, $"Recording_{DateTime.Now:yyyyMMdd_HHmmss}.{_config.Video.VideoFormat}");
+                    
+                    await File.WriteAllBytesAsync(videoFilePath, videoBytes);
+                    
+                    AddDebugMessage($"Video saved: {videoFilePath}");
+                    
+                    // Show confirmation
+                    await ShowInfoDialog($"Video saved successfully!\n{Path.GetFileName(videoFilePath)}");
+                }
+                
+                _isRecording = false;
+                
+                // Update UI
+                RecordText.Text = "Start Recording";
+                RecordIcon.Glyph = "\uE7C8"; // Record icon
+                RecordButton.Style = null; // Remove accent style
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"Stop recording error: {ex.Message}");
+                await ShowErrorDialog($"Failed to stop recording: {ex.Message}");
+                _isRecording = false;
+            }
+            finally
+            {
+                _stopRecordingTcs = null;
             }
         }
     }

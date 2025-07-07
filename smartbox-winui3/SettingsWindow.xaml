@@ -1,0 +1,295 @@
+<Window x:Class="SmartBoxNext.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="SmartBox Settings">
+
+    <Grid>
+        <Grid.Resources>
+            <!-- Terminal Style Resources -->
+            <Style x:Key="TerminalHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Courier New"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+            <Setter Property="Margin" Value="0,8,0,4"/>
+        </Style>
+        
+        <Style x:Key="TerminalSubHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Courier New"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}"/>
+            <Setter Property="Margin" Value="20,4,0,2"/>
+        </Style>
+        
+        <Style x:Key="TerminalTextBoxStyle" TargetType="TextBox">
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Courier New"/>
+            <Setter Property="Margin" Value="20,2,0,2"/>
+            <Setter Property="MinWidth" Value="300"/>
+        </Style>
+        
+        <Style x:Key="TerminalNumberBoxStyle" TargetType="NumberBox">
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Courier New"/>
+            <Setter Property="Margin" Value="20,2,0,2"/>
+            <Setter Property="MinWidth" Value="150"/>
+        </Style>
+        </Grid.Resources>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*" MinWidth="500"/>
+            <ColumnDefinition Width="*" MinWidth="300"/>
+        </Grid.ColumnDefinitions>
+        
+        <!-- Settings Panel -->
+        <Grid Grid.Column="0" Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Header -->
+            <Border Grid.Row="0" Background="{ThemeResource SystemControlBackgroundChromeMediumBrush}" 
+                    BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                    BorderThickness="0,0,0,1">
+                <TextBlock Text="SmartBox Settings" Style="{StaticResource TerminalHeaderStyle}" 
+                          Margin="16,12"/>
+            </Border>
+            
+            <!-- Settings Content -->
+            <ScrollViewer Grid.Row="1" Padding="16" VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="8">
+                    
+                    <!-- Storage Settings -->
+                    <Expander IsExpanded="True" HorizontalAlignment="Stretch">
+                        <Expander.Header>
+                            <TextBlock Text="▼ Storage Settings" Style="{StaticResource TerminalHeaderStyle}"/>
+                        </Expander.Header>
+                        <StackPanel Margin="0,8,0,16">
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBox Grid.Row="0" x:Name="PhotosPath" Header="Photos Path" 
+                                        Style="{StaticResource TerminalTextBoxStyle}"
+                                        GotFocus="OnFieldFocused" Tag="PhotosPath"/>
+                                <Button Grid.Row="0" Grid.Column="1" Content="Browse" 
+                                       Click="BrowsePhotosPath_Click" VerticalAlignment="Bottom"/>
+                                
+                                <TextBox Grid.Row="1" x:Name="VideosPath" Header="Videos Path" 
+                                        Style="{StaticResource TerminalTextBoxStyle}"
+                                        GotFocus="OnFieldFocused" Tag="VideosPath"/>
+                                <Button Grid.Row="1" Grid.Column="1" Content="Browse" 
+                                       Click="BrowseVideosPath_Click" VerticalAlignment="Bottom"/>
+                                
+                                <TextBox Grid.Row="2" x:Name="DicomPath" Header="DICOM Path" 
+                                        Style="{StaticResource TerminalTextBoxStyle}"
+                                        GotFocus="OnFieldFocused" Tag="DicomPath"/>
+                                <Button Grid.Row="2" Grid.Column="1" Content="Browse" 
+                                       Click="BrowseDicomPath_Click" VerticalAlignment="Bottom"/>
+                                
+                                <CheckBox Grid.Row="3" Grid.ColumnSpan="2" x:Name="UseRelativePaths" 
+                                         Content="Use Relative Paths (Portable Mode)" 
+                                         Margin="20,8,0,4" FontFamily="Cascadia Mono"
+                                         Checked="OnFieldFocused" Unchecked="OnFieldFocused" Tag="UseRelativePaths"/>
+                                
+                                <NumberBox Grid.Row="4" Grid.ColumnSpan="2" x:Name="MaxStorageMB" 
+                                          Header="Max Storage (MB)" 
+                                          Style="{StaticResource TerminalNumberBoxStyle}"
+                                          Minimum="100" Maximum="1000000" SpinButtonPlacementMode="Inline"
+                                          GotFocus="OnFieldFocused" Tag="MaxStorageMB"/>
+                                
+                                <NumberBox Grid.Row="5" Grid.ColumnSpan="2" x:Name="RetentionDays" 
+                                          Header="Retention Days" 
+                                          Style="{StaticResource TerminalNumberBoxStyle}"
+                                          Minimum="1" Maximum="365" SpinButtonPlacementMode="Inline"
+                                          GotFocus="OnFieldFocused" Tag="RetentionDays"/>
+                            </Grid>
+                        </StackPanel>
+                    </Expander>
+                    
+                    <!-- PACS Configuration -->
+                    <Expander IsExpanded="True" HorizontalAlignment="Stretch">
+                        <Expander.Header>
+                            <TextBlock Text="▼ PACS Configuration" Style="{StaticResource TerminalHeaderStyle}"/>
+                        </Expander.Header>
+                        <StackPanel Margin="0,8,0,16">
+                            <TextBox x:Name="AeTitle" Header="AE Title" 
+                                    Style="{StaticResource TerminalTextBoxStyle}"
+                                    MaxLength="16" CharacterCasing="Upper"
+                                    GotFocus="OnFieldFocused" Tag="AeTitle"/>
+                            
+                            <TextBox x:Name="RemoteAeTitle" Header="Remote AE Title" 
+                                    Style="{StaticResource TerminalTextBoxStyle}"
+                                    MaxLength="16" CharacterCasing="Upper"
+                                    GotFocus="OnFieldFocused" Tag="RemoteAeTitle"/>
+                            
+                            <TextBox x:Name="RemoteHost" Header="Remote Host" 
+                                    Style="{StaticResource TerminalTextBoxStyle}"
+                                    PlaceholderText="IP address or hostname"
+                                    GotFocus="OnFieldFocused" Tag="RemoteHost"/>
+                            
+                            <NumberBox x:Name="RemotePort" Header="Remote Port" 
+                                      Style="{StaticResource TerminalNumberBoxStyle}"
+                                      Value="104" Minimum="1" Maximum="65535"
+                                      SpinButtonPlacementMode="Inline"
+                                      GotFocus="OnFieldFocused" Tag="RemotePort"/>
+                            
+                            <NumberBox x:Name="TimeoutSeconds" Header="Timeout (seconds)" 
+                                      Style="{StaticResource TerminalNumberBoxStyle}"
+                                      Value="30" Minimum="5" Maximum="300"
+                                      SpinButtonPlacementMode="Inline"
+                                      GotFocus="OnFieldFocused" Tag="TimeoutSeconds"/>
+                            
+                            <CheckBox x:Name="UseTls" Content="Use TLS (Secure Connection)" 
+                                     Margin="20,8,0,4" FontFamily="Cascadia Mono"
+                                     Checked="OnFieldFocused" Unchecked="OnFieldFocused" Tag="UseTls"/>
+                            
+                            <Button Margin="20,8,0,0" Click="TestPacsConnection_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE895;"/>
+                                    <TextBlock Text="Test Connection"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Expander>
+                    
+                    <!-- Video Settings -->
+                    <Expander HorizontalAlignment="Stretch">
+                        <Expander.Header>
+                            <TextBlock Text="▶ Video Settings" Style="{StaticResource TerminalHeaderStyle}"/>
+                        </Expander.Header>
+                        <StackPanel Margin="0,8,0,16">
+                            <ComboBox x:Name="VideoResolution" Header="Resolution" 
+                                     Margin="20,2,0,2" MinWidth="200"
+                                     SelectionChanged="OnFieldFocused" Tag="VideoResolution">
+                                <ComboBoxItem Content="1920x1080 (Full HD)" Tag="1920x1080"/>
+                                <ComboBoxItem Content="1280x720 (HD)" Tag="1280x720"/>
+                                <ComboBoxItem Content="640x480 (SD)" Tag="640x480"/>
+                            </ComboBox>
+                            
+                            <NumberBox x:Name="PreferredFps" Header="Frame Rate (FPS)" 
+                                      Style="{StaticResource TerminalNumberBoxStyle}"
+                                      Value="60" Minimum="15" Maximum="120"
+                                      SpinButtonPlacementMode="Inline"
+                                      GotFocus="OnFieldFocused" Tag="PreferredFps"/>
+                            
+                            <NumberBox x:Name="VideoBitrateMbps" Header="Video Bitrate (Mbps)" 
+                                      Style="{StaticResource TerminalNumberBoxStyle}"
+                                      Value="5" Minimum="1" Maximum="50"
+                                      SpinButtonPlacementMode="Inline"
+                                      GotFocus="OnFieldFocused" Tag="VideoBitrateMbps"/>
+                            
+                            <Slider x:Name="JpegQuality" Header="JPEG Quality" 
+                                   Minimum="50" Maximum="100" Value="95"
+                                   Margin="20,4,20,4" StepFrequency="5"
+                                   GotFocus="OnFieldFocused" Tag="JpegQuality"/>
+                            <TextBlock Text="{x:Bind JpegQuality.Value, Mode=OneWay}" 
+                                      Margin="20,0,0,8" FontFamily="Cascadia Mono"/>
+                        </StackPanel>
+                    </Expander>
+                    
+                    <!-- Application Settings -->
+                    <Expander HorizontalAlignment="Stretch">
+                        <Expander.Header>
+                            <TextBlock Text="▶ Application Settings" Style="{StaticResource TerminalHeaderStyle}"/>
+                        </Expander.Header>
+                        <StackPanel Margin="0,8,0,16">
+                            <ComboBox x:Name="Theme" Header="Theme" 
+                                     Margin="20,2,0,2" MinWidth="200"
+                                     SelectionChanged="OnFieldFocused" Tag="Theme">
+                                <ComboBoxItem Content="System Default"/>
+                                <ComboBoxItem Content="Light"/>
+                                <ComboBoxItem Content="Dark"/>
+                            </ComboBox>
+                            
+                            <CheckBox x:Name="ShowDebugInfo" Content="Show Debug Information" 
+                                     Margin="20,8,0,4" FontFamily="Cascadia Mono"
+                                     Checked="OnFieldFocused" Unchecked="OnFieldFocused" Tag="ShowDebugInfo"/>
+                            
+                            <CheckBox x:Name="AutoStartCapture" Content="Auto-start Camera on Launch" 
+                                     Margin="20,4,0,4" FontFamily="Cascadia Mono"
+                                     Checked="OnFieldFocused" Unchecked="OnFieldFocused" Tag="AutoStartCapture"/>
+                            
+                            <CheckBox x:Name="MinimizeToTray" Content="Minimize to System Tray" 
+                                     Margin="20,4,0,4" FontFamily="Cascadia Mono"
+                                     Checked="OnFieldFocused" Unchecked="OnFieldFocused" Tag="MinimizeToTray"/>
+                            
+                            <CheckBox x:Name="StartWithWindows" Content="Start with Windows" 
+                                     Margin="20,4,0,4" FontFamily="Cascadia Mono"
+                                     Checked="OnFieldFocused" Unchecked="OnFieldFocused" Tag="StartWithWindows"/>
+                        </StackPanel>
+                    </Expander>
+                    
+                </StackPanel>
+            </ScrollViewer>
+            
+            <!-- Action Buttons -->
+            <Border Grid.Row="2" Background="{ThemeResource SystemControlBackgroundChromeMediumBrush}" 
+                    BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                    BorderThickness="0,1,0,0">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" 
+                           Spacing="8" Margin="16">
+                    <Button x:Name="ValidateButton" Click="ValidateButton_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE73E;"/>
+                            <TextBlock Text="Validate"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="SaveButton" Click="SaveButton_Click" 
+                           Style="{StaticResource AccentButtonStyle}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE74E;"/>
+                            <TextBlock Text="Save"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="CancelButton" Click="CancelButton_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE711;"/>
+                            <TextBlock Text="Cancel"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Grid>
+        
+        <!-- Help Panel -->
+        <Grid Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Help Header -->
+            <Border Grid.Row="0" Background="{ThemeResource SystemControlBackgroundChromeMediumBrush}" 
+                    BorderBrush="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                    BorderThickness="1,0,0,1">
+                <TextBlock Text="Help" Style="{StaticResource TerminalHeaderStyle}" 
+                          Margin="16,12"/>
+            </Border>
+            
+            <!-- Help Content -->
+            <ScrollViewer Grid.Row="1" Padding="16" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock x:Name="HelpTitle" Style="{StaticResource SubtitleTextBlockStyle}" 
+                              FontFamily="Cascadia Mono" Margin="0,0,0,8"/>
+                    <TextBlock x:Name="HelpContent" TextWrapping="Wrap" 
+                              FontFamily="Cascadia Mono" FontSize="12"
+                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Window>

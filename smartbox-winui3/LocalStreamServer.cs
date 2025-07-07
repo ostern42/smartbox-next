@@ -144,6 +144,24 @@ namespace SmartBoxNext
                     await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
                     response.Close();
                 }
+                else if (request.Url?.AbsolutePath == "/webrtc")
+                {
+                    // Serve WebRTC page
+                    var webrtcPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "webrtc.html");
+                    if (File.Exists(webrtcPath))
+                    {
+                        var html = await File.ReadAllTextAsync(webrtcPath);
+                        var buffer = System.Text.Encoding.UTF8.GetBytes(html);
+                        response.ContentType = "text/html";
+                        response.ContentLength64 = buffer.Length;
+                        await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+                    }
+                    else
+                    {
+                        response.StatusCode = 404;
+                    }
+                    response.Close();
+                }
                 else
                 {
                     response.StatusCode = 404;

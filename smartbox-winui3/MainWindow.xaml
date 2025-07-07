@@ -34,6 +34,11 @@
                                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                     Visibility="Collapsed"/>
                     
+                    <!-- WebView2 for WebRTC streaming -->
+                    <WebView2 x:Name="WebRTCPreview"
+                             HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                             Visibility="Collapsed"/>
+                    
                     <!-- Fallback Image for standard preview -->
                     <Image x:Name="WebcamPreview" 
                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
@@ -83,7 +88,14 @@
                 <Button x:Name="CaptureButton" Click="CaptureButton_Click" Style="{StaticResource AccentButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE722;"/>
-                        <TextBlock Text="Capture"/>
+                        <TextBlock Text="Capture Photo"/>
+                    </StackPanel>
+                </Button>
+                
+                <Button x:Name="RecordButton" Click="RecordButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon x:Name="RecordIcon" Glyph="&#xE7C8;" Foreground="Red"/>
+                        <TextBlock x:Name="RecordText" Text="Start Recording"/>
                     </StackPanel>
                 </Button>
                 
@@ -94,10 +106,10 @@
                     </StackPanel>
                 </Button>
                 
-                <Button x:Name="PacsSettingsButton" Click="PacsSettingsButton_Click">
+                <Button x:Name="SettingsButton" Click="SettingsButton_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE713;"/>
-                        <TextBlock Text="PACS Settings"/>
+                        <TextBlock Text="Settings"/>
                     </StackPanel>
                 </Button>
                 

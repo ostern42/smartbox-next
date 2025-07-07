@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SmartBox WebRTC Stream</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        
+        #videoContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #localVideo {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+        }
+        
+        #status {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        #stats {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: #fff;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="videoContainer">
+        <video id="localVideo" autoplay muted></video>
+        <div id="status">Initializing...</div>
+        <div id="stats">FPS: 0</div>
+    </div>
+
+    <script>
+        let frameCount = 0;
+        let lastTime = performance.now();
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        
+        async function startWebcam() {
+            const video = document.getElementById('localVideo');
+            const status = document.getElementById('status');
+            const stats = document.getElementById('stats');
+            
+            try {
+                // Request webcam access with optimal settings
+                const constraints = {
+                    video: {
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        frameRate: { ideal: 60, min: 30 }
+                    },
+                    audio: false
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                window.currentStream = stream; // Store for capture functions
+                
+                // Get actual video settings
+                const videoTrack = stream.getVideoTracks()[0];
+                const settings = videoTrack.getSettings();
+                
+                status.textContent = `Connected: ${settings.width}x${settings.height} @ ${settings.frameRate}fps`;
+                status.style.color = '#0f0';
+                
+                // FPS counter
+                function updateFPS() {
+                    frameCount++;
+                    const currentTime = performance.now();
+                    const elapsed = currentTime - lastTime;
+                    
+                    if (elapsed >= 1000) {
+                        const fps = Math.round((frameCount * 1000) / elapsed);
+                        stats.textContent = `FPS: ${fps}`;
+                        frameCount = 0;
+                        lastTime = currentTime;
+                    }
+                    
+                    requestAnimationFrame(updateFPS);
+                }
+                
+                video.addEventListener('play', () => {
+                    updateFPS();
+                });
+                
+                // Optional: Send frames to server via WebSocket
+                if (window.location.search.includes('stream=true')) {
+                    startStreaming(video);
+                }
+                
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+                status.style.color = '#f00';
+                console.error('Webcam error:', error);
+            }
+        }
+        
+        // Capture photo function
+        async function capturePhoto() {
+            console.log('capturePhoto called');
+            const video = document.getElementById('localVideo');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            // Convert to blob
+            return new Promise((resolve) => {
+                canvas.toBlob((blob) => {
+                    console.log('Photo blob created:', blob.size, 'bytes');
+                    resolve(blob);
+                }, 'image/jpeg', 0.95);
+            });
+        }
+        
+        // Start video recording
+        function startRecording() {
+            if (!window.currentStream) {
+                console.error('No stream available');
+                return false;
+            }
+            
+            recordedChunks = [];
+            const options = {
+                mimeType: 'video/webm;codecs=vp9',
+                videoBitsPerSecond: 5000000 // 5 Mbps
+            };
+            
+            // Fallback to vp8 if vp9 not supported
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options.mimeType = 'video/webm;codecs=vp8';
+            }
+            
+            mediaRecorder = new MediaRecorder(window.currentStream, options);
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+            
+            mediaRecorder.start(100); // Collect data every 100ms
+            return true;
+        }
+        
+        // Stop video recording and return blob
+        async function stopRecording() {
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                return null;
+            }
+            
+            return new Promise((resolve) => {
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    resolve(blob);
+                };
+                mediaRecorder.stop();
+            });
+        }
+        
+        // Communication with C# host
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.addEventListener('message', async (event) => {
+            const { action, id } = event.data;
+            
+            switch (action) {
+                case 'capturePhoto':
+                    try {
+                        const blob = await capturePhoto();
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            // Send base64 encoded image back to C#
+                            const base64Data = reader.result.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+                            console.log('Sending photo data to C#:', base64Data.length, 'chars');
+                            window.chrome.webview.postMessage({
+                                id: id,
+                                action: 'photoCapture',
+                                success: true,
+                                data: base64Data
+                            });
+                        };
+                        reader.readAsDataURL(blob);
+                    } catch (error) {
+                        window.chrome.webview.postMessage({
+                            id: id,
+                            action: 'photoCapture',
+                            success: false,
+                            error: error.message
+                        });
+                    }
+                    break;
+                    
+                case 'startRecording':
+                    try {
+                        const started = startRecording();
+                        window.chrome.webview.postMessage({
+                            id: id,
+                            action: 'recordingStarted',
+                            success: started
+                        });
+                    } catch (error) {
+                        window.chrome.webview.postMessage({
+                            id: id,
+                            action: 'recordingStarted',
+                            success: false,
+                            error: error.message
+                        });
+                    }
+                    break;
+                    
+                case 'stopRecording':
+                    try {
+                        const blob = await stopRecording();
+                        if (blob) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                window.chrome.webview.postMessage({
+                                    id: id,
+                                    action: 'recordingStopped',
+                                    success: true,
+                                    data: reader.result.split(',')[1] // Remove data:video/webm;base64, prefix
+                                });
+                            };
+                            reader.readAsDataURL(blob);
+                        } else {
+                            window.chrome.webview.postMessage({
+                                id: id,
+                                action: 'recordingStopped',
+                                success: false,
+                                error: 'No recording in progress'
+                            });
+                        }
+                    } catch (error) {
+                        window.chrome.webview.postMessage({
+                            id: id,
+                            action: 'recordingStopped',
+                            success: false,
+                            error: error.message
+                        });
+                    }
+                    break;
+            }
+            });
+        } else {
+            console.error('WebView2 API not available');
+        }
+        
+        // Optional: Stream to server
+        function startStreaming(video) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // WebSocket connection to server
+            const ws = new WebSocket('ws://localhost:8081/stream');
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                
+                // Send frames at 30 FPS
+                setInterval(() => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0);
+                        
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                ws.send(blob);
+                            }
+                        }, 'image/jpeg', 0.8);
+                    }
+                }, 33); // ~30 FPS
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+        
+        // Start on page load
+        window.addEventListener('load', startWebcam);
+    </script>
+</body>
+</html>
