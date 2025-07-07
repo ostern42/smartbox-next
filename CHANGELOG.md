@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Session 12 - 2025-01-07 (Video Streaming Fix)
+
+#### Added
+- VideoStreamCapture.cs - Comprehensive video streaming with MediaFrameReader
+- SimpleVideoCapture.cs - Minimal video streaming implementation
+- Proper frame capture while streaming capability
+- FPS monitoring and debug output
+- BUILD_AND_TEST.md - Visual Studio build instructions
+- BUILD_STEPS.md - Troubleshooting guide
+
+#### Fixed
+- Replaced LowLagPhotoCapture (500ms per frame) with MediaFrameReader
+- Fixed partial class warnings for WinRT compatibility
+- Fixed async method warnings
+- Fixed UI thread issues for frame display
+- Fixed build locks with fix-locks.ps1
+
+#### Changed
+- Video capture now uses proper streaming instead of photo capture
+- Frame handlers now use DispatcherQueue for UI updates
+- Capture button works while streaming continues
+
+#### Discovered
+- LowLagPhotoCapture is for photos, not video (causes 500ms delay)
+- MediaFrameReader is the correct API for video streaming
+- Camera supports YUY2 format at multiple resolutions up to 1920x1080 @ 30 FPS
+- Frames arrive but preview not updating (UI thread issue)
+
+## [Unreleased]
+
 ### Session 8 - 2025-01-07 (Video Capture Deep Dive)
 
 #### Added

@@ -7,7 +7,7 @@ Für vollständige Wisdom siehe:
 → **MASTER_WISDOM/PROJECTS/SMARTBOXNEXT.md** (Projekt-spezifische Wisdom)
 → **MASTER_WISDOM/QUICK_REFERENCE.md** (Safewords & Regeln)
 
-## 📊 Aktueller Session-Stand (Session 11)
+## 📊 Aktueller Session-Stand (Session 12)
 
 ### WinUI3 Implementation Status
 - **Location**: smartbox-winui3/
@@ -68,12 +68,40 @@ Camera → FlashCap → JPEG/YUY2 → Direct to UI (60+ FPS!)
 2. **DirectN** - Good but requires more complex setup
 3. **Optimized MediaCapture** - Can reach 30-60 FPS with proper config
 
-### Next Steps
-1. Study FlashCap source code for correct API usage
-2. Consider WebView2 as fallback (proven 60 FPS)
-3. Implement hybrid approach for reliability
-4. Test with actual medical cameras
+### Session 12: Video Streaming Breakthrough & Challenges
+
+#### What We Achieved:
+1. **Identified the root cause**: HighPerformanceCapture used `LowLagPhotoCapture` (500ms per frame!)
+2. **Created proper video streaming**:
+   - VideoStreamCapture.cs - Comprehensive MediaFrameReader implementation
+   - SimpleVideoCapture.cs - Minimal approach
+   - ThrottledVideoCapture.cs - UI-throttled updates
+   - LocalStreamServer.cs - MJPEG streaming server
+3. **Fixed all build errors**: partial classes, variable scopes, DateTimeOffset handling
+4. **Camera works**: 30 FPS confirmed, but preview shows white/black screen
+
+#### Current Status:
+- ✅ Camera captures at 30 FPS (confirmed in debug output)
+- ✅ Photo capture works perfectly
+- ❌ Live preview shows white screen (UI rendering issue)
+- ❌ MJPEG stream shows black (frame data issue)
+
+#### Key Discovery:
+MediaFrameReader delivers frames, but WinUI3 Image control doesn't display them properly. This suggests either:
+1. Frame format conversion issue (YUY2 → BGRA8)
+2. UI thread synchronization problem
+3. SoftwareBitmapSource lifecycle issue
+
+#### Next Session Should:
+1. Try WebView2 with WebRTC for proven video display
+2. Or use DirectX/SwapChainPanel for hardware rendering
+3. Or debug why SoftwareBitmapSource shows white/black
+
+### Technical Notes:
+- Camera: Integrated Camera, supports YUY2 up to 1920x1080 @ 30 FPS
+- Current approach: MediaFrameReader → SoftwareBitmap → SoftwareBitmapSource → Image
+- Alternative: MediaFrameReader → JPEG → HTTP Stream → WebView2
 
 ---
 
-*Session 8: From "warum geht das nicht" to "jetzt verstehen wir die Hardware!"*
+*Session 12: From "500ms photo capture" to "30 FPS streaming (but no display yet)"*

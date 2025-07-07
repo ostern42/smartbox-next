@@ -48,7 +48,7 @@ namespace SmartBoxNext
                         var formats = source.SupportedFormats;
                         foreach (var format in formats)
                         {
-                            if (format.VideoFormat.Subtype == "YUY2")
+                            if (format.Subtype == "YUY2")
                             {
                                 DebugMessage?.Invoke($"Found YUY2 format: {format.VideoFormat.Width}x{format.VideoFormat.Height} @ {format.FrameRate.Numerator}/{format.FrameRate.Denominator} FPS");
                                 bestSource = source;

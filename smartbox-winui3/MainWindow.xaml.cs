@@ -38,6 +38,10 @@ namespace SmartBoxNext
         // Enterprise high-performance capture
         private HighPerformanceCapture? _highPerfCapture;
         private FastYUY2Capture? _fastCapture;
+        private VideoStreamCapture? _videoStreamCapture;
+        private SimpleVideoCapture? _simpleVideoCapture;
+        private ThrottledVideoCapture? _throttledVideoCapture;
+        private LocalStreamServer? _streamServer;
 
         private void AddDebugMessage(string message)
         {
@@ -132,7 +136,108 @@ namespace SmartBoxNext
                 await _mediaCapture.InitializeAsync(settings);
                 AddDebugMessage("MediaCapture initialized successfully");
 
-                // Try enterprise high-performance capture first
+                // Start local stream server first
+                try
+                {
+                    _streamServer = new LocalStreamServer();
+                    _streamServer.DebugMessage += AddDebugMessage;
+                    
+                    if (await _streamServer.StartAsync(8080))
+                    {
+                        AddDebugMessage("Stream server started! Open http://localhost:8080 in browser");
+                        
+                        // Add a button or info to open browser
+                        WebcamPlaceholder.Text = "Stream at http://localhost:8080\nOr use Initialize Webcam for local preview";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddDebugMessage($"Stream server failed: {ex.Message}");
+                }
+
+                // Try ThrottledVideoCapture first - throttled UI updates
+                try
+                {
+                    AddDebugMessage("Trying ThrottledVideoCapture for video streaming...");
+                    _throttledVideoCapture = new ThrottledVideoCapture();
+                    _throttledVideoCapture.DebugMessage += AddDebugMessage;
+                    _throttledVideoCapture.FrameArrived += OnThrottledVideoFrameArrived;
+                    
+                    if (await _throttledVideoCapture.InitializeAsync(_mediaCapture))
+                    {
+                        if (await _throttledVideoCapture.StartAsync())
+                        {
+                            _isPreviewing = true;
+                            _isInitialized = true;
+                            WebcamPlaceholder.Visibility = Visibility.Collapsed;
+                            AddDebugMessage("THROTTLED VIDEO CAPTURE ACTIVE! 15 FPS UI updates!");
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddDebugMessage($"ThrottledVideoCapture failed: {ex.Message}");
+                    _throttledVideoCapture?.Dispose();
+                    _throttledVideoCapture = null;
+                }
+
+                // Try SimpleVideoCapture as fallback
+                try
+                {
+                    AddDebugMessage("Trying SimpleVideoCapture for video streaming...");
+                    _simpleVideoCapture = new SimpleVideoCapture();
+                    _simpleVideoCapture.DebugMessage += AddDebugMessage;
+                    _simpleVideoCapture.FrameArrived += OnSimpleVideoFrameArrived;
+                    
+                    if (await _simpleVideoCapture.InitializeAsync(_mediaCapture))
+                    {
+                        if (await _simpleVideoCapture.StartAsync())
+                        {
+                            _isPreviewing = true;
+                            _isInitialized = true;
+                            WebcamPlaceholder.Visibility = Visibility.Collapsed;
+                            AddDebugMessage("SIMPLE VIDEO CAPTURE ACTIVE! Real video streaming!");
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddDebugMessage($"SimpleVideoCapture failed: {ex.Message}");
+                    _simpleVideoCapture?.Dispose();
+                    _simpleVideoCapture = null;
+                }
+
+                // Try VideoStreamCapture as second option
+                try
+                {
+                    AddDebugMessage("Trying VideoStreamCapture for proper video streaming...");
+                    _videoStreamCapture = new VideoStreamCapture(DispatcherQueue);
+                    _videoStreamCapture.DebugMessage += AddDebugMessage;
+                    _videoStreamCapture.FpsUpdated += fps => AddDebugMessage($"Stream FPS: {fps:F1}");
+                    _videoStreamCapture.FrameArrived += OnVideoStreamFrameArrived;
+                    
+                    if (await _videoStreamCapture.InitializeAsync(_mediaCapture))
+                    {
+                        if (await _videoStreamCapture.StartStreamingAsync())
+                        {
+                            _isPreviewing = true;
+                            _isInitialized = true;
+                            WebcamPlaceholder.Visibility = Visibility.Collapsed;
+                            AddDebugMessage("VIDEO STREAM CAPTURE ACTIVE! Real video streaming!");
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddDebugMessage($"VideoStreamCapture failed: {ex.Message}");
+                    _videoStreamCapture?.Dispose();
+                    _videoStreamCapture = null;
+                }
+
+                // Try enterprise high-performance capture as fallback
                 try
                 {
                     _highPerfCapture = new HighPerformanceCapture(DispatcherQueue, targetFps: 30);
@@ -309,7 +414,102 @@ namespace SmartBoxNext
             }
         }
 
-        private async void OnFrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs args)
+        private void OnVideoStreamFrameArrived(SoftwareBitmap frame)
+        {
+            // Must run on UI thread
+            DispatcherQueue.TryEnqueue(async () =>
+            {
+                try
+                {
+                    await _bitmapSource.SetBitmapAsync(frame);
+                    WebcamPreview.Source = _bitmapSource;
+                    
+                    // Frame is already copied, dispose it
+                    frame.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    AddDebugMessage($"Video stream frame display error: {ex.Message}");
+                }
+            });
+        }
+
+        private void OnSimpleVideoFrameArrived(SoftwareBitmap frame)
+        {
+            // Debug: Log first few frames
+            if (_frameCount < 3)
+            {
+                AddDebugMessage($"Frame {_frameCount} received! Size: {frame.PixelWidth}x{frame.PixelHeight}, Format: {frame.BitmapPixelFormat}, Alpha: {frame.BitmapAlphaMode}");
+            }
+            
+            // Must run on UI thread
+            DispatcherQueue.TryEnqueue(async () =>
+            {
+                try
+                {
+                    // Create a copy of the frame since it will be disposed
+                    using (var frameCopy = new SoftwareBitmap(frame.BitmapPixelFormat, frame.PixelWidth, frame.PixelHeight, frame.BitmapAlphaMode))
+                    {
+                        frame.CopyTo(frameCopy);
+                        
+                        // Ensure we have a bitmap source
+                        if (_bitmapSource == null)
+                        {
+                            _bitmapSource = new SoftwareBitmapSource();
+                            AddDebugMessage("Created new SoftwareBitmapSource");
+                        }
+                        
+                        await _bitmapSource.SetBitmapAsync(frameCopy);
+                        
+                        // Ensure WebcamPreview is visible and has the source
+                        if (WebcamPreview.Source != _bitmapSource)
+                        {
+                            WebcamPreview.Source = _bitmapSource;
+                            AddDebugMessage($"Set WebcamPreview source (frame {_frameCount})");
+                        }
+                    }
+                    
+                    _frameCount++;
+                }
+                catch (Exception ex)
+                {
+                    AddDebugMessage($"Simple video frame display error: {ex.Message}");
+                    AddDebugMessage($"Stack trace: {ex.StackTrace}");
+                }
+            });
+            
+            // Dispose the original frame
+            frame.Dispose();
+        }
+
+        private void OnThrottledVideoFrameArrived(SoftwareBitmap frame)
+        {
+            // Send to stream server
+            _streamServer?.UpdateFrame(frame);
+            
+            // Frame is already a copy, just display it
+            DispatcherQueue.TryEnqueue(async () =>
+            {
+                try
+                {
+                    if (_bitmapSource == null)
+                    {
+                        _bitmapSource = new SoftwareBitmapSource();
+                    }
+                    
+                    await _bitmapSource.SetBitmapAsync(frame);
+                    WebcamPreview.Source = _bitmapSource;
+                    
+                    frame.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    AddDebugMessage($"Throttled video frame display error: {ex.Message}");
+                }
+            });
+        }
+
+        private void OnFrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs args)
         {
             // Log first frame arrival
             if (_frameCount == 0)
@@ -450,7 +650,7 @@ namespace SmartBoxNext
                 var captureFolder = await myPictures.SaveFolder.CreateFolderAsync("SmartBoxNext", CreationCollisionOption.OpenIfExists);
                 var photoFile = await captureFolder.CreateFileAsync($"Capture_{DateTime.Now:yyyyMMdd_HHmmss}.jpg", CreationCollisionOption.GenerateUniqueName);
 
-                // Capture photo
+                // Always use regular capture for now - it works reliably
                 var imageEncodingProperties = ImageEncodingProperties.CreateJpeg();
                 await _mediaCapture.CapturePhotoToStorageFileAsync(imageEncodingProperties, photoFile);
 
@@ -768,6 +968,18 @@ namespace SmartBoxNext
 
                 _fastCapture?.Dispose();
                 _fastCapture = null;
+
+                _videoStreamCapture?.Dispose();
+                _videoStreamCapture = null;
+
+                _simpleVideoCapture?.Dispose();
+                _simpleVideoCapture = null;
+
+                _throttledVideoCapture?.Dispose();
+                _throttledVideoCapture = null;
+
+                _streamServer?.Dispose();
+                _streamServer = null;
 
                 if (_mediaCapture != null)
                 {
