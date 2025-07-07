@@ -7,7 +7,7 @@ Für vollständige Wisdom siehe:
 → **MASTER_WISDOM/PROJECTS/SMARTBOXNEXT.md** (Projekt-spezifische Wisdom)
 → **MASTER_WISDOM/QUICK_REFERENCE.md** (Safewords & Regeln)
 
-## 📊 Aktueller Session-Stand (Session 8)
+## 📊 Aktueller Session-Stand (Session 11)
 
 ### WinUI3 Implementation Status
 - **Location**: smartbox-winui3/
@@ -18,11 +18,12 @@ Für vollständige Wisdom siehe:
 - ⏳ DICOM export (TODO)
 - ⏳ PACS C-STORE (TODO)
 
-### Session 8 Breakthrough: Hardware-Level Understanding
-- **Problem identified**: YUY2 format from camera, needs BGRA8 conversion
-- **Fixed**: Format conversion in OnHighPerfFrameArrived
-- **New tools**: CameraAnalyzer.cs, DirectShowCapture.cs
-- **New research**: VIDEO_CAPTURE_PROFESSIONAL.md
+### Session 11: Build Success & Performance Fix
+- **Build Fixed**: .NET 8 SDK installed, app runs in Visual Studio!
+- **Problem Found**: HighPerformanceCapture uses LowLagPhotoCapture (1.9 FPS!)
+- **Root Cause**: Camera only supports YUY2, needs video streaming not photos
+- **Solution**: Created FastYUY2Capture.cs using MediaFrameReader
+- **Status**: FastYUY2Capture integrated, ready for testing
 
 ### Technical Insights
 - Camera delivers YUY2 format natively
@@ -31,9 +32,9 @@ Für vollständige Wisdom siehe:
 - GPU acceleration required for real-time transcoding
 
 ### Immediate Next Steps
-1. **WebView2 Implementation** - Proven 60 FPS with WebRTC
-2. **Study FlashCap Examples** - Find working code on GitHub
-3. **Test MediaPlayerElement** - Can it display camera stream?
+1. **Test FastYUY2Capture** - Should deliver real 30 FPS
+2. **If still slow**: Debug MediaFrameReader callback
+3. **Alternative**: WebView2 + WebRTC (proven 60 FPS)
 4. **Then**: DICOM export, PACS, Queue
 
 ## 🎯 Solution Architecture (Based on Research)

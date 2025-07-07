@@ -37,6 +37,7 @@ namespace SmartBoxNext
         
         // Enterprise high-performance capture
         private HighPerformanceCapture? _highPerfCapture;
+        private FastYUY2Capture? _fastCapture;
 
         private void AddDebugMessage(string message)
         {
@@ -155,6 +156,30 @@ namespace SmartBoxNext
                     _highPerfCapture = null;
                 }
 
+                // Try FastYUY2Capture for YUY2 cameras
+                try
+                {
+                    AddDebugMessage("Trying FastYUY2Capture for 30 FPS...");
+                    _fastCapture = new FastYUY2Capture(DispatcherQueue);
+                    _fastCapture.DebugMessage += AddDebugMessage;
+                    _fastCapture.FrameArrived += OnFastFrameArrived;
+                    
+                    if (await _fastCapture.InitializeAsync(_mediaCapture))
+                    {
+                        _isPreviewing = true;
+                        _isInitialized = true;
+                        WebcamPlaceholder.Visibility = Visibility.Collapsed;
+                        AddDebugMessage("FAST YUY2 CAPTURE ACTIVE! 30 FPS!");
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddDebugMessage($"FastYUY2Capture failed: {ex.Message}");
+                    _fastCapture?.Dispose();
+                    _fastCapture = null;
+                }
+
                 // Try to use MediaFrameReader for better performance
                 AddDebugMessage($"Available frame sources: {_mediaCapture.FrameSources.Count}");
                 foreach (var source in _mediaCapture.FrameSources.Values)
@@ -264,6 +289,23 @@ namespace SmartBoxNext
             catch (Exception ex)
             {
                 AddDebugMessage($"High-perf frame display error: {ex.Message}");
+            }
+        }
+
+        private async void OnFastFrameArrived(SoftwareBitmap frame)
+        {
+            try
+            {
+                await _bitmapSource.SetBitmapAsync(frame);
+                
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    WebcamPreview.Source = _bitmapSource;
+                });
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"Fast frame display error: {ex.Message}");
             }
         }
 
@@ -723,6 +765,9 @@ namespace SmartBoxNext
                     _timer.Stop();
                     _timer = null;
                 }
+
+                _fastCapture?.Dispose();
+                _fastCapture = null;
 
                 if (_mediaCapture != null)
                 {
