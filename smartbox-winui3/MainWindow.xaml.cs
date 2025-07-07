@@ -15,8 +15,8 @@ using Windows.Storage.Pickers;
 using System.Linq;
 using Windows.Media.Capture.Frames;
 using Windows.Media;
-using Windows.Storage.Pickers;
 using System.Collections.Generic;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace SmartBoxNext
 {
@@ -624,6 +624,9 @@ namespace SmartBoxNext
                 var cameras = await CameraAnalyzer.AnalyzeAllCamerasAsync();
                 var report = CameraAnalyzer.GenerateReport(cameras);
                 
+                // DirectShow enumeration temporarily disabled - DirectShowCapture.cs was removed
+                // TODO: Re-implement with FlashCap or other solution
+                /*
                 // Also try DirectShow enumeration
                 AddDebugMessage("Trying DirectShow enumeration...");
                 try
@@ -645,6 +648,7 @@ namespace SmartBoxNext
                 {
                     report += $"\nDirectShow enumeration failed: {ex.Message}\n";
                 }
+                */
                 
                 // Show report in dialog
                 var textBox = new TextBox
@@ -729,6 +733,54 @@ namespace SmartBoxNext
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Cleanup error: {ex.Message}");
+            }
+        }
+
+        private async void TestSilkNetButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                AddDebugMessage("Testing Silk.NET integration...");
+                
+                // Run simple test first
+                if (SilkNetSimpleTest.TestBasicD3D11())
+                {
+                    AddDebugMessage("✅ Simple D3D11 test passed!");
+                    
+                    // List available adapters
+                    SilkNetTest.ListAvailableAdapters();
+                    
+                    // Try to initialize Silk.NET video capture
+                    AddDebugMessage("Initializing Silk.NET video capture...");
+                    
+                    // Get the SwapChainPanel's handle
+                    var swapChainPanel = SilkNetPreview;
+                    if (swapChainPanel != null)
+                    {
+                        // Show Silk.NET preview, hide standard preview
+                        SilkNetPreview.Visibility = Visibility.Visible;
+                        WebcamPreview.Visibility = Visibility.Collapsed;
+                        WebcamPlaceholder.Visibility = Visibility.Collapsed;
+                        
+                        AddDebugMessage("SwapChainPanel ready for Silk.NET rendering!");
+                        
+                        // TODO: Initialize SilkNetCaptureEngine with SwapChainPanel
+                        AddDebugMessage("Note: Full video capture integration coming next!");
+                    }
+                    else
+                    {
+                        AddDebugMessage("SwapChainPanel not found in UI!");
+                    }
+                }
+                else
+                {
+                    AddDebugMessage("❌ Simple D3D11 test failed!");
+                }
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"Silk.NET test failed: {ex.Message}");
+                await ShowErrorDialog($"Silk.NET test failed: {ex.Message}");
             }
         }
     }

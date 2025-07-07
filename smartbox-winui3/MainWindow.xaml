@@ -29,9 +29,16 @@
             <Border Grid.Column="0" BorderBrush="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
                     BorderThickness="1" CornerRadius="4" Margin="0,0,8,0">
                 <Grid>
+                    <!-- SwapChainPanel for Silk.NET DirectX rendering -->
+                    <SwapChainPanel x:Name="SilkNetPreview" 
+                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                    Visibility="Collapsed"/>
+                    
+                    <!-- Fallback Image for standard preview -->
                     <Image x:Name="WebcamPreview" 
                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                            Stretch="Uniform"/>
+                    
                     <TextBlock x:Name="WebcamPlaceholder" Text="Webcam Preview" 
                              HorizontalAlignment="Center" VerticalAlignment="Center"
                              Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
@@ -105,6 +112,13 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE9D9;"/>
                         <TextBlock Text="Analyze Camera"/>
+                    </StackPanel>
+                </Button>
+                
+                <Button x:Name="TestSilkNetButton" Click="TestSilkNetButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE950;"/>
+                        <TextBlock Text="Test Silk.NET"/>
                     </StackPanel>
                 </Button>
             </StackPanel>

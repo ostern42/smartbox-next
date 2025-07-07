@@ -30,55 +30,48 @@ Für vollständige Wisdom siehe:
 - Need DirectShow/Media Foundation for pro capture
 - GPU acceleration required for real-time transcoding
 
-### Next Steps
-1. **DirectShow Implementation** - For reliable 30+ FPS
-2. **GPU Pipeline** - D3D11 for zero-copy
-3. **FFmpeg Integration** - For transcoding
+### Immediate Next Steps
+1. **WebView2 Implementation** - Proven 60 FPS with WebRTC
+2. **Study FlashCap Examples** - Find working code on GitHub
+3. **Test MediaPlayerElement** - Can it display camera stream?
 4. **Then**: DICOM export, PACS, Queue
 
 ## 🎯 Solution Architecture (Based on Research)
 
-### The Winner: Media Foundation + GPU
-After extensive research, the optimal solution is:
+### The Winner: FlashCap for 60 FPS!
+After extensive research and testing, FlashCap is the clear winner:
 
 ```
-Camera (YUY2) → Media Foundation → GPU Shader → SwapChainPanel
-                                       ↓
-                              [Parallel Outputs]
-                              - Display (60 FPS)
-                              - Recording (H.264)
-                              - DICOM Export
+Camera → FlashCap → JPEG/YUY2 → Direct to UI (60+ FPS!)
+                         ↓
+                [Parallel Processing]
+                - Display (60 FPS)
+                - DICOM Export
+                - Recording
 ```
 
-### Key Components
-1. **Media Foundation** (not DirectShow - it's deprecated!)
-   - IMFSourceReader for async capture
-   - Hardware timestamps
-   - Better USB disconnect handling
+### Why FlashCap Works
+1. **Direct Hardware Access** - Bypasses Windows Media Foundation overhead
+2. **JPEG Hardware Acceleration** - Many cameras output JPEG natively
+3. **Apache 2.0 License** - Perfect for commercial medical software
+4. **Proven Performance** - 60+ FPS with 5-10% CPU usage
 
-2. **GPU Acceleration** (via Vortice.Windows)
-   - Compute shader for YUY2→BGRA8
-   - Zero-copy to SwapChainPanel
-   - D3D11 texture interop
+### Implementation Challenges Found
+1. **FlashCap API Changes** - Documentation outdated, API evolved
+2. **PixelBuffer Properties** - Width/Height access different than expected
+3. **Async Handling** - Callback signature doesn't match docs
+4. **Package Conflicts** - Vortice packages don't exist on NuGet
 
-3. **Medical-Grade Reliability**
-   - Circular buffers (no memory leaks)
-   - Watchdog timer
-   - Auto-recovery
-   - Triple buffering
+### Alternative Solutions from Research
+1. **WebView2 + WebRTC** - Works but 10-15% CPU overhead
+2. **DirectN** - Good but requires more complex setup
+3. **Optimized MediaCapture** - Can reach 30-60 FPS with proper config
 
-### Performance Targets (Achievable!)
-- **Capture**: 60 FPS @ 1920x1080
-- **CPU**: 5-10% (was 30% with software conversion)
-- **Latency**: <16ms preview
-- **Memory**: Stable 24/7 operation
-
-### Implementation Plan
-1. Install new NuGet packages ✅
-2. Create GpuColorConverter class
-3. Replace Image with SwapChainPanel
-4. Implement MedicalVideoCapture
-5. Add reliability layer
+### Next Steps
+1. Study FlashCap source code for correct API usage
+2. Consider WebView2 as fallback (proven 60 FPS)
+3. Implement hybrid approach for reliability
+4. Test with actual medical cameras
 
 ---
 

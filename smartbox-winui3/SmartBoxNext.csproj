@@ -13,6 +13,7 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,9 +21,10 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.3233" />
     <PackageReference Include="fo-dicom" Version="5.1.2" />
     <PackageReference Include="fo-dicom.Imaging.ImageSharp" Version="5.1.2" />
-    <PackageReference Include="Vortice.Windows" Version="3.6.2" />
     <PackageReference Include="FlashCap" Version="1.11.0" />
-    <PackageReference Include="FFmpeg.AutoGen" Version="7.1.1" />
+    <PackageReference Include="Silk.NET.Direct3D11" Version="2.22.0" />
+    <PackageReference Include="Silk.NET.DXGI" Version="2.22.0" />
+    <PackageReference Include="Silk.NET.Maths" Version="2.22.0" />
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
