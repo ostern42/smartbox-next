@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Session 18 - 2025-01-08 (Build Success & WebRTC Running! 🎉)
+
+#### Fixed
+- **File Lock Issues**:
+  - Problem: Massive file locks in original `smartbox-wpf` directory
+  - Solution: Created clean copy in `smartbox-wpf-clean`
+  - Result: Build successful in both Debug and Release
+- **JavaScript Errors**:
+  - Problem: `initWebcamButton.disabled = true` - button didn't exist
+  - Solution: Removed references, added null checks
+  - Result: WebRTC initializes without errors
+- **Port Conflict**:
+  - Problem: Port 5111 was already in use
+  - Solution: Changed to port 5112 in config.json
+  - Result: Web server starts successfully
+- **Navigation in Kiosk Mode**:
+  - Problem: No way back from Settings in fullscreen
+  - Solution: Fixed Back button and added Home button
+  - Result: Navigation works even in kiosk mode
+
+#### Changed
+- Simplified app.js initialization with robust null checks
+- Updated settings.js with working goBack() function
+- Port configuration changed from 5111 to 5112
+
+#### Status
+- ✅ WebRTC camera working: 1920x1080 @ 30fps
+- ✅ Build process stable (use smartbox-wpf-clean)
+- ✅ Navigation fully functional
+- ✅ Ready for capture implementation
+
 ### Session 19 - 2025-01-07 (HTTP Server Fix & Ready to Ship! 🚀)
 
 #### Fixed

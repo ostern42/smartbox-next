@@ -1,0 +1,316 @@
+/* Windows 11 Style Theme */
+:root {
+    --accent-color: #0078d4;
+    --accent-hover: #106ebe;
+    --accent-pressed: #005a9e;
+    --background-primary: #f3f3f3;
+    --background-secondary: #ffffff;
+    --background-tertiary: #f9f9f9;
+    --text-primary: #000000;
+    --text-secondary: #5c5c5c;
+    --border-color: #e0e0e0;
+    --shadow-color: rgba(0, 0, 0, 0.08);
+    --radius-small: 4px;
+    --radius-medium: 8px;
+    --spacing-small: 8px;
+    --spacing-medium: 16px;
+    --spacing-large: 24px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background-primary: #202020;
+        --background-secondary: #2d2d2d;
+        --background-tertiary: #1f1f1f;
+        --text-primary: #ffffff;
+        --text-secondary: #b3b3b3;
+        --border-color: #404040;
+        --shadow-color: rgba(0, 0, 0, 0.3);
+    }
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: var(--background-primary);
+    color: var(--text-primary);
+    line-height: 1.5;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Header */
+.app-header {
+    background-color: var(--background-secondary);
+    padding: var(--spacing-medium);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 1px 3px var(--shadow-color);
+}
+
+.app-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    display: flex;
+    padding: var(--spacing-medium);
+    gap: var(--spacing-medium);
+    overflow: hidden;
+}
+
+/* Webcam Section */
+.webcam-section {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+}
+
+.webcam-container {
+    flex: 1;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#webcamPreview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background-color: #000;
+}
+
+.placeholder {
+    position: absolute;
+    color: var(--text-secondary);
+    font-size: 18px;
+    pointer-events: none;
+}
+
+.placeholder.hidden {
+    display: none;
+}
+
+/* Patient Info */
+.patient-info {
+    flex: 1;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    padding: var(--spacing-large);
+    overflow-y: auto;
+}
+
+.info-section {
+    margin-bottom: var(--spacing-large);
+}
+
+.info-section:last-child {
+    margin-bottom: 0;
+}
+
+.info-section h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: var(--spacing-medium);
+    color: var(--text-primary);
+}
+
+.form-group {
+    margin-bottom: var(--spacing-medium);
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: var(--text-secondary);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    background-color: var(--background-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-small);
+    transition: all 0.2s ease;
+}
+
+.form-group input:hover,
+.form-group select:hover,
+.form-group textarea:hover {
+    border-color: var(--text-secondary);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+}
+
+.form-group textarea {
+    resize: vertical;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 12px;
+}
+
+/* Action Bar */
+.action-bar {
+    background-color: var(--background-secondary);
+    padding: var(--spacing-medium);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -1px 3px var(--shadow-color);
+}
+
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-medium);
+    flex-wrap: wrap;
+}
+
+.action-button {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-small);
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    background-color: var(--background-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px; /* Touch-friendly */
+}
+
+.action-button:hover {
+    background-color: var(--background-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.action-button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px var(--shadow-color);
+}
+
+.action-button.accent {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.action-button.accent:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+.action-button.accent:active {
+    background-color: var(--accent-pressed);
+    border-color: var(--accent-pressed);
+}
+
+.action-button i {
+    font-size: 16px;
+}
+
+.record-icon {
+    color: #d13438;
+}
+
+.recording .record-icon {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+    }
+    
+    .webcam-section {
+        min-height: 300px;
+    }
+    
+    .patient-info {
+        max-height: 400px;
+    }
+    
+    .button-group {
+        justify-content: flex-start;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border: 2px solid var(--accent-color);
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Accessibility */
+.action-button:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* Smooth transitions */
+* {
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
