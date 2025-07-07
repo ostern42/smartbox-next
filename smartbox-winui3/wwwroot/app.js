@@ -11,6 +11,12 @@ class SmartBoxApp {
         this.initializeElements();
         this.attachEventListeners();
         this.log('SmartBox Next Web UI initialized');
+        
+        // Auto-initialize webcam after a short delay
+        setTimeout(() => {
+            this.log('Auto-initializing webcam...');
+            this.initWebcam();
+        }, 2000);
     }
 
     initializeElements() {
@@ -29,7 +35,6 @@ class SmartBoxApp {
         this.debugInfo = document.getElementById('debugInfo');
         
         // Buttons
-        this.initWebcamButton = document.getElementById('initWebcamButton');
         this.captureButton = document.getElementById('captureButton');
         this.recordButton = document.getElementById('recordButton');
         this.exportDicomButton = document.getElementById('exportDicomButton');
@@ -37,6 +42,7 @@ class SmartBoxApp {
         this.debugButton = document.getElementById('debugButton');
         this.analyzeButton = document.getElementById('analyzeButton');
         this.openLogsButton = document.getElementById('openLogsButton');
+        this.testButton = document.getElementById('testButton');
         
         // Debug: Check which buttons are found
         console.log('Buttons found:', {
@@ -51,7 +57,7 @@ class SmartBoxApp {
     }
 
     attachEventListeners() {
-        this.initWebcamButton.addEventListener('click', () => this.initWebcam());
+        // Init button removed - webcam auto-initializes
         this.captureButton.addEventListener('click', () => this.capturePhoto());
         this.recordButton.addEventListener('click', () => this.toggleRecording());
         this.exportDicomButton.addEventListener('click', () => this.exportDicom());
@@ -60,6 +66,9 @@ class SmartBoxApp {
         this.analyzeButton.addEventListener('click', () => this.analyzeCamera());
         if (this.openLogsButton) {
             this.openLogsButton.addEventListener('click', () => this.openLogs());
+        }
+        if (this.testButton) {
+            this.testButton.addEventListener('click', () => this.testWebView2());
         }
         
         // Listen for messages from C# host
@@ -480,6 +489,7 @@ class SmartBoxApp {
     }
 
     openLogs() {
+        console.log('openLogs() called');
         this.log('Opening logs folder...');
         this.sendToHost('openLogs', {});
         
@@ -491,15 +501,60 @@ class SmartBoxApp {
             this.openLogsButton.innerHTML = '<i class="ms-Icon ms-Icon--TextDocument"></i><span>Open Logs</span>';
         }, 2000);
     }
+    
+    testWebView2() {
+        this.log('Testing WebView2 communication...', 'info');
+        
+        // Test 1: Simple message
+        this.sendToHost('test', { message: 'Hello from JavaScript!' });
+        
+        // Test 2: openLogs
+        setTimeout(() => {
+            this.log('Sending openLogs test...', 'info');
+            this.sendToHost('openLogs', {});
+        }, 1000);
+        
+        // Test 3: Browse folder
+        setTimeout(() => {
+            this.log('Sending browseFolder test...', 'info');
+            this.sendToHost('browseFolder', { 
+                inputId: 'test-input',
+                currentPath: 'C:\\'
+            });
+        }, 2000);
+        
+        // Visual feedback
+        if (this.testButton) {
+            this.testButton.disabled = true;
+            this.testButton.innerHTML = '<i class="ms-Icon ms-Icon--Sync"></i><span>Testing...</span>';
+            setTimeout(() => {
+                this.testButton.disabled = false;
+                this.testButton.innerHTML = '<i class="ms-Icon ms-Icon--TestBeaker"></i><span>Test WebView2</span>';
+            }, 3000);
+        }
+    }
 
     // Communication with C# host
     sendToHost(action, data) {
+        const message = {
+            action: action,
+            data: data,
+            timestamp: new Date().toISOString()
+        };
+        
+        console.log('Sending to C# host:', message);
+        this.log(`Sending to host: ${action}`, 'info');
+        
         if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage({
-                action: action,
-                data: data,
-                timestamp: new Date().toISOString()
-            });
+            try {
+                // WebView2 expects a string, not an object
+                const messageString = JSON.stringify(message);
+                window.chrome.webview.postMessage(messageString);
+                this.log(`Message sent successfully: ${action}`, 'info');
+            } catch (error) {
+                this.log(`Error sending message: ${error.message}`, 'error');
+                console.error('Error sending to host:', error);
+            }
         } else {
             this.log('Running in browser mode - no C# host available', 'warn');
             
@@ -543,10 +598,12 @@ class SmartBoxApp {
                 
             case 'configLoaded':
                 this.config = message.data;
+                this.log('Configuration loaded from host');
                 // Forward to settings iframe if open
                 const settingsIframe = document.querySelector('.settings-iframe');
                 if (settingsIframe && settingsIframe.contentWindow) {
                     settingsIframe.contentWindow.postMessage(message, '*');
+                    this.log('Forwarded config to settings iframe');
                 }
                 break;
                 

@@ -36,6 +36,9 @@ namespace SmartBoxNext
             // Show the window
             this.Activate();
             
+            // Handle window closing
+            this.Closed += Window_Closed;
+            
             // Initialize web server and WebView2
             _ = InitializeAsync();
         }
@@ -68,8 +71,21 @@ namespace SmartBoxNext
                 settings.AreDefaultScriptDialogsEnabled = true;
                 
                 // Set up message handling
+                _logger.LogInfo("Setting up WebView2 message handlers...");
                 WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
                 WebView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
+                _logger.LogInfo("WebView2 message handlers registered");
+                
+                // Add a test to verify WebView2 is working
+                await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
+                    console.log('[C# Injected] WebView2 is initialized');
+                    // Override postMessage to debug
+                    const originalPostMessage = window.chrome.webview.postMessage;
+                    window.chrome.webview.postMessage = function(message) {
+                        console.log('[C# Debug] postMessage called with:', message);
+                        originalPostMessage.call(this, message);
+                    };
+                ");
                 
                 // Navigate to the local web server
                 WebView.CoreWebView2.Navigate(_webServer.GetServerUrl());
@@ -100,13 +116,69 @@ namespace SmartBoxNext
         {
             try
             {
-                var messageJson = e.TryGetWebMessageAsString();
-                var message = JsonSerializer.Deserialize<WebMessage>(messageJson);
-                
-                if (message == null) return;
-
-                switch (message.action)
+                // WebView2 can send either string or object
+                // We need to handle both cases
+                string messageJson;
+                try 
                 {
+                    messageJson = e.TryGetWebMessageAsString();
+                }
+                catch
+                {
+                    // If it fails, get it as JSON (object was sent)
+                    messageJson = e.WebMessageAsJson;
+                }
+                
+                // Debug logging
+                _logger.LogInfo($"WebView2 Message Received: {messageJson}");
+                Console.WriteLine($"WebView2 Message: {messageJson}");
+                
+                // Simple string-based parsing for debugging
+                if (messageJson.Contains("openLogs"))
+                {
+                    _logger.LogInfo("Detected openLogs action via string match");
+                    await HandleOpenLogs();
+                    return;
+                }
+                else if (messageJson.Contains("browseFolder"))
+                {
+                    _logger.LogInfo("Detected browseFolder action");
+                    // Try to deserialize just for browseFolder
+                    try
+                    {
+                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        var message = JsonSerializer.Deserialize<WebMessage>(messageJson, options);
+                        if (message != null)
+                        {
+                            await HandleBrowseFolder(message.data);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"Failed to parse browseFolder data: {ex.Message}");
+                    }
+                    return;
+                }
+                
+                // Try normal deserialization for other messages
+                try
+                {
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+                    
+                    var message = JsonSerializer.Deserialize<WebMessage>(messageJson, options);
+                    
+                    if (message == null) 
+                    {
+                        _logger.LogError("Failed to deserialize WebView2 message");
+                        return;
+                    }
+                    
+                    _logger.LogInfo($"Processing action: {message.action}");
+                    
+                    switch (message.action)                {
                     case "webcamInitialized":
                         await HandleWebcamInitialized(message.data);
                         break;
@@ -152,13 +224,25 @@ namespace SmartBoxNext
                         break;
                         
                     default:
+                        _logger.LogWarning($"Unknown message action: {message.action}");
                         Console.WriteLine($"Unknown message action: {message.action}");
                         break;
+                    }
+                }
+                catch (JsonException jsonEx)
+                {
+                    _logger.LogError($"JSON parsing error: {jsonEx.Message}");
+                    _logger.LogError($"Message was: {messageJson}");
                 }
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Error handling web message: {ex.Message}");
+                _logger.LogError($"Stack trace: {ex.StackTrace}");
                 Console.WriteLine($"Error handling web message: {ex.Message}");
+                
+                // Try to send error back to web app
+                await LogToWebApp($"Error processing message: {ex.Message}", "error");
             }
         }
 
@@ -261,7 +345,7 @@ namespace SmartBoxNext
             };
             
             var json = JsonSerializer.Serialize(configMessage);
-            await WebView.CoreWebView2.ExecuteScriptAsync($"window.postMessage({json}, '*');");
+            WebView.CoreWebView2.PostWebMessageAsJson(json);
         }
 
         private async Task HandleSaveConfig(JsonElement data)
@@ -367,7 +451,7 @@ namespace SmartBoxNext
                     };
                     
                     var json = JsonSerializer.Serialize(response);
-                    await WebView.CoreWebView2.ExecuteScriptAsync($"window.postMessage({json}, '*');");
+                    WebView.CoreWebView2.PostWebMessageAsJson(json);
                 }
             }
             catch (Exception ex)
@@ -382,6 +466,7 @@ namespace SmartBoxNext
             {
                 var logsPath = _logger.GetLogDirectory();
                 await LogToWebApp($"Opening logs folder: {logsPath}");
+                _logger.LogInfo($"Attempting to open logs folder: {logsPath}");
                 
                 // Open the logs folder in Windows Explorer
                 var startInfo = new System.Diagnostics.ProcessStartInfo
@@ -394,6 +479,7 @@ namespace SmartBoxNext
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Error opening logs folder: {ex.Message}");
                 await LogToWebApp($"Error opening logs folder: {ex.Message}", "error");
             }
         }
@@ -449,7 +535,7 @@ namespace SmartBoxNext
             };
             
             var json = JsonSerializer.Serialize(logMessage);
-            await WebView.CoreWebView2.ExecuteScriptAsync($"window.postMessage({json}, '*');");
+            WebView.CoreWebView2.PostWebMessageAsJson(json);
         }
 
         private async Task ShowErrorDialog(string title, string message)

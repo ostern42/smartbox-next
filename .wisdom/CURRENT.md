@@ -254,3 +254,96 @@ SmartBoxNext.exe (Minimal)
 
 *Session 14: "Sometimes the best Windows app is a web app in a window"*
 *~95k tokens - Handover complete!*
+
+---
+
+### Session 15: Settings, Logging & Deployment 🛠️
+**Session ID**: SMARTBOXNEXT-2025-01-07-02
+**Token Exit**: 130k/150k (87%)
+
+#### Major Achievements:
+1. **Settings Dialog in HTML**:
+   - Beautiful light theme (off-white/gray)
+   - Touch-optimized interface
+   - Full configuration management
+   - Modal overlay implementation
+
+2. **Enhanced Touch Keyboard**:
+   - AltGr support added
+   - Backslash via AltGr+ß
+   - Visual indicators for special chars
+   - Numeric mode for IP/ports
+
+3. **Portable Logging System**:
+   - `./logs/` directory with daily rotation
+   - "Open Logs" button in UI
+   - Full file paths in log messages
+   - Debug textarea enlarged & resizable
+
+4. **Deployment Infrastructure**:
+   - Multiple deployment scripts
+   - Diagnostic tools
+   - Clean structure (DLLs can't be moved)
+
+#### Critical Status:
+- **Works perfectly in VS Debug** ✅
+- **Standalone execution fails** ❌
+- **WebView2 bridge needed for buttons**
+- **All files saving correctly to debug folder**
+
+#### Next Session:
+- Fix standalone execution
+- Implement DICOM export
+- Complete PACS integration
+
+*Session 15: "Der Teufel steckt im Deployment"*
+*130k tokens - VOGON EXIT complete!*
+
+---
+
+### Session 16: WinUI3 → WPF Migration Decision 🔄
+**Session ID**: SMARTBOXNEXT-2025-01-07-03
+**VOGON EXIT**: 21:00 Uhr, 07.01.2025
+**Token Exit**: 130k/150k (87%)
+
+#### Major Breakthrough & Decision:
+1. **WebView2 Communication FIXED**:
+   - Problem: JS sent objects, C# expected strings
+   - Solution: `JSON.stringify()` in JS
+   - Open Logs button finally works!
+   - Test WebView2 button added
+
+2. **WinUI3 Problems Identified**:
+   - Constant `System.ArgumentException` in WinRT.Runtime
+   - Settings browse buttons don't work (iframe issues)
+   - Fullscreen mode broken
+   - Window close button broken
+   - Application settings not applied
+   - Standalone deployment fails
+
+3. **CRITICAL DECISION: Migrate to WPF + .NET 8**:
+   - Oliver: "was ist es jetzt modernes, was es immer so schwierig macht?"
+   - WinUI3 is overkill for our needs
+   - HTML/CSS UI doesn't need WinUI3
+   - WPF + WebView2 is simpler and more stable
+
+#### What Works Now:
+- ✅ WebView2 message passing
+- ✅ Open Logs button
+- ✅ 70 FPS WebRTC video
+- ✅ Complete HTML/CSS UI
+- ✅ Touch keyboard
+
+#### Migration Plan:
+- Create new WPF project with .NET 8
+- Copy entire wwwroot folder
+- Reuse: WebServer, Logger, AppConfig, PACS components
+- Simpler WebView2 integration
+- No Package.appxmanifest needed
+- Standard window behavior
+
+#### Key Learning:
+**"Not everything new is better. But everything that works is good."**
+
+*Session 16: "Sometimes the best solution is to throw away 'modern' tech"*
+*VOGON EXIT - Ready for WPF migration!*
