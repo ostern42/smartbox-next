@@ -1,5 +1,24 @@
 # SmartBox-Next Requirements & Product Decisions
 
+## Project Overview
+
+### Problem Statement
+Die aktuelle SmartBox-Lösung:
+- Läuft mit Java (Performance/Ressourcen-Overhead)
+- Krude Workarounds für Grabberkarten-Ansteuerung
+- Nicht optimal für Embedded-Szenarien
+- Verbesserungspotential bei Usability und Features
+
+### Target Platform
+- **Primary**: Windows 10/11 IoT Enterprise
+- **Secondary**: Linux-basierte Embedded-Systeme (für schwächere Hardware)
+- **Hardware**: Flache All-in-One Systeme mit Touch, USB-Kameras
+
+### Competition Analysis
+1. **Nexus E&L SmartBox** (unsere aktuelle Lösung)
+2. **Meso Box** - Direkte Konkurrenz
+3. **Diana** - High-End Alternative
+
 ## Critical Non-Functional Requirements
 
 ### 1. Absolute Reliability (**CRITICAL**)

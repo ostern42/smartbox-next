@@ -100,6 +100,13 @@
                         <TextBlock Text="Show Debug Info"/>
                     </StackPanel>
                 </Button>
+                
+                <Button x:Name="AnalyzeButton" Click="AnalyzeButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE9D9;"/>
+                        <TextBlock Text="Analyze Camera"/>
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </Grid>
     </Grid>

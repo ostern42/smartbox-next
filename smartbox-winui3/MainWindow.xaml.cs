@@ -15,6 +15,8 @@ using Windows.Storage.Pickers;
 using System.Linq;
 using Windows.Media.Capture.Frames;
 using Windows.Media;
+using Windows.Storage.Pickers;
+using System.Collections.Generic;
 
 namespace SmartBoxNext
 {
@@ -32,6 +34,9 @@ namespace SmartBoxNext
         private bool _useFrameReader = false;
         private DateTime _lastFpsUpdate = DateTime.Now;
         private double _currentFps = 0;
+        
+        // Enterprise high-performance capture
+        private HighPerformanceCapture? _highPerfCapture;
 
         private void AddDebugMessage(string message)
         {
@@ -126,6 +131,30 @@ namespace SmartBoxNext
                 await _mediaCapture.InitializeAsync(settings);
                 AddDebugMessage("MediaCapture initialized successfully");
 
+                // Try enterprise high-performance capture first
+                try
+                {
+                    _highPerfCapture = new HighPerformanceCapture(DispatcherQueue, targetFps: 30);
+                    _highPerfCapture.DebugMessage += AddDebugMessage;
+                    _highPerfCapture.FrameArrived += OnHighPerfFrameArrived;
+                    
+                    if (await _highPerfCapture.InitializeAsync(_mediaCapture))
+                    {
+                        await _highPerfCapture.StartCaptureAsync();
+                        _isPreviewing = true;
+                        _isInitialized = true;
+                        WebcamPlaceholder.Visibility = Visibility.Collapsed;
+                        AddDebugMessage("HIGH PERFORMANCE CAPTURE ACTIVE! Target: 30 FPS");
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddDebugMessage($"High-performance capture failed: {ex.Message}");
+                    _highPerfCapture?.Dispose();
+                    _highPerfCapture = null;
+                }
+
                 // Try to use MediaFrameReader for better performance
                 AddDebugMessage($"Available frame sources: {_mediaCapture.FrameSources.Count}");
                 foreach (var source in _mediaCapture.FrameSources.Values)
@@ -205,6 +234,36 @@ namespace SmartBoxNext
             {
                 AddDebugMessage($"Error: {ex.GetType().Name} - {ex.Message}");
                 await ShowErrorDialog($"Failed to initialize webcam: {ex.Message}\n\nDetails: {ex.GetType().Name}");
+            }
+        }
+
+        private async void OnHighPerfFrameArrived(SoftwareBitmap frame)
+        {
+            try
+            {
+                // Convert to BGRA8 with premultiplied alpha if needed
+                SoftwareBitmap convertedFrame = frame;
+                if (frame.BitmapPixelFormat != BitmapPixelFormat.Bgra8 || 
+                    frame.BitmapAlphaMode != BitmapAlphaMode.Premultiplied)
+                {
+                    convertedFrame = SoftwareBitmap.Convert(
+                        frame, 
+                        BitmapPixelFormat.Bgra8, 
+                        BitmapAlphaMode.Premultiplied);
+                }
+                
+                await _bitmapSource.SetBitmapAsync(convertedFrame);
+                WebcamPreview.Source = _bitmapSource;
+                
+                // Dispose converted frame if it's different from original
+                if (convertedFrame != frame)
+                {
+                    convertedFrame.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                AddDebugMessage($"High-perf frame display error: {ex.Message}");
             }
         }
 
@@ -553,6 +612,91 @@ namespace SmartBoxNext
                 XamlRoot = this.Content.XamlRoot
             };
             await dialog.ShowAsync();
+        }
+
+        private async void AnalyzeButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                AddDebugMessage("Starting deep camera analysis...");
+                
+                // Analyze all cameras
+                var cameras = await CameraAnalyzer.AnalyzeAllCamerasAsync();
+                var report = CameraAnalyzer.GenerateReport(cameras);
+                
+                // Also try DirectShow enumeration
+                AddDebugMessage("Trying DirectShow enumeration...");
+                try
+                {
+                    var dsDevices = DirectShowCapture.EnumerateVideoDevices();
+                    report += "\n\n=== DIRECTSHOW DEVICES ===\n";
+                    foreach (var device in dsDevices)
+                    {
+                        report += $"\nDevice: {device.Name}\n";
+                        report += $"Path: {device.DevicePath}\n";
+                        DirectShowCapture.GetDeviceFormats(device);
+                        foreach (var format in device.SupportedFormats)
+                        {
+                            report += $"  - {format}\n";
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    report += $"\nDirectShow enumeration failed: {ex.Message}\n";
+                }
+                
+                // Show report in dialog
+                var textBox = new TextBox
+                {
+                    Text = report,
+                    IsReadOnly = true,
+                    TextWrapping = TextWrapping.Wrap,
+                    AcceptsReturn = true,
+                    FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+                    MinHeight = 400,
+                    MaxHeight = 600
+                };
+                
+                var scrollViewer = new ScrollViewer
+                {
+                    Content = textBox,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+                };
+                
+                var dialog = new ContentDialog
+                {
+                    Title = "Camera Hardware Analysis",
+                    Content = scrollViewer,
+                    PrimaryButtonText = "Save Report",
+                    CloseButtonText = "Close",
+                    XamlRoot = this.Content.XamlRoot,
+                    DefaultButton = ContentDialogButton.Primary
+                };
+                
+                if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+                {
+                    // Save report
+                    var savePicker = new FileSavePicker();
+                    var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                    WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hWnd);
+                    
+                    savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+                    savePicker.FileTypeChoices.Add("Text Files", new List<string>() { ".txt" });
+                    savePicker.SuggestedFileName = $"CameraAnalysis_{DateTime.Now:yyyyMMdd_HHmmss}";
+                    
+                    var file = await savePicker.PickSaveFileAsync();
+                    if (file != null)
+                    {
+                        await FileIO.WriteTextAsync(file, report);
+                        AddDebugMessage($"Report saved to: {file.Path}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowErrorDialog($"Analysis failed: {ex.Message}");
+            }
         }
 
         private async Task CleanupCameraAsync()
