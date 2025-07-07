@@ -116,14 +116,14 @@ MediaFrameReader delivers frames, but WinUI3 Image control doesn't display them 
    - Auto-directory creation
    - First-run detection
 
-4. **Terminal-Style Settings UI IMPLEMENTED**:
-   - Full settings window with Cascadia Mono font
+4. **Settings UI IMPLEMENTED** (needs style update):
+   - Full settings window with Cascadia Mono font (TO CHANGE)
    - Collapsible sections (Storage, PACS, Video, Application)
    - Dynamic help panel - context-sensitive for EVERY field
    - Detailed medical-relevant help texts
    - Browse buttons for path selection
    - Validation with error messages
-   - Professional terminal aesthetic
+   - **NEEDS UPDATE**: Modern Windows Terminal style, not DOS-style!
 
 #### Configuration System Complete:
 - **AppConfig.cs**: Full config class with validation
@@ -160,11 +160,53 @@ MediaFrameReader delivers frames, but WinUI3 Image control doesn't display them 
 - Help: Dictionary<string, (Title, Content)> system
 
 ### Next Session Should:
-1. Debug WebView2 message communication
-2. Fix timeout issues with capture
-3. Implement DICOM export
-4. Add PACS C-STORE functionality
-5. Create persistent queue with SQLite
+1. **UPDATE Settings UI to Modern Windows Terminal Style**
+   - Segoe UI Variable font family
+   - Clean, modern design like Windows Terminal
+   - Subtle animations and transitions
+   - Remove old "terminal" monospace look
+2. **Implement Assistant Mode**
+   - Auto-launch when config empty/invalid
+   - Progressive field highlighting
+   - Green border validation
+   - Can't proceed until valid
+3. Debug WebView2 message communication
+4. Fix timeout issues with capture
+5. Implement DICOM export
+
+### IMPORTANT Design Clarification from Oliver:
+"das mit dem terminal look hast du falsch verstanden bei den settings. das MS Terminal (mit multitab usw, super modern) das hat sogar vom aufbau her den gleichen stil, aber hat mit einer sehr schönen serifenlosen schriftart fett/light und dezenten graubalken usw."
+
+### New Requirements Added:
+- Complete touch operation (no mouse needed)
+- Minimum 44x44px touch targets
+- HTML version identical to native UI
+- Remote management dashboard
+- Glove-friendly for medical use
+- Web-based configuration sync
+
+### 🚨 CRITICAL ARCHITECTURE DISCUSSION for Session 14:
+
+Oliver's suggestion: **"oder alles als html basierte anwendung machen?"**
+
+**Proposal: Full HTML/CSS/JS UI with minimal C# shell**
+- Keep C# only for hardware access (DICOM, PACS, FileSystem)
+- Entire UI as web application (local web server)
+- One codebase for local AND remote UI
+- WebRTC already works perfectly (70 FPS!)
+- Better touch support, modern UI frameworks available
+- Faster development, better tooling
+
+**Architecture:**
+```
+SmartBoxNext.exe (Minimal)
+├── WebView2 Shell (Fullscreen)
+├── Local Web Server (port 5000)
+├── Hardware APIs (exposed to JS)
+└── Static Web Files (HTML/CSS/JS)
+```
+
+**This could be a game-changer! Discuss in Session 14!**
 
 ---
 
