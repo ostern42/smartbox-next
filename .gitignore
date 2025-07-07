@@ -38,3 +38,15 @@ test-output/
 # Local config
 .env
 config.local.json
+
+# WPF/C# build output
+smartbox-wpf/bin/
+smartbox-wpf/obj/
+smartbox-winui3/bin/
+smartbox-winui3/obj/
+*.pdb
+
+# Visual Studio
+.vs/
+*.user
+*.suo

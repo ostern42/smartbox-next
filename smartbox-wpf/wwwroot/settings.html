@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBox Settings</title>
+    <link rel="stylesheet" href="settings.css">
+    <link rel="stylesheet" href="keyboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/segoe-fluent-icons/font/SegoeFluentIcons.css">
+</head>
+<body>
+    <div class="settings-container">
+        <!-- Header -->
+        <header class="settings-header">
+            <button class="back-button" id="backButton">
+                <i class="ms-Icon ms-Icon--Back"></i>
+            </button>
+            <h1>Settings</h1>
+            <div class="header-actions">
+                <button class="save-button" id="saveButton">
+                    <i class="ms-Icon ms-Icon--Save"></i>
+                    <span>Save</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Settings Content -->
+        <div class="settings-content">
+            <nav class="settings-nav">
+                <button class="nav-item active" data-section="storage">
+                    <i class="ms-Icon ms-Icon--FabricFolder"></i>
+                    <span>Storage</span>
+                </button>
+                <button class="nav-item" data-section="pacs">
+                    <i class="ms-Icon ms-Icon--ServerEnviroment"></i>
+                    <span>PACS</span>
+                </button>
+                <button class="nav-item" data-section="video">
+                    <i class="ms-Icon ms-Icon--Video"></i>
+                    <span>Video</span>
+                </button>
+                <button class="nav-item" data-section="application">
+                    <i class="ms-Icon ms-Icon--Settings"></i>
+                    <span>Application</span>
+                </button>
+            </nav>
+
+            <main class="settings-main">
+                <!-- Storage Section -->
+                <section id="storage-section" class="settings-section active">
+                    <h2>Storage Settings</h2>
+                    
+                    <div class="setting-group">
+                        <label for="photos-path">Photos Directory</label>
+                        <div class="input-with-button">
+                            <input type="text" id="photos-path" class="use-keyboard" value="./Data/Photos">
+                            <button class="browse-button" data-for="photos-path">
+                                <i class="ms-Icon ms-Icon--FolderOpen"></i>
+                            </button>
+                        </div>
+                        <p class="help-text">Directory where captured photos will be saved</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="videos-path">Videos Directory</label>
+                        <div class="input-with-button">
+                            <input type="text" id="videos-path" class="use-keyboard" value="./Data/Videos">
+                            <button class="browse-button" data-for="videos-path">
+                                <i class="ms-Icon ms-Icon--FolderOpen"></i>
+                            </button>
+                        </div>
+                        <p class="help-text">Directory where recorded videos will be saved</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="dicom-path">DICOM Directory</label>
+                        <div class="input-with-button">
+                            <input type="text" id="dicom-path" class="use-keyboard" value="./Data/DICOM">
+                            <button class="browse-button" data-for="dicom-path">
+                                <i class="ms-Icon ms-Icon--FolderOpen"></i>
+                            </button>
+                        </div>
+                        <p class="help-text">Directory for DICOM file storage and export queue</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="temp-path">Temporary Directory</label>
+                        <div class="input-with-button">
+                            <input type="text" id="temp-path" class="use-keyboard" value="./Data/Temp">
+                            <button class="browse-button" data-for="temp-path">
+                                <i class="ms-Icon ms-Icon--FolderOpen"></i>
+                            </button>
+                        </div>
+                        <p class="help-text">Directory for temporary files during processing</p>
+                    </div>
+                </section>
+
+                <!-- PACS Section -->
+                <section id="pacs-section" class="settings-section">
+                    <h2>PACS Configuration</h2>
+                    
+                    <div class="setting-group">
+                        <label for="pacs-enabled">Enable PACS</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="pacs-enabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Enable automatic upload to PACS server</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="server-ae">Server AE Title</label>
+                        <input type="text" id="server-ae" class="use-keyboard" value="PACS_SERVER">
+                        <p class="help-text">Application Entity title of the PACS server</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="server-ip">Server IP Address</label>
+                        <input type="text" id="server-ip" class="use-keyboard numeric-input" value="192.168.1.100">
+                        <p class="help-text">IP address of the PACS server</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="server-port">Server Port</label>
+                        <input type="text" id="server-port" class="use-keyboard numeric-input" value="104">
+                        <p class="help-text">DICOM port (usually 104 or 11112)</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="local-ae">Local AE Title</label>
+                        <input type="text" id="local-ae" class="use-keyboard" value="SMARTBOX">
+                        <p class="help-text">This device's Application Entity title</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="local-port">Local Port</label>
+                        <input type="text" id="local-port" class="use-keyboard numeric-input" value="11113">
+                        <p class="help-text">Local port for DICOM communication</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <button class="test-button" id="test-pacs">
+                            <i class="ms-Icon ms-Icon--TestBeaker"></i>
+                            <span>Test Connection</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Video Section -->
+                <section id="video-section" class="settings-section">
+                    <h2>Video Settings</h2>
+                    
+                    <div class="setting-group">
+                        <label for="preferred-width">Preferred Width</label>
+                        <input type="number" id="preferred-width" class="use-keyboard numeric-input" value="1920">
+                        <p class="help-text">Preferred video width in pixels</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="preferred-height">Preferred Height</label>
+                        <input type="number" id="preferred-height" class="use-keyboard numeric-input" value="1080">
+                        <p class="help-text">Preferred video height in pixels</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="preferred-fps">Preferred FPS</label>
+                        <input type="number" id="preferred-fps" class="use-keyboard numeric-input" value="30">
+                        <p class="help-text">Target frames per second (30-60 recommended)</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="video-format">Video Format</label>
+                        <select id="video-format">
+                            <option value="webm">WebM (VP9)</option>
+                            <option value="mp4">MP4 (H.264)</option>
+                        </select>
+                        <p class="help-text">Video recording format</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="video-bitrate">Video Bitrate (Mbps)</label>
+                        <input type="number" id="video-bitrate" class="use-keyboard numeric-input" value="5">
+                        <p class="help-text">Video encoding bitrate in megabits per second</p>
+                    </div>
+                </section>
+
+                <!-- Application Section -->
+                <section id="application-section" class="settings-section">
+                    <h2>Application Settings</h2>
+                    
+                    <div class="setting-group">
+                        <label for="auto-start">Auto-Start Capture</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="auto-start">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Automatically initialize webcam on startup</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="fullscreen">Start Fullscreen</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="fullscreen" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Launch application in fullscreen mode</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="touch-mode">Touch Mode</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="touch-mode" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Enable touch-optimized interface</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="debug-mode">Debug Mode</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="debug-mode">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Show debug information and logs</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="language">Language</label>
+                        <select id="language">
+                            <option value="en">English</option>
+                            <option value="de">Deutsch</option>
+                        </select>
+                        <p class="help-text">User interface language</p>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="settings.js"></script>
+    <script src="keyboard.js"></script>
+</body>
+</html>

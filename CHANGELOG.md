@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Session 17 - 2025-01-07 (WPF Migration Success! 🎉)
+
+#### Added
+- **Complete WPF Application** (`smartbox-wpf/`)
+  - Medical-grade error handling throughout
+  - Robust WebView2 integration that actually works
+  - Comprehensive logging with daily rotation
+  - Power-loss tolerant queue system
+- **Medical Components**:
+  - DicomExporter.cs - DICOM file creation with fo-dicom
+  - PacsSender.cs - PACS C-STORE with retry logic
+  - QueueManager.cs - JSON-based persistent queue (no SQLite!)
+  - QueueProcessor.cs - Background processing with exponential backoff
+- **Emergency Features**:
+  - Emergency patient templates (Notfall männlich/weiblich/Kind)
+  - Queue status monitoring
+  - PACS connection testing
+- **Build Scripts**:
+  - build.bat - Simple build automation
+  - run.bat - Quick start script
+
+#### Changed
+- **MIGRATED FROM WinUI3 TO WPF!** (Best decision ever)
+- Port changed from 5000 to 5111 (5000 blocked by system)
+- Simplified architecture - thin WPF shell + rich HTML UI
+- No more Package.appxmanifest complexity
+- Standard .NET 8 deployment model
+
+#### Fixed
+- No more mysterious WinRT.Runtime exceptions
+- WebView2 message handling now works reliably
+- Window close button actually closes the window
+- Fullscreen mode works (F11 toggle)
+- Settings dialog iframe issues eliminated
+- Standalone deployment now possible
+
+#### Removed
+- WinUI3 dependency completely eliminated
+- MSIX packaging no longer needed
+- Complex async initialization patterns
+- SQLite dependency (JSON queue works perfectly)
+
 ### Session 12 - 2025-01-07 (Video Streaming Fix)
 
 #### Added

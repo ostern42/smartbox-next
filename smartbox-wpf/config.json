@@ -1,0 +1,39 @@
+{
+  "Storage": {
+    "PhotosPath": "./Data/Photos",
+    "VideosPath": "./Data/Videos",
+    "DicomPath": "./Data/DICOM",
+    "QueuePath": "./Data/Queue",
+    "TempPath": "./Data/Temp",
+    "MaxStorageDays": 30,
+    "EnableAutoCleanup": false
+  },
+  "Pacs": {
+    "ServerHost": "",
+    "ServerPort": 104,
+    "CalledAeTitle": "PACS",
+    "CallingAeTitle": "SMARTBOX",
+    "Timeout": 30,
+    "EnableTls": false,
+    "MaxRetries": 3,
+    "RetryDelay": 5
+  },
+  "Video": {
+    "DefaultResolution": "1280x720",
+    "DefaultFrameRate": 30,
+    "DefaultQuality": 85,
+    "EnableHardwareAcceleration": true,
+    "PreferredCamera": ""
+  },
+  "Application": {
+    "Language": "de-DE",
+    "Theme": "Light",
+    "EnableTouchKeyboard": true,
+    "EnableDebugMode": false,
+    "AutoStartCapture": true,
+    "WebServerPort": 5111,
+    "EnableRemoteAccess": false,
+    "HideExitButton": false,
+    "EnableEmergencyTemplates": true
+  }
+}
