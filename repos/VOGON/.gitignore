@@ -1,0 +1,30 @@
+# Build outputs
+bin/
+obj/
+out/
+build/
+
+# IDE files
+.vs/
+.vscode/
+*.user
+*.suo
+*.cache
+*.log
+
+# Dependencies
+packages/
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+~*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Configuration
+*.local.json
+config.local.json

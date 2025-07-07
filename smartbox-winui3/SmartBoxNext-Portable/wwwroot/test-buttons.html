@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Button Test</title>
+</head>
+<body>
+    <h1>Testing Buttons</h1>
+    <button onclick="testSettings()">Test Settings</button>
+    <button onclick="testLogs()">Test Logs</button>
+    <button onclick="testWebView()">Test WebView</button>
+    
+    <script>
+        function testSettings() {
+            alert('Settings button works!');
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage({
+                    action: 'openSettings',
+                    data: {},
+                    timestamp: new Date().toISOString()
+                });
+                alert('Message sent to WebView2');
+            } else {
+                alert('WebView2 not available');
+            }
+        }
+        
+        function testLogs() {
+            alert('Logs button works!');
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage({
+                    action: 'openLogs',
+                    data: {},
+                    timestamp: new Date().toISOString()
+                });
+                alert('Message sent to WebView2');
+            } else {
+                alert('WebView2 not available');
+            }
+        }
+        
+        function testWebView() {
+            if (window.chrome && window.chrome.webview) {
+                alert('WebView2 is available!');
+            } else {
+                alert('WebView2 is NOT available - running in browser mode');
+            }
+        }
+    </script>
+</body>
+</html>

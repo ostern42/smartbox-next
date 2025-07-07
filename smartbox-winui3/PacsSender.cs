@@ -10,6 +10,34 @@ namespace SmartBoxNext
 {
     public class PacsSender
     {
+        public async Task<bool> TestConnection(string serverAe, string serverIp, int serverPort, string localAe)
+        {
+            try
+            {
+                var client = DicomClientFactory.Create(serverIp, serverPort, false, localAe, serverAe);
+                
+                // Create C-ECHO request for testing
+                var request = new DicomCEchoRequest();
+                bool success = false;
+                
+                request.OnResponseReceived += (req, response) =>
+                {
+                    if (response.Status == DicomStatus.Success)
+                    {
+                        success = true;
+                    }
+                };
+                
+                await client.AddRequestAsync(request);
+                await client.SendAsync();
+                
+                return success;
+            }
+            catch
+            {
+                return false;
+            }
+        }
         public static async Task<bool> SendDicomFileAsync(StorageFile dicomFile, PacsSettings settings)
         {
             try

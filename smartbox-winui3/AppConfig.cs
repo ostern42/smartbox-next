@@ -34,6 +34,7 @@ namespace SmartBoxNext
             public string DicomPath { get; set; } = "./Data/DICOM";
             public string TempPath { get; set; } = "./Data/Temp";
             public string QueuePath { get; set; } = "./Data/Queue";
+            public string LogsPath { get; set; } = "./logs";
             public bool UseRelativePaths { get; set; } = true;
             public long MaxStorageSizeMB { get; set; } = 10240; // 10 GB default
             public int RetentionDays { get; set; } = 30;

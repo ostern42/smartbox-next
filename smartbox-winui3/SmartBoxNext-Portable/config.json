@@ -1,0 +1,40 @@
+{
+  "storage": {
+    "photosPath": "./Data/Photos",
+    "videosPath": "./Data/Videos",
+    "dicomPath": "./Data/DICOM",
+    "tempPath": "./Data/Temp",
+    "queuePath": "./Data/Queue",
+    "useRelativePaths": true,
+    "maxStorageSizeMB": 10240,
+    "retentionDays": 30
+  },
+  "pacs": {
+    "aeTitle": "SMARTBOX",
+    "remoteAeTitle": "PACS",
+    "remoteHost": "localhost",
+    "remotePort": 104,
+    "localPort": 0,
+    "timeoutSeconds": 30,
+    "useTls": false
+  },
+  "application": {
+    "language": "en-US",
+    "theme": "System",
+    "showDebugInfo": false,
+    "autoStartCapture": true,
+    "minimizeToTray": true,
+    "startWithWindows": false,
+    "defaultModality": "ES"
+  },
+  "video": {
+    "preferredWidth": 1920,
+    "preferredHeight": 1080,
+    "preferredFps": 60,
+    "videoBitrateMbps": 5,
+    "videoFormat": "webm",
+    "jpegQuality": 95
+  },
+  "isFirstRun": false,
+  "lastConfigUpdate": "2025-07-07T11:32:53.6849766Z"
+}
