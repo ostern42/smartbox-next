@@ -6,6 +6,8 @@ using FellowOakDicom.Imaging;
 using FellowOakDicom.Imaging.Codec;
 using FellowOakDicom.IO.Buffer;
 using Microsoft.Extensions.Logging;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace SmartBoxNext
 {
@@ -118,10 +120,10 @@ namespace SmartBoxNext
         {
             try
             {
-                // For now, create a simple test pattern
-                // In production, you would decode the JPEG using a library like ImageSharp
-                var width = (ushort)640;
-                var height = (ushort)480;
+                // Load the JPEG image using ImageSharp
+                using var image = Image.Load<Rgb24>(jpegData);
+                var width = (ushort)image.Width;
+                var height = (ushort)image.Height;
                 
                 // Set image attributes
                 dataset.AddOrUpdate(DicomTag.Columns, width);
@@ -134,26 +136,28 @@ namespace SmartBoxNext
                 dataset.AddOrUpdate(DicomTag.PhotometricInterpretation, "RGB");
                 dataset.AddOrUpdate(DicomTag.PlanarConfiguration, (ushort)0);
                 
-                // Create a simple test pattern (gray image)
+                // Convert image to RGB byte array
                 var pixelData = new byte[width * height * 3];
-                for (int i = 0; i < pixelData.Length; i += 3)
+                var index = 0;
+                
+                for (int y = 0; y < height; y++)
                 {
-                    pixelData[i] = 128;     // R
-                    pixelData[i + 1] = 128; // G
-                    pixelData[i + 2] = 128; // B
+                    for (int x = 0; x < width; x++)
+                    {
+                        var pixel = image[x, y];
+                        pixelData[index++] = pixel.R;
+                        pixelData[index++] = pixel.G;
+                        pixelData[index++] = pixel.B;
+                    }
                 }
                 
                 // Add pixel data to dataset
                 var buffer = new MemoryByteBuffer(pixelData);
                 dataset.AddOrUpdate(DicomTag.PixelData, buffer);
                 
-                _logger.LogDebug("Added test pixel data: {Width}x{Height}", width, height);
+                _logger.LogDebug("Added pixel data from JPEG: {Width}x{Height}", width, height);
                 
-                // TODO: In production, use ImageSharp or similar to decode JPEG:
-                // using var image = Image.Load<Rgb24>(jpegData);
-                // width = (ushort)image.Width;
-                // height = (ushort)image.Height;
-                // ... convert to RGB byte array ...
+                await Task.CompletedTask; // Keep async signature
             }
             catch (Exception ex)
             {

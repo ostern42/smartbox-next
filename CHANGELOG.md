@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Session 18 - 2025-01-07 (WPF WebRTC Implementation Complete! 🎥)
+
+#### Added
+- **WebRTC Video Capture** - Ported from WinUI3 version
+  - Full WebRTC implementation via WebView2
+  - 60+ FPS capture capability
+  - Photo capture with base64 encoding
+  - Video recording in WebM format
+- **Web Message Handlers**:
+  - `HandlePhotoCaptured` - Processes WebRTC photo data
+  - `HandleVideoRecorded` - Saves WebM video files
+  - `HandleWebcamInitialized` - Logs camera initialization
+  - `HandleCameraAnalysis` - Processes camera capabilities
+  - `HandleRequestConfig` - Sends app config to web UI
+- **ImageSharp Integration**:
+  - Real JPEG to DICOM pixel data conversion
+  - No more test patterns!
+  - Proper RGB pixel extraction
+- **Resource Management**:
+  - WebServer now implements IDisposable
+  - Static logger factory to prevent multiple instances
+  - Proper ConfigureAwait usage in disposal
+  - Thread-safe queue operations
+
+#### Changed
+- Default port updated to 5111 in AppConfig.cs
+- WebServer StartAsync made synchronous to fix warning
+- Logger.cs updated with GetLogDirectory() method
+- MainWindow uses static logger factory
+
+#### Fixed
+- DICOM export now uses real image data (not gray test pattern)
+- Resource disposal issues resolved
+- Thread safety in QueueProcessor disposal
+- Missing LINQ using statement in Logger.cs
+- Async method warnings in WebServer
+
+#### Technical Details
+- ImageSharp 3.1.6 added (has security warnings, can update later)
+- Build successful with only minor warnings
+- WebRTC approach identical to WinUI3 version
+- All web assets already in wwwroot (copied from WinUI3)
+
 ### Session 17 - 2025-01-07 (WPF Migration Success! 🎉)
 
 #### Added

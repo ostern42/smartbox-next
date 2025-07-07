@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -167,6 +168,14 @@ namespace SmartBoxNext
             {
                 return Array.Empty<string>();
             }
+        }
+        
+        /// <summary>
+        /// Get the log directory path
+        /// </summary>
+        public static string GetLogDirectory()
+        {
+            return _logDirectory;
         }
     }
 }

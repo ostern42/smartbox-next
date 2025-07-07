@@ -170,7 +170,15 @@ namespace SmartBoxNext
         
         public void Dispose()
         {
-            StopAsync().Wait(TimeSpan.FromSeconds(10));
+            try
+            {
+                StopAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                // Log but don't throw during disposal
+                Console.WriteLine($"Error during QueueProcessor disposal: {ex.Message}");
+            }
         }
     }
 }

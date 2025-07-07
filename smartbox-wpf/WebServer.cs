@@ -11,7 +11,7 @@ namespace SmartBoxNext
     /// <summary>
     /// Lightweight web server for serving the HTML/CSS/JS UI
     /// </summary>
-    public class WebServer
+    public class WebServer : IDisposable
     {
         private readonly string _rootPath;
         private readonly int _port;
@@ -56,7 +56,7 @@ namespace SmartBoxNext
             }
         }
         
-        public async Task StartAsync()
+        public Task StartAsync()
         {
             if (_listener != null)
             {
@@ -74,6 +74,7 @@ namespace SmartBoxNext
                 _logger.LogInformation("Web server started on port {Port}, serving from {Root}", _port, _rootPath);
                 
                 _listenerTask = Task.Run(() => ListenAsync(_cancellationTokenSource.Token));
+                return Task.CompletedTask;
             }
             catch (HttpListenerException ex)
             {
@@ -294,6 +295,12 @@ namespace SmartBoxNext
             await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
             
             _logger.LogWarning("404 Not Found");
+        }
+        
+        public void Dispose()
+        {
+            StopAsync().Wait(TimeSpan.FromSeconds(5));
+            _cancellationTokenSource?.Dispose();
         }
     }
 }

@@ -25,17 +25,18 @@ namespace SmartBoxNext
         private QueueProcessor? _queueProcessor;
         private bool _isInitialized = false;
         
+        private static readonly ILoggerFactory _loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.AddConsole();
+            builder.SetMinimumLevel(LogLevel.Debug);
+        });
+        
         public MainWindow()
         {
             InitializeComponent();
             
             // Initialize logger
-            var loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder.AddConsole();
-                builder.SetMinimumLevel(LogLevel.Debug);
-            });
-            _logger = loggerFactory.CreateLogger<MainWindow>();
+            _logger = _loggerFactory.CreateLogger<MainWindow>();
             
             // Set up keyboard shortcuts
             this.PreviewKeyDown += MainWindow_PreviewKeyDown;
@@ -247,8 +248,16 @@ namespace SmartBoxNext
                     await OpenSettings();
                     break;
                     
+                case "photoCaptured":
+                    await HandlePhotoCaptured(message);
+                    break;
+                    
                 case "savephoto":
                     await SavePhoto(message);
+                    break;
+                    
+                case "videoRecorded":
+                    await HandleVideoRecorded(message);
                     break;
                     
                 case "savevideo":
@@ -267,6 +276,18 @@ namespace SmartBoxNext
                     await TestWebView();
                     break;
                     
+                case "webcamInitialized":
+                    await HandleWebcamInitialized(message);
+                    break;
+                    
+                case "cameraAnalysis":
+                    await HandleCameraAnalysis(message);
+                    break;
+                    
+                case "requestConfig":
+                    await HandleRequestConfig();
+                    break;
+                    
                 case "updateconfig":
                     await UpdateConfiguration(message);
                     break;
@@ -282,7 +303,7 @@ namespace SmartBoxNext
         {
             try
             {
-                var logsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+                var logsPath = Logger.GetLogDirectory();
                 Directory.CreateDirectory(logsPath);
                 
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -317,43 +338,139 @@ namespace SmartBoxNext
             }
         }
         
-        private async Task SavePhoto(JObject message)
+        private async Task HandlePhotoCaptured(JObject message)
         {
             try
             {
-                var imageData = message["data"]?["imageData"]?.ToString();
-                var patientInfo = message["data"]?["patientInfo"];
+                var data = message["data"];
+                var imageData = data?["imageData"]?.ToString();
+                var timestamp = data?["timestamp"]?.ToString();
+                var patient = data?["patient"];
                 
                 if (string.IsNullOrEmpty(imageData))
                 {
                     throw new ArgumentException("No image data provided");
                 }
                 
-                // Remove data URL prefix if present
-                if (imageData.StartsWith("data:image"))
-                {
-                    imageData = imageData.Substring(imageData.IndexOf(',') + 1);
-                }
-                
+                // Convert base64 to bytes
                 var imageBytes = Convert.FromBase64String(imageData);
                 
-                // Generate filename
-                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                var patientId = patientInfo?["patientId"]?.ToString() ?? "Unknown";
-                var filename = $"{patientId}_{timestamp}.jpg";
+                // Save to configured photo directory
+                var photoDir = _config!.Storage.PhotosPath;
+                Directory.CreateDirectory(photoDir);
                 
-                var photoPath = Path.Combine(_config!.Storage.PhotosPath, filename);
-                Directory.CreateDirectory(Path.GetDirectoryName(photoPath)!);
+                var fileName = $"IMG_{DateTime.Now:yyyyMMdd_HHmmss}.jpg";
+                var filePath = Path.Combine(photoDir, fileName);
                 
-                await File.WriteAllBytesAsync(photoPath, imageBytes);
+                await File.WriteAllBytesAsync(filePath, imageBytes);
                 
-                _logger.LogInformation("Photo saved: {Path}", photoPath);
-                await SendSuccessToWebView($"Photo saved: {filename}");
+                _logger.LogInformation("Photo saved: {Path}", filePath);
+                await SendMessageToWebView(new
+                {
+                    action = "log",
+                    data = new
+                    {
+                        message = $"Photo saved: {fileName}",
+                        level = "info"
+                    }
+                });
+                
+                // If DICOM export is requested
+                if (patient != null)
+                {
+                    var patientInfo = new PatientInfo
+                    {
+                        PatientId = patient["id"]?.ToString(),
+                        FirstName = ExtractFirstName(patient["name"]?.ToString()),
+                        LastName = ExtractLastName(patient["name"]?.ToString()),
+                        BirthDate = ParseBirthDate(patient["birthDate"]?.ToString()),
+                        Gender = patient["gender"]?.ToString(),
+                        StudyDescription = patient["studyDescription"]?.ToString()
+                    };
+                    
+                    // Export as DICOM if configured
+                    if (_config.Application.AutoExportDicom)
+                    {
+                        var dicomPath = await _dicomExporter!.ExportDicomAsync(imageBytes, patientInfo);
+                        _queueManager!.Enqueue(dicomPath, patientInfo);
+                    }
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to save photo");
                 await SendErrorToWebView($"Failed to save photo: {ex.Message}");
+            }
+        }
+        
+        private string? ExtractFirstName(string? fullName)
+        {
+            if (string.IsNullOrEmpty(fullName)) return null;
+            var parts = fullName.Split(',');
+            return parts.Length > 1 ? parts[1].Trim() : null;
+        }
+        
+        private string? ExtractLastName(string? fullName)
+        {
+            if (string.IsNullOrEmpty(fullName)) return null;
+            var parts = fullName.Split(',');
+            return parts[0].Trim();
+        }
+        
+        private DateTime? ParseBirthDate(string? dateStr)
+        {
+            if (string.IsNullOrEmpty(dateStr)) return null;
+            return DateTime.TryParse(dateStr, out var date) ? date : null;
+        }
+        
+        private async Task SavePhoto(JObject message)
+        {
+            // Legacy handler - redirect to new handler
+            await HandlePhotoCaptured(message);
+        }
+        
+        private async Task HandleVideoRecorded(JObject message)
+        {
+            try
+            {
+                var data = message["data"];
+                var videoData = data?["videoData"]?.ToString();
+                var timestamp = data?["timestamp"]?.ToString();
+                var patient = data?["patient"];
+                var duration = data?["duration"]?.Value<double>() ?? 0;
+                
+                if (string.IsNullOrEmpty(videoData))
+                {
+                    throw new ArgumentException("No video data provided");
+                }
+                
+                // Convert base64 to bytes
+                var videoBytes = Convert.FromBase64String(videoData);
+                
+                // Save to configured video directory
+                var videoDir = _config!.Storage.VideosPath;
+                Directory.CreateDirectory(videoDir);
+                
+                var fileName = $"VID_{DateTime.Now:yyyyMMdd_HHmmss}.webm";
+                var filePath = Path.Combine(videoDir, fileName);
+                
+                await File.WriteAllBytesAsync(filePath, videoBytes);
+                
+                _logger.LogInformation("Video saved: {Path} (Duration: {Duration}s)", filePath, duration);
+                await SendMessageToWebView(new
+                {
+                    action = "log",
+                    data = new
+                    {
+                        message = $"Video saved: {fileName} (Duration: {duration:F1}s)",
+                        level = "info"
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save video");
+                await SendErrorToWebView($"Failed to save video: {ex.Message}");
             }
         }
         
@@ -741,6 +858,79 @@ namespace SmartBoxNext
             {
                 _logger.LogError(ex, "Failed to test PACS connection");
                 await SendErrorToWebView($"Failed to test PACS connection: {ex.Message}");
+            }
+        }
+        
+        private async Task HandleWebcamInitialized(JObject message)
+        {
+            try
+            {
+                var data = message["data"];
+                var width = data?["width"]?.Value<int>() ?? 0;
+                var height = data?["height"]?.Value<int>() ?? 0;
+                var frameRate = data?["frameRate"]?.Value<double>() ?? 0;
+                
+                _logger.LogInformation("Webcam initialized: {Width}x{Height} @ {FrameRate}fps", width, height, frameRate);
+                await SendMessageToWebView(new
+                {
+                    action = "log",
+                    data = new
+                    {
+                        message = $"Webcam initialized: {width}x{height} @ {frameRate}fps",
+                        level = "info"
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to handle webcam initialization");
+            }
+        }
+        
+        private async Task HandleCameraAnalysis(JObject message)
+        {
+            try
+            {
+                var data = message["data"];
+                _logger.LogInformation("Camera analysis received");
+                
+                // Log camera capabilities
+                await SendMessageToWebView(new
+                {
+                    action = "log",
+                    data = new
+                    {
+                        message = "Camera analysis completed",
+                        level = "info"
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to handle camera analysis");
+            }
+        }
+        
+        private async Task HandleRequestConfig()
+        {
+            try
+            {
+                await SendMessageToWebView(new
+                {
+                    action = "updateConfig",
+                    data = new
+                    {
+                        autoStartWebcam = _config!.Application.AutoStartCapture,
+                        defaultFrameRate = _config.Video.DefaultFrameRate,
+                        defaultResolution = _config.Video.DefaultResolution,
+                        photoFormat = "jpeg",
+                        videoFormat = "webm"
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send configuration");
             }
         }
     }

@@ -58,7 +58,7 @@ namespace SmartBoxNext
                     EnableTouchKeyboard = true,
                     EnableDebugMode = false,
                     AutoStartCapture = true,
-                    WebServerPort = 5000,
+                    WebServerPort = 5111,
                     EnableRemoteAccess = false,
                     HideExitButton = false,
                     EnableEmergencyTemplates = true
@@ -110,5 +110,6 @@ namespace SmartBoxNext
         public bool EnableRemoteAccess { get; set; } = false;
         public bool HideExitButton { get; set; } = false;
         public bool EnableEmergencyTemplates { get; set; } = true;
+        public bool AutoExportDicom { get; set; } = false;
     }
 }
