@@ -62,7 +62,6 @@ namespace SmartBoxNext
                 // Start web server
                 _webServer = new WebServer("wwwroot", _config.Application.WebServerPort);
                 await _webServer.StartAsync();
-                _logger.LogInformation("Web server started on port {Port}", _config.Application.WebServerPort);
                 
                 UpdateStatus("Initializing medical components...");
                 

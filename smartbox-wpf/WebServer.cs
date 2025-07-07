@@ -4,28 +4,24 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 
 namespace SmartBoxNext
 {
-    /// <summary>
-    /// Lightweight web server for serving the HTML/CSS/JS UI
-    /// </summary>
-    public class WebServer : IDisposable
+    public class WebServer
     {
+        private readonly HttpListener _listener;
         private readonly string _rootPath;
         private readonly int _port;
-        private readonly ILogger<WebServer> _logger;
-        private HttpListener? _listener;
-        private CancellationTokenSource? _cancellationTokenSource;
-        private Task? _listenerTask;
-        
-        private static readonly Dictionary<string, string> MimeTypes = new()
+        private CancellationTokenSource _cancellationTokenSource;
+        private Task _serverTask;
+
+        private readonly Dictionary<string, string> _mimeTypes = new()
         {
-            { ".html", "text/html; charset=utf-8" },
-            { ".css", "text/css; charset=utf-8" },
-            { ".js", "application/javascript; charset=utf-8" },
-            { ".json", "application/json; charset=utf-8" },
+            { ".html", "text/html" },
+            { ".css", "text/css" },
+            { ".js", "application/javascript" },
+            { ".json", "application/json" },
             { ".png", "image/png" },
             { ".jpg", "image/jpeg" },
             { ".jpeg", "image/jpeg" },
@@ -37,270 +33,124 @@ namespace SmartBoxNext
             { ".ttf", "font/ttf" },
             { ".otf", "font/otf" }
         };
-        
-        public WebServer(string rootPath, int port)
+
+        public WebServer(string rootPath, int port = 5000)
         {
-            _rootPath = Path.GetFullPath(rootPath);
+            _rootPath = rootPath;
             _port = port;
-            
-            var loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder.AddConsole();
-                builder.SetMinimumLevel(LogLevel.Debug);
-            });
-            _logger = loggerFactory.CreateLogger<WebServer>();
-            
-            if (!Directory.Exists(_rootPath))
-            {
-                throw new DirectoryNotFoundException($"Web root directory not found: {_rootPath}");
-            }
-        }
-        
-        public Task StartAsync()
-        {
-            if (_listener != null)
-            {
-                throw new InvalidOperationException("Web server is already running");
-            }
-            
-            _cancellationTokenSource = new CancellationTokenSource();
             _listener = new HttpListener();
             _listener.Prefixes.Add($"http://localhost:{_port}/");
             _listener.Prefixes.Add($"http://127.0.0.1:{_port}/");
-            
-            try
-            {
-                _listener.Start();
-                _logger.LogInformation("Web server started on port {Port}, serving from {Root}", _port, _rootPath);
-                
-                _listenerTask = Task.Run(() => ListenAsync(_cancellationTokenSource.Token));
-                return Task.CompletedTask;
-            }
-            catch (HttpListenerException ex)
-            {
-                _logger.LogError(ex, "Failed to start web server. Port {Port} may be in use.", _port);
-                _listener?.Close();
-                _listener = null;
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = null;
-                throw new InvalidOperationException($"Failed to start web server on port {_port}. The port may be in use.", ex);
-            }
         }
-        
-        public async Task StopAsync()
+
+        public async Task StartAsync()
         {
-            if (_listener == null)
-            {
+            if (_listener.IsListening)
                 return;
-            }
+
+            _cancellationTokenSource = new CancellationTokenSource();
+            _listener.Start();
             
-            _logger.LogInformation("Stopping web server...");
-            
-            try
+            _serverTask = Task.Run(async () =>
             {
-                _cancellationTokenSource?.Cancel();
-                
-                if (_listener.IsListening)
-                {
-                    _listener.Stop();
-                }
-                _listener.Close();
-                
-                if (_listenerTask != null)
+                while (!_cancellationTokenSource.Token.IsCancellationRequested)
                 {
                     try
                     {
-                        await _listenerTask;
+                        var context = await _listener.GetContextAsync();
+                        _ = Task.Run(() => HandleRequestAsync(context));
                     }
-                    catch (OperationCanceledException)
+                    catch (HttpListenerException) when (_cancellationTokenSource.Token.IsCancellationRequested)
                     {
-                        // Expected when cancelling
+                        // Expected when stopping the server
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Server error: {ex.Message}");
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error stopping web server");
-            }
-            finally
-            {
-                _listener = null;
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = null;
-            }
-            
-            _logger.LogInformation("Web server stopped");
+            }, _cancellationTokenSource.Token);
+
+            Console.WriteLine($"Web server started on http://localhost:{_port}");
         }
-        
-        private async Task ListenAsync(CancellationToken cancellationToken)
+
+        public async Task StopAsync()
         {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                try
-                {
-                    var contextTask = _listener!.GetContextAsync();
-                    var completedTask = await Task.WhenAny(contextTask, Task.Delay(-1, cancellationToken));
-                    
-                    if (completedTask == contextTask)
-                    {
-                        var context = await contextTask;
-                        _ = Task.Run(() => HandleRequestAsync(context), cancellationToken);
-                    }
-                }
-                catch (ObjectDisposedException)
-                {
-                    // Expected when stopping
-                    break;
-                }
-                catch (HttpListenerException ex) when (ex.ErrorCode == 995)
-                {
-                    // Expected when stopping on Windows
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error in web server listener");
-                }
-            }
+            if (!_listener.IsListening)
+                return;
+
+            _cancellationTokenSource?.Cancel();
+            _listener.Stop();
+            
+            if (_serverTask != null)
+                await _serverTask;
+
+            _cancellationTokenSource?.Dispose();
+            Console.WriteLine("Web server stopped");
         }
-        
+
         private async Task HandleRequestAsync(HttpListenerContext context)
         {
+            var request = context.Request;
+            var response = context.Response;
+
             try
             {
-                var request = context.Request;
-                var response = context.Response;
-                
-                _logger.LogDebug("Request: {Method} {Url}", request.HttpMethod, request.Url?.AbsolutePath);
-                
-                // Set CORS headers for local development
-                response.Headers.Add("Access-Control-Allow-Origin", "*");
-                response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-                response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
-                
-                if (request.HttpMethod == "OPTIONS")
-                {
-                    response.StatusCode = 204;
-                    response.Close();
-                    return;
-                }
-                
-                // Get the requested file path
-                var urlPath = request.Url?.AbsolutePath ?? "/";
-                if (urlPath == "/")
-                {
-                    urlPath = "/index.html";
-                }
-                
+                // Get the requested path
+                var path = request.Url.LocalPath;
+                if (path == "/")
+                    path = "/index.html";
+
                 // Security: Prevent directory traversal
-                urlPath = urlPath.Replace("..", "").Replace("//", "/");
+                path = path.Replace("..", "").Replace("//", "/");
                 
-                var filePath = Path.Combine(_rootPath, urlPath.TrimStart('/'));
-                
+                var filePath = Path.Combine(_rootPath, path.TrimStart('/'));
+
                 if (File.Exists(filePath))
                 {
-                    await ServeFileAsync(filePath, response);
+                    // Serve the file
+                    var extension = Path.GetExtension(filePath).ToLower();
+                    if (_mimeTypes.TryGetValue(extension, out var mimeType))
+                    {
+                        response.ContentType = mimeType;
+                    }
+                    else
+                    {
+                        response.ContentType = "application/octet-stream";
+                    }
+
+                    var fileBytes = await File.ReadAllBytesAsync(filePath);
+                    response.ContentLength64 = fileBytes.Length;
+                    
+                    await response.OutputStream.WriteAsync(fileBytes, 0, fileBytes.Length);
                 }
                 else
                 {
-                    await Serve404Async(response);
+                    // 404 Not Found
+                    response.StatusCode = 404;
+                    var errorMessage = Encoding.UTF8.GetBytes("404 - File not found");
+                    response.ContentLength64 = errorMessage.Length;
+                    await response.OutputStream.WriteAsync(errorMessage, 0, errorMessage.Length);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error handling request");
-                
-                try
-                {
-                    context.Response.StatusCode = 500;
-                    var buffer = Encoding.UTF8.GetBytes("Internal Server Error");
-                    await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
-                }
-                catch
-                {
-                    // Best effort
-                }
+                // 500 Internal Server Error
+                response.StatusCode = 500;
+                var errorMessage = Encoding.UTF8.GetBytes($"500 - Internal server error: {ex.Message}");
+                response.ContentLength64 = errorMessage.Length;
+                await response.OutputStream.WriteAsync(errorMessage, 0, errorMessage.Length);
             }
             finally
             {
-                try
-                {
-                    context.Response.Close();
-                }
-                catch
-                {
-                    // Best effort
-                }
+                response.OutputStream.Close();
             }
         }
-        
-        private async Task ServeFileAsync(string filePath, HttpListenerResponse response)
+
+        public string GetServerUrl()
         {
-            var extension = Path.GetExtension(filePath).ToLowerInvariant();
-            
-            if (MimeTypes.TryGetValue(extension, out var mimeType))
-            {
-                response.ContentType = mimeType;
-            }
-            else
-            {
-                response.ContentType = "application/octet-stream";
-            }
-            
-            // Set caching headers
-            if (extension == ".html")
-            {
-                response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
-            }
-            else
-            {
-                response.Headers.Add("Cache-Control", "public, max-age=3600");
-            }
-            
-            var fileInfo = new FileInfo(filePath);
-            response.ContentLength64 = fileInfo.Length;
-            response.StatusCode = 200;
-            
-            using (var fileStream = File.OpenRead(filePath))
-            {
-                await fileStream.CopyToAsync(response.OutputStream);
-            }
-            
-            _logger.LogDebug("Served file: {File} ({Size} bytes)", filePath, fileInfo.Length);
-        }
-        
-        private async Task Serve404Async(HttpListenerResponse response)
-        {
-            response.StatusCode = 404;
-            response.ContentType = "text/html; charset=utf-8";
-            
-            var html = @"<!DOCTYPE html>
-<html>
-<head>
-    <title>404 - Not Found</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding: 50px; }
-        h1 { color: #0078D4; }
-    </style>
-</head>
-<body>
-    <h1>404 - Page Not Found</h1>
-    <p>The requested resource was not found.</p>
-    <a href='/'>Return to Home</a>
-</body>
-</html>";
-            
-            var buffer = Encoding.UTF8.GetBytes(html);
-            response.ContentLength64 = buffer.Length;
-            await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
-            
-            _logger.LogWarning("404 Not Found");
-        }
-        
-        public void Dispose()
-        {
-            StopAsync().Wait(TimeSpan.FromSeconds(5));
-            _cancellationTokenSource?.Dispose();
+            return $"http://localhost:{_port}";
         }
     }
 }
