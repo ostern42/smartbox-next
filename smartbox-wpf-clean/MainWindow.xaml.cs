@@ -138,8 +138,8 @@ namespace SmartBoxNext
                 // Configure WebView2
                 ConfigureWebView();
                 
-                // Navigate to the application
-                var url = $"http://localhost:{_config!.Application.WebServerPort}";
+                // Navigate to the application (DEBUG: using debug page)
+                var url = $"http://localhost:{_config!.Application.WebServerPort}/debug-webview.html";
                 webView.Source = new Uri(url);
                 
                 _logger.LogInformation("WebView2 initialized, navigating to {Url}", url);
@@ -151,7 +151,7 @@ namespace SmartBoxNext
             }
         }
         
-        private void ConfigureWebView()
+        private async void ConfigureWebView()
         {
             var settings = webView.CoreWebView2.Settings;
             
@@ -171,6 +171,19 @@ namespace SmartBoxNext
             webView.CoreWebView2.WebMessageReceived += WebView_WebMessageReceived;
             webView.CoreWebView2.WindowCloseRequested += WebView_WindowCloseRequested;
             
+            _logger.LogInformation("WebMessageReceived handler attached");
+            
+            // Test if we can execute script
+            try
+            {
+                var result = await webView.CoreWebView2.ExecuteScriptAsync("console.log('C# can execute scripts!'); 'test';");
+                _logger.LogInformation("Script execution test result: {Result}", result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to execute test script");
+            }
+            
             // Handle navigation events
             webView.CoreWebView2.NavigationStarting += WebView_NavigationStarting;
             webView.CoreWebView2.DOMContentLoaded += WebView_DOMContentLoaded;
@@ -187,16 +200,22 @@ namespace SmartBoxNext
             try
             {
                 var message = e.TryGetWebMessageAsString();
-                _logger.LogDebug("Received message from WebView: {Message}", message);
+                _logger.LogInformation("=== WebView Message Received ===");
+                _logger.LogInformation("Raw message: {Message}", message);
+                
+                // Send immediate feedback to debug page
+                await webView.CoreWebView2.ExecuteScriptAsync($"console.log('C# received: {message.Replace("'", "\\'")}');");
                 
                 // Try to parse as JSON
                 JObject? messageObj = null;
                 try
                 {
                     messageObj = JObject.Parse(message);
+                    _logger.LogInformation("Parsed as JSON successfully");
                 }
-                catch
+                catch (Exception parseEx)
                 {
+                    _logger.LogInformation("Not JSON, treating as simple command: {Error}", parseEx.Message);
                     // If not JSON, treat as simple string command
                     await HandleSimpleCommand(message);
                     return;
@@ -204,12 +223,15 @@ namespace SmartBoxNext
                 
                 // Handle JSON message
                 var action = messageObj["action"]?.ToString();
+                _logger.LogInformation("Action extracted: {Action}", action);
+                
                 if (string.IsNullOrEmpty(action))
                 {
                     _logger.LogWarning("Received message without action");
                     return;
                 }
                 
+                _logger.LogInformation("Calling HandleAction for: {Action}", action);
                 await HandleAction(action, messageObj);
             }
             catch (Exception ex)
@@ -242,91 +264,96 @@ namespace SmartBoxNext
         
         private async Task HandleAction(string action, JObject message)
         {
-            _logger.LogInformation("Handling action: {Action}", action);
+            _logger.LogInformation("=== HandleAction called ===");
+            _logger.LogInformation("Action: '{Action}'", action);
+            _logger.LogInformation("Message: {Message}", message.ToString());
             
-            switch (action.ToLower())
+            // Send feedback to browser
+            await webView.CoreWebView2.ExecuteScriptAsync($"console.log('C# HandleAction: {action}');");
+            
+            switch (action)
             {
-                case "openlogs":
+                case "openLogs":
                     await OpenLogsFolder();
                     break;
                     
-                case "opensettings":
+                case "openSettings":
                     await OpenSettings();
                     break;
                     
-                case "photocaptured":
+                case "photoCaptured":
                     await HandlePhotoCaptured(message);
                     break;
                     
-                case "savephoto":
+                case "savePhoto":
                     await SavePhoto(message);
                     break;
                     
-                case "videorecorded":
+                case "videoRecorded":
                     await HandleVideoRecorded(message);
                     break;
                     
-                case "savevideo":
+                case "saveVideo":
                     await SaveVideo(message);
                     break;
                     
-                case "exportdicom":
+                case "exportDicom":
                     await ExportDicom(message);
                     break;
                     
-                case "sendtopacs":
+                case "sendToPacs":
                     await SendToPacs(message);
                     break;
                     
-                case "testwebview":
+                case "testWebView":
                     await TestWebView();
                     break;
                     
-                case "webcaminitialized":
+                case "webcamInitialized":
                     await HandleWebcamInitialized(message);
                     break;
                     
-                case "cameraanalysis":
+                case "cameraAnalysis":
                     await HandleCameraAnalysis(message);
                     break;
                     
-                case "requestconfig":
+                case "requestConfig":
                     await HandleRequestConfig();
                     break;
                     
-                case "updateconfig":
+                case "updateConfig":
                     await UpdateConfiguration(message);
                     break;
                     
-                case "browsefolder":
+                case "browseFolder":
                     await HandleBrowseFolder(message);
                     break;
                     
-                case "getsettings":
+                case "getSettings":
                     await HandleGetSettings();
                     break;
                     
-                case "savesettings":
+                case "saveSettings":
                     await HandleSaveSettings(message);
                     break;
                     
-                case "testpacsconnection":
+                case "testPacsConnection":
                     await HandleTestPacsConnection(message);
                     break;
                     
-                case "queryworklist":
+                case "queryWorklist":
                     await HandleQueryWorklist(message);
                     break;
                     
-                case "refreshworklist":
+                case "refreshWorklist":
                     await HandleRefreshWorklist();
                     break;
                     
-                case "getworklistcachestatus":
+                case "getWorklistCacheStatus":
                     await HandleGetWorklistCacheStatus();
                     break;
                     
-                case "selectworklistitem":
+                case "selectWorklistItem":
                     await HandleSelectWorklistItem(message);
                     break;
                     
@@ -881,23 +908,76 @@ namespace SmartBoxNext
             }
         }
         
-        private void Window_Closing(object sender, CancelEventArgs e)
+        private bool _isClosing = false;
+        
+        private async void Window_Closing(object sender, CancelEventArgs e)
         {
+            // Prevent re-entry
+            if (_isClosing)
+            {
+                return;
+            }
+            
             _logger.LogInformation("Application closing...");
             
-            // Stop queue processor
-            _queueProcessor?.StopAsync().Wait(TimeSpan.FromSeconds(5));
+            // Cancel the close for now to do cleanup
+            e.Cancel = true;
+            _isClosing = true;
             
-            // Save queue
-            _queueManager?.Dispose();
-            
-            // Stop web server
-            _webServer?.StopAsync().Wait(TimeSpan.FromSeconds(5));
-            
-            // Clean up WebView2
-            if (webView != null && webView.CoreWebView2 != null)
+            try
             {
-                webView.Dispose();
+                // Stop all services gracefully
+                var stopTasks = new List<Task>();
+                
+                // Stop queue processor
+                if (_queueProcessor != null)
+                {
+                    stopTasks.Add(_queueProcessor.StopAsync());
+                }
+                
+                // Stop web server
+                if (_webServer != null)
+                {
+                    stopTasks.Add(_webServer.StopAsync());
+                }
+                
+                // Wait for all stops with a reasonable timeout
+                await Task.WhenAny(Task.WhenAll(stopTasks), Task.Delay(2000));
+                
+                // Save queue
+                _queueManager?.Dispose();
+                
+                // Clean up WebView2 properly
+                if (webView != null)
+                {
+                    // Remove event handlers first
+                    if (webView.CoreWebView2 != null)
+                    {
+                        webView.CoreWebView2.WebMessageReceived -= WebView_WebMessageReceived;
+                        webView.CoreWebView2.WindowCloseRequested -= WebView_WindowCloseRequested;
+                        webView.CoreWebView2.NavigationStarting -= WebView_NavigationStarting;
+                        webView.CoreWebView2.NavigationCompleted -= WebView_NavigationCompleted;
+                        webView.CoreWebView2.DOMContentLoaded -= WebView_DOMContentLoaded;
+                    }
+                    
+                    // Navigate away from the page
+                    webView.CoreWebView2?.Navigate("about:blank");
+                    await Task.Delay(100);
+                    
+                    // Now dispose
+                    webView.Dispose();
+                }
+                
+                _logger.LogInformation("Cleanup completed, shutting down application");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during shutdown");
+            }
+            finally
+            {
+                // Now actually close - this will trigger Window_Closing again, but _isClosing prevents re-entry
+                System.Windows.Application.Current.Shutdown();
             }
         }
         

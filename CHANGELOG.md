@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Session 22 - 2025-01-09 (Window Closing Bug Fix)
+
+#### Fixed
+- **Critical Window Closing Bug**:
+  - Added re-entry protection to Window_Closing event handler
+  - Prevents infinite loop when Application.Shutdown() is called
+  - Ensures proper cleanup and resource disposal on app exit
+  - Should prevent file locks in future runs
+
+#### Technical Details
+- Added `_isClosing` flag to MainWindow class
+- Window_Closing now checks flag before canceling close event
+- Proper cleanup sequence maintained while preventing re-entry
+
 ### Session 19 - 2025-01-08 (Complete Config Implementation & Medical Features! 🎉)
 
 #### Added

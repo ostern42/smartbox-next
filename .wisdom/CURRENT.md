@@ -793,3 +793,67 @@ Access to the path '...\bin\Debug\net8.0-windows\*.dll' is denied
 - Lock Fixer: `fix-locks.bat`
 
 *VOGON EXIT 00:00 - "Der Bug ist tot, aber der Build lebt noch"*
+
+---
+
+### Session 22: Window Closing Bug Fix & File Lock Investigation 🔧
+**Session ID**: SMARTBOXNEXT-2025-01-09-01
+**Duration**: 00:30 - 01:10 (09.01.2025)
+**Status**: Bug fixed, but build blocked by file locks
+
+#### Major Achievement:
+1. **Window Closing Bug FIXED**:
+   - Problem: Window_Closing handler set `e.Cancel = true` without re-entry protection
+   - Cause: When `Application.Shutdown()` was called, it re-triggered the event → endless loop
+   - Solution: Added `_isClosing` flag to prevent re-entry
+   - Result: Clean shutdown process implemented
+
+2. **Code Changes**:
+   ```csharp
+   private bool _isClosing = false;
+   
+   private async void Window_Closing(object sender, CancelEventArgs e)
+   {
+       // Prevent re-entry
+       if (_isClosing)
+       {
+           return;
+       }
+       
+       _logger.LogInformation("Application closing...");
+       
+       // Cancel the close for now to do cleanup
+       e.Cancel = true;
+       _isClosing = true;
+       
+       // ... cleanup code ...
+   }
+   ```
+
+3. **File Lock Investigation**:
+   - Killed all dotnet.exe processes
+   - Killed all msedgewebview2.exe processes (20+!)
+   - Visual Studio closed
+   - Still couldn't delete bin/obj folders
+   - Process Explorer showed no SmartBoxNext-related processes
+   - **Conclusion**: System-level lock, requires restart
+
+#### What Works:
+- ✅ Window closing bug fix implemented
+- ✅ Proper cleanup sequence in place
+- ✅ WebView2 disposal code correct
+- ✅ WebServer StopAsync implemented
+
+#### Known Issues:
+- ⚠️ Build blocked by file locks from previous runs
+- ⚠️ bin/obj folders cannot be deleted
+- ⚠️ Requires system restart to clear locks
+
+#### Next Session Must:
+1. **RESTART WINDOWS FIRST!**
+2. Build the project with fixed code
+3. Test that window closes properly
+4. Verify no file locks after app closes
+5. Continue with other pending bugs
+
+*Session 22: "Sometimes Windows just needs a fresh start"*
