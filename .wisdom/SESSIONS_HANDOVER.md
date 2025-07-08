@@ -5,6 +5,8 @@
 
 ## 📋 Quick Navigation
 
+- [Session 20](#session-20) - 2025-07-08 19:35 - SMARTBOXNEXT-2025-07-08-01
+- [Session 19](#session-19) - 2025-07-08 11:40 - SMARTBOXNEXT-2025-07-08-02
 - [Session 18](#session-18) - 2025-07-08 00:21 - SMARTBOX-2025-07-08-01
 - [Session 17](#session-17) - 2025-07-07 22:01 - Deployment & Service
 - [Session 16](#session-16) - 2025-07-07 21:07 - WebRTC Victory
@@ -19,6 +21,53 @@
 - [Session 5](#session-5) - 2025-07-06 21:44 - DICOM Integration
 - [Session 4](#session-4) - 2025-07-06 21:11 - Basic Structure
 - [Session 3](#session-3) - 2025-07-06 18:28 - Project Setup
+
+---
+
+## Session 20
+**Date**: 2025-07-08 19:35  
+**Session ID**: SMARTBOXNEXT-2025-07-08-01
+**Duration**: 16:20 - 19:35 (3h 15min)
+**Tokens**: ~120k/150k
+
+### ✅ Achievements
+- **Project Cleanup**: Archive structure, removed old docs, cleanup-rename.bat
+- **Orthanc MWL Setup**: Docker on port 105, test worklists created
+- **MWL Backend Complete**: Cache service, offline support, StudyInstanceUID handling
+- **Critical Requirements**: Complete offline functionality, multi-target upload documented
+
+### 📚 Key Learnings
+- StudyInstanceUID MUST come from MWL for DICOM coherence
+- Complete offline functionality is absolute requirement
+- Multi-target upload (PACS→Backup→FTP→Share) for reliability
+- Queue must survive everything (power loss, crashes)
+
+### Next Steps
+1. Run cleanup-rename.bat to finalize directory names
+2. Implement MWL Frontend UI (button, modal, auto-fill)
+3. Build multi-target upload system
+4. Create queue management UI (touch + web)
+
+---
+
+## Session 19
+**Date**: 2025-07-08 11:40  
+**Session ID**: SMARTBOXNEXT-2025-07-08-02
+**Duration**: 10:00 - 11:40 (1h 40min)
+**Tokens**: ~95k/150k
+
+### ✅ Achievements
+- Photo/Video capture fixed and saving correctly
+- Config system 100% complete (all handlers working)
+- Emergency templates implemented with auto-fill
+- DICOM export with real captured photos
+- ImageSharp security update
+
+### Technical Details
+- Fixed case-sensitive action handlers
+- Implemented all config save/load/browse
+- Emergency templates fill patient data with timestamps
+- receiveMessage function for C#→JS communication
 
 ---
 
@@ -197,8 +246,8 @@ Sometimes the indirect path (browser) is better than direct (Windows APIs)
 
 ## 📊 Summary Statistics
 
-- **Total Sessions**: 16 (Session 3-18, some gaps)
-- **Date Range**: 2025-07-06 18:28 - 2025-07-08 00:21
+- **Total Sessions**: 18 (Session 3-20, some gaps)
+- **Date Range**: 2025-07-06 18:28 - 2025-07-08 19:35
 - **Major Victory**: WebRTC at 70 FPS (Session 16)
 - **Architecture**: Service-based like CamBridge2
 
