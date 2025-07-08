@@ -1,3 +1,2 @@
-2025/07/08-00:17:34.076 5500 Reusing MANIFEST C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\WebView2Data\EBWebView\Default\Local Storage\leveldb/MANIFEST-000001
-2025/07/08-00:17:34.089 5500 Recovering log #3
-2025/07/08-00:17:34.093 5500 Reusing old log C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\WebView2Data\EBWebView\Default\Local Storage\leveldb/000003.log 
+2025/07/08-10:34:38.207 59f8 Creating DB C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\WebView2Data\EBWebView\Default\Local Storage\leveldb since it was missing.
+2025/07/08-10:34:38.243 59f8 Reusing MANIFEST C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\WebView2Data\EBWebView\Default\Local Storage\leveldb/MANIFEST-000001

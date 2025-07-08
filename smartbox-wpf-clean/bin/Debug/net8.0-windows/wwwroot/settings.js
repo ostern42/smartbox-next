@@ -63,6 +63,12 @@ class SettingsManager {
             this.testPacsButton.addEventListener('click', () => this.testPacsConnection());
         }
 
+        // Browse folder buttons
+        const browseButtons = document.querySelectorAll('.browse-button');
+        browseButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => this.browseFolder(e.currentTarget));
+        });
+
         // Keyboard shortcut for back (ESC key)
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -157,6 +163,14 @@ class SettingsManager {
         this.sendToHost('testPacsConnection', pacsSettings);
     }
 
+    browseFolder(button) {
+        const inputId = button.dataset.for;
+        this.sendToHost('browseFolder', { 
+            inputId: inputId,
+            currentPath: document.getElementById(inputId).value 
+        });
+    }
+
     showNotification(message, type = 'info') {
         // Create notification element
         const notification = document.createElement('div');
@@ -173,7 +187,11 @@ class SettingsManager {
 
     sendToHost(action, data) {
         if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage({ action, data });
+            const message = JSON.stringify({ action, data });
+            window.chrome.webview.postMessage(message);
+            console.log(`Sent to host: ${action}`, data);
+        } else {
+            console.warn('WebView2 bridge not available');
         }
     }
 
@@ -208,6 +226,15 @@ class SettingsManager {
                 }
                 break;
                 
+            case 'folderSelected':
+                if (message.data.inputId && message.data.path) {
+                    const input = document.getElementById(message.data.inputId);
+                    if (input) {
+                        input.value = message.data.path;
+                    }
+                }
+                break;
+                
             default:
                 console.log(`Unknown message from host: ${message.action}`);
         }
@@ -233,6 +260,15 @@ class SettingsManager {
         });
     }
 }
+
+// Global function for receiving messages from C#
+window.receiveMessage = function(message) {
+    console.log('Received message from C#:', message);
+    
+    if (window.settingsManager) {
+        window.settingsManager.handleHostMessage({ data: message });
+    }
+};
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {

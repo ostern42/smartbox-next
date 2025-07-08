@@ -7,11 +7,16 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
+[assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/app-debug.js")]
+[assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/app-original.js")]
+[assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/app-simple.js")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/app.js")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/debug-webview.html")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/index.html")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/keyboard.css")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/keyboard.js")]
+[assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/settings-backup.js")]
+[assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/settings-fixed.js")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/settings.css")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/settings.html")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/settings.js")]

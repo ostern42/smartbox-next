@@ -105,6 +105,46 @@ Die aktuelle SmartBox-Lösung:
 - Data protection (patient data)
 - Audit trail requirements
 
+## UI/UX Flexibility Requirements (**NEW - Session 18**)
+
+### 1. DPI Awareness & Scaling
+- **Multi-Display Support**: From 10" touch screens to 4K monitors
+- **Automatic DPI scaling**: Windows DPI awareness manifest
+- **HTML-based zoom**: Browser zoom (Ctrl+/-, pinch gestures)
+- **Responsive design**: Fluid layouts that adapt to screen size
+- **Touch targets**: Minimum 44x44px, scale with DPI
+
+### 2. Theme System
+- **Light/Dark modes**: System preference detection
+- **Medical themes**: High contrast for OR environments
+- **Custom themes**: JSON-based theme definitions
+- **Theme components**:
+  - Color schemes (background, text, accents)
+  - Font sizes and families
+  - Border styles and shadows
+  - Animation speeds
+
+### 3. Layout Flexibility
+- **Layout presets**:
+  - "Big Video": Large preview, compact controls
+  - "Big Buttons": Small preview, large touch controls
+  - "Balanced": Equal space for video and controls
+  - "Emergency": Minimal UI, maximum speed
+- **Configurable elements**:
+  - Video preview size and position
+  - Button sizes and grouping
+  - Info panel visibility
+  - Keyboard docking position
+- **Save layout preferences**: Per-user or per-device
+
+### 4. Implementation Strategy
+- **CSS Variables**: Dynamic theme switching
+- **Grid/Flexbox**: Responsive layouts
+- **Media Queries**: Screen-size adaptations
+- **LocalStorage**: Theme/layout persistence
+- **No GUI builder needed**: Pre-designed layouts
+- **Easy selection**: Settings dropdown or quick toggle
+
 ## Performance Requirements
 - Boot to operational: <10 seconds
 - Capture to save: <1 second

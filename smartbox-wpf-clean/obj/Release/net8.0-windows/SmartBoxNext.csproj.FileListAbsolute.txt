@@ -58,3 +58,8 @@ C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Release\
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Release\net8.0-windows\SmartBoxNext.pdb
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Release\net8.0-windows\SmartBoxNext.genruntimeconfig.cache
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Release\net8.0-windows\ref\SmartBoxNext.dll
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\wwwroot\app-debug.js
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\wwwroot\app-original.js
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\wwwroot\app-simple.js
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\wwwroot\settings-backup.js
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\wwwroot\settings-fixed.js

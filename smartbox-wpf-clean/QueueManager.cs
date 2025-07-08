@@ -20,7 +20,7 @@ namespace SmartBoxNext
         private readonly string _queueFilePath;
         private readonly object _lock = new object();
         private Queue _queue;
-        private Timer? _saveTimer;
+        private System.Threading.Timer? _saveTimer;
         
         public QueueManager(AppConfig config)
         {
@@ -41,7 +41,7 @@ namespace SmartBoxNext
             _queue = LoadQueue();
             
             // Auto-save every 5 seconds if dirty
-            _saveTimer = new Timer(_ => SaveIfDirty(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            _saveTimer = new System.Threading.Timer(_ => SaveIfDirty(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         }
         
         /// <summary>

@@ -9,6 +9,8 @@ C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\ne
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\wwwroot\index.html
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\wwwroot\keyboard.css
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\wwwroot\keyboard.js
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\wwwroot\settings-backup.js
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\wwwroot\settings-fixed.js
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\wwwroot\settings.css
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\wwwroot\settings.html
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\wwwroot\settings.js
@@ -61,5 +63,3 @@ C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Debug\ne
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Debug\net8.0-windows\SmartBoxNext.pdb
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Debug\net8.0-windows\SmartBoxNext.genruntimeconfig.cache
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Debug\net8.0-windows\ref\SmartBoxNext.dll
-C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\wwwroot\settings-backup.js
-C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\wwwroot\settings-fixed.js

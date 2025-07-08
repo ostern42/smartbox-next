@@ -358,7 +358,7 @@
           }
         }
       },
-      "SixLabors.ImageSharp/3.1.6": {
+      "SixLabors.ImageSharp/3.1.7": {
         "type": "package",
         "compile": {
           "lib/net6.0/SixLabors.ImageSharp.dll": {
@@ -1131,10 +1131,10 @@
         "packageIcon.png"
       ]
     },
-    "SixLabors.ImageSharp/3.1.6": {
-      "sha512": "dHQ5jugF9v+5/LCVHCWVzaaIL6WOehqJy6eju/0VFYFPEj2WtqkGPoEV9EVQP83dHsdoqYaTuWpZdwAd37UwfA==",
+    "SixLabors.ImageSharp/3.1.7": {
+      "sha512": "9fIOOAsyLFid6qKypM2Iy0Z3Q9yoanV8VoYAHtI2sYGMNKzhvRTjgFDHonIiVe+ANtxIxM6SuqUzj0r91nItpA==",
       "type": "package",
-      "path": "sixlabors.imagesharp/3.1.6",
+      "path": "sixlabors.imagesharp/3.1.7",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -1143,7 +1143,7 @@
         "lib/net6.0/SixLabors.ImageSharp.dll",
         "lib/net6.0/SixLabors.ImageSharp.xml",
         "sixlabors.imagesharp.128.png",
-        "sixlabors.imagesharp.3.1.6.nupkg.sha512",
+        "sixlabors.imagesharp.3.1.7.nupkg.sha512",
         "sixlabors.imagesharp.nuspec"
       ]
     },
@@ -1384,7 +1384,7 @@
       "Microsoft.Extensions.Logging.Console >= 8.0.0",
       "Microsoft.Web.WebView2 >= 1.0.2210.55",
       "Newtonsoft.Json >= 13.0.3",
-      "SixLabors.ImageSharp >= 3.1.6",
+      "SixLabors.ImageSharp >= 3.1.7",
       "fo-dicom >= 5.1.2"
     ]
   },
@@ -1457,7 +1457,7 @@
           },
           "SixLabors.ImageSharp": {
             "target": "Package",
-            "version": "[3.1.6, )"
+            "version": "[3.1.7, )"
           },
           "fo-dicom": {
             "target": "Package",
@@ -1479,24 +1479,12 @@
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
           },
-          "Microsoft.WindowsDesktop.App.WPF": {
+          "Microsoft.WindowsDesktop.App": {
             "privateAssets": "none"
           }
         },
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301/PortableRuntimeIdentifierGraph.json"
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Das Paket \"SixLabors.ImageSharp\" 3.1.6 weist eine bekannte Hoch Schweregrad-Sicherheitsanfälligkeit auf, https://github.com/advisories/GHSA-2cmq-823j-5qj8.",
-      "libraryId": "SixLabors.ImageSharp",
-      "targetGraphs": [
-        "net8.0-windows7.0"
-      ]
-    }
-  ]
+  }
 }

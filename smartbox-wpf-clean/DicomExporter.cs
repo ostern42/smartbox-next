@@ -121,7 +121,7 @@ namespace SmartBoxNext
             try
             {
                 // Load the JPEG image using ImageSharp
-                using var image = Image.Load<Rgb24>(jpegData);
+                using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(jpegData);
                 var width = (ushort)image.Width;
                 var height = (ushort)image.Height;
                 

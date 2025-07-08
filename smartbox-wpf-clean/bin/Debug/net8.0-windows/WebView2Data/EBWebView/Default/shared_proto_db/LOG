@@ -1,3 +1,2 @@
-2025/07/08-00:17:34.036 3c14 Reusing MANIFEST C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\WebView2Data\EBWebView\Default\shared_proto_db/MANIFEST-000001
-2025/07/08-00:17:34.037 3c14 Recovering log #3
-2025/07/08-00:17:34.037 3c14 Reusing old log C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\WebView2Data\EBWebView\Default\shared_proto_db/000003.log 
+2025/07/08-10:34:38.180 9a24 Creating DB C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\WebView2Data\EBWebView\Default\shared_proto_db since it was missing.
+2025/07/08-10:34:38.186 9a24 Reusing MANIFEST C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\WebView2Data\EBWebView\Default\shared_proto_db/MANIFEST-000001

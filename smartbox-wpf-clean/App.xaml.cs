@@ -3,13 +3,14 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
+using MessageBox = System.Windows.MessageBox;
 
 namespace SmartBoxNext
 {
     /// <summary>
     /// Medical-grade application with comprehensive error handling and logging
     /// </summary>
-    public partial class App : Application
+    public partial class App : System.Windows.Application
     {
         private ILogger<App>? _logger;
         

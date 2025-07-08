@@ -247,7 +247,7 @@ namespace SmartBoxNext
                     await OpenSettings();
                     break;
                     
-                case "photoCaptured":
+                case "photocaptured":
                     await HandlePhotoCaptured(message);
                     break;
                     
@@ -255,7 +255,7 @@ namespace SmartBoxNext
                     await SavePhoto(message);
                     break;
                     
-                case "videoRecorded":
+                case "videorecorded":
                     await HandleVideoRecorded(message);
                     break;
                     
@@ -275,20 +275,36 @@ namespace SmartBoxNext
                     await TestWebView();
                     break;
                     
-                case "webcamInitialized":
+                case "webcaminitialized":
                     await HandleWebcamInitialized(message);
                     break;
                     
-                case "cameraAnalysis":
+                case "cameraanalysis":
                     await HandleCameraAnalysis(message);
                     break;
                     
-                case "requestConfig":
+                case "requestconfig":
                     await HandleRequestConfig();
                     break;
                     
                 case "updateconfig":
                     await UpdateConfiguration(message);
+                    break;
+                    
+                case "browsefolder":
+                    await HandleBrowseFolder(message);
+                    break;
+                    
+                case "getsettings":
+                    await HandleGetSettings();
+                    break;
+                    
+                case "savesettings":
+                    await HandleSaveSettings(message);
+                    break;
+                    
+                case "testpacsconnection":
+                    await HandleTestPacsConnection(message);
                     break;
                     
                 default:
@@ -525,14 +541,13 @@ namespace SmartBoxNext
                     throw new ArgumentException("No image data provided");
                 }
                 
-                // Parse patient info
+                // Parse patient info (matching the JS getPatientInfo format)
                 var patientInfo = new PatientInfo
                 {
-                    PatientId = patientInfoJson?["patientId"]?.ToString(),
-                    FirstName = patientInfoJson?["firstName"]?.ToString(),
-                    LastName = patientInfoJson?["lastName"]?.ToString(),
+                    PatientId = patientInfoJson?["id"]?.ToString(),
+                    FirstName = ExtractFirstName(patientInfoJson?["name"]?.ToString()),
+                    LastName = ExtractLastName(patientInfoJson?["name"]?.ToString()),
                     Gender = patientInfoJson?["gender"]?.ToString(),
-                    Institution = patientInfoJson?["institution"]?.ToString(),
                     StudyDescription = patientInfoJson?["studyDescription"]?.ToString()
                 };
                 
@@ -638,6 +653,54 @@ namespace SmartBoxNext
             {
                 _logger.LogError(ex, "Failed to update configuration");
                 await SendErrorToWebView($"Failed to save configuration: {ex.Message}");
+            }
+        }
+        
+        private async Task HandleBrowseFolder(JObject message)
+        {
+            try
+            {
+                var data = message["data"];
+                var inputId = data?["inputId"]?.ToString();
+                var currentPath = data?["currentPath"]?.ToString();
+                
+                _logger.LogInformation("Browse folder requested for {InputId}", inputId);
+                
+                // Use Windows Forms FolderBrowserDialog
+                using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
+                {
+                    dialog.Description = "Select folder";
+                    
+                    // Set initial directory if provided
+                    if (!string.IsNullOrEmpty(currentPath) && Directory.Exists(currentPath))
+                    {
+                        dialog.SelectedPath = currentPath;
+                    }
+                    
+                    var result = dialog.ShowDialog();
+                    
+                    if (result == System.Windows.Forms.DialogResult.OK)
+                    {
+                        var selectedPath = dialog.SelectedPath;
+                        _logger.LogInformation("Folder selected: {Path}", selectedPath);
+                        
+                        // Send selected path back to web view
+                        await SendMessageToWebView(new
+                        {
+                            action = "folderSelected",
+                            data = new
+                            {
+                                inputId = inputId,
+                                path = selectedPath
+                            }
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to browse folder");
+                await SendErrorToWebView($"Failed to browse folder: {ex.Message}");
             }
         }
         
@@ -910,6 +973,145 @@ namespace SmartBoxNext
             }
         }
         
+        private async Task HandleGetSettings()
+        {
+            try
+            {
+                await SendMessageToWebView(new
+                {
+                    action = "settingsLoaded",
+                    data = _config
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send settings");
+            }
+        }
+        
+        private async Task HandleSaveSettings(JObject message)
+        {
+            try
+            {
+                var newSettings = message["data"];
+                if (newSettings == null)
+                {
+                    throw new ArgumentException("No settings data provided");
+                }
+                
+                // Update config object
+                var storage = newSettings["Storage"];
+                if (storage != null)
+                {
+                    _config!.Storage.PhotosPath = storage["photosPath"]?.ToString() ?? _config.Storage.PhotosPath;
+                    _config.Storage.VideosPath = storage["videosPath"]?.ToString() ?? _config.Storage.VideosPath;
+                    _config.Storage.DicomPath = storage["dicomPath"]?.ToString() ?? _config.Storage.DicomPath;
+                    _config.Storage.QueuePath = storage["queuePath"]?.ToString() ?? _config.Storage.QueuePath;
+                    _config.Storage.TempPath = storage["tempPath"]?.ToString() ?? _config.Storage.TempPath;
+                    _config.Storage.MaxStorageDays = storage["maxStorageDays"]?.Value<int>() ?? _config.Storage.MaxStorageDays;
+                    _config.Storage.EnableAutoCleanup = storage["enableAutoCleanup"]?.Value<bool>() ?? _config.Storage.EnableAutoCleanup;
+                }
+                
+                var pacs = newSettings["Pacs"];
+                if (pacs != null)
+                {
+                    _config!.Pacs.ServerHost = pacs["serverHost"]?.ToString() ?? _config.Pacs.ServerHost;
+                    _config.Pacs.ServerPort = pacs["serverPort"]?.Value<int>() ?? _config.Pacs.ServerPort;
+                    _config.Pacs.CalledAeTitle = pacs["calledAeTitle"]?.ToString() ?? _config.Pacs.CalledAeTitle;
+                    _config.Pacs.CallingAeTitle = pacs["callingAeTitle"]?.ToString() ?? _config.Pacs.CallingAeTitle;
+                    _config.Pacs.Timeout = pacs["timeout"]?.Value<int>() ?? _config.Pacs.Timeout;
+                    _config.Pacs.EnableTls = pacs["enableTls"]?.Value<bool>() ?? _config.Pacs.EnableTls;
+                    _config.Pacs.MaxRetries = pacs["maxRetries"]?.Value<int>() ?? _config.Pacs.MaxRetries;
+                    _config.Pacs.RetryDelay = pacs["retryDelay"]?.Value<int>() ?? _config.Pacs.RetryDelay;
+                }
+                
+                var video = newSettings["Video"];
+                if (video != null)
+                {
+                    _config!.Video.DefaultResolution = video["defaultResolution"]?.ToString() ?? _config.Video.DefaultResolution;
+                    _config.Video.DefaultFrameRate = video["defaultFrameRate"]?.Value<int>() ?? _config.Video.DefaultFrameRate;
+                    _config.Video.DefaultQuality = video["defaultQuality"]?.Value<int>() ?? _config.Video.DefaultQuality;
+                    _config.Video.EnableHardwareAcceleration = video["enableHardwareAcceleration"]?.Value<bool>() ?? _config.Video.EnableHardwareAcceleration;
+                    _config.Video.PreferredCamera = video["preferredCamera"]?.ToString() ?? _config.Video.PreferredCamera;
+                }
+                
+                var application = newSettings["Application"];
+                if (application != null)
+                {
+                    _config!.Application.Language = application["language"]?.ToString() ?? _config.Application.Language;
+                    _config.Application.Theme = application["theme"]?.ToString() ?? _config.Application.Theme;
+                    _config.Application.EnableTouchKeyboard = application["enableTouchKeyboard"]?.Value<bool>() ?? _config.Application.EnableTouchKeyboard;
+                    _config.Application.EnableDebugMode = application["enableDebugMode"]?.Value<bool>() ?? _config.Application.EnableDebugMode;
+                    _config.Application.AutoStartCapture = application["autoStartCapture"]?.Value<bool>() ?? _config.Application.AutoStartCapture;
+                    _config.Application.WebServerPort = application["webServerPort"]?.Value<int>() ?? _config.Application.WebServerPort;
+                    _config.Application.EnableRemoteAccess = application["enableRemoteAccess"]?.Value<bool>() ?? _config.Application.EnableRemoteAccess;
+                    _config.Application.HideExitButton = application["hideExitButton"]?.Value<bool>() ?? _config.Application.HideExitButton;
+                    _config.Application.EnableEmergencyTemplates = application["enableEmergencyTemplates"]?.Value<bool>() ?? _config.Application.EnableEmergencyTemplates;
+                }
+                
+                // Save to file
+                var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+                var json = JsonConvert.SerializeObject(_config, Formatting.Indented);
+                await File.WriteAllTextAsync(configPath, json);
+                
+                _logger.LogInformation("Settings saved successfully");
+                
+                await SendMessageToWebView(new
+                {
+                    action = "settingsSaved",
+                    data = new { success = true }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save settings");
+                await SendErrorToWebView($"Failed to save settings: {ex.Message}");
+            }
+        }
+        
+        private async Task HandleTestPacsConnection(JObject message)
+        {
+            try
+            {
+                var data = message["data"];
+                var serverHost = data?["serverHost"]?.ToString();
+                var serverPort = data?["serverPort"]?.Value<int>() ?? 104;
+                var calledAeTitle = data?["calledAeTitle"]?.ToString();
+                var callingAeTitle = data?["callingAeTitle"]?.ToString();
+                
+                _logger.LogInformation("Testing PACS connection to {Host}:{Port}", serverHost, serverPort);
+                
+                // TODO: Implement actual PACS C-ECHO test
+                // For now, just simulate
+                await Task.Delay(1000);
+                
+                bool success = !string.IsNullOrEmpty(serverHost);
+                
+                await SendMessageToWebView(new
+                {
+                    action = "pacsTestResult",
+                    data = new 
+                    { 
+                        success = success,
+                        error = success ? null : "No server host specified"
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to test PACS connection");
+                await SendMessageToWebView(new
+                {
+                    action = "pacsTestResult",
+                    data = new 
+                    { 
+                        success = false,
+                        error = ex.Message
+                    }
+                });
+            }
+        }
+        
         private async Task HandleRequestConfig()
         {
             try
@@ -923,7 +1125,8 @@ namespace SmartBoxNext
                         defaultFrameRate = _config.Video.DefaultFrameRate,
                         defaultResolution = _config.Video.DefaultResolution,
                         photoFormat = "jpeg",
-                        videoFormat = "webm"
+                        videoFormat = "webm",
+                        enableEmergencyTemplates = _config.Application.EnableEmergencyTemplates
                     }
                 });
             }

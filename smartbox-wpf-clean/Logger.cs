@@ -14,7 +14,7 @@ namespace SmartBoxNext
     {
         private static readonly object _lock = new object();
         private static readonly string _logDirectory;
-        private static readonly Timer _flushTimer;
+        private static readonly System.Threading.Timer _flushTimer;
         private static StreamWriter? _currentWriter;
         private static string? _currentLogFile;
         private static DateTime _currentLogDate;
@@ -25,7 +25,7 @@ namespace SmartBoxNext
             Directory.CreateDirectory(_logDirectory);
             
             // Flush logs every 5 seconds for reliability
-            _flushTimer = new Timer(_ => FlushLogs(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            _flushTimer = new System.Threading.Timer(_ => FlushLogs(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
             
             // Ensure logs are flushed on app exit
             AppDomain.CurrentDomain.ProcessExit += (s, e) => CloseCurrentLog();
