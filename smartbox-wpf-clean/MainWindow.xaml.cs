@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Extensions.Logging;
@@ -25,6 +26,9 @@ namespace SmartBoxNext
         private QueueProcessor? _queueProcessor;
         private MwlService? _mwlService;
         private bool _isInitialized = false;
+        
+        // Patient context from MWL selection
+        private WorklistItem? _selectedWorklistItem;
         
         private static readonly ILoggerFactory _loggerFactory = LoggerFactory.Create(builder =>
         {
@@ -71,7 +75,7 @@ namespace SmartBoxNext
                 _pacsSender = new PacsSender(_config);
                 _queueManager = new QueueManager(_config);
                 _queueProcessor = new QueueProcessor(_config, _queueManager, _pacsSender);
-                _mwlService = new MwlService(_config, new Logger(_config));
+                _mwlService = new MwlService(_config);
                 
                 // Start queue processor
                 _queueProcessor.Start();
@@ -170,6 +174,7 @@ namespace SmartBoxNext
             // Handle navigation events
             webView.CoreWebView2.NavigationStarting += WebView_NavigationStarting;
             webView.CoreWebView2.DOMContentLoaded += WebView_DOMContentLoaded;
+            webView.CoreWebView2.NavigationCompleted += WebView_NavigationCompleted;
             
             // Handle permission requests (for camera access)
             webView.CoreWebView2.PermissionRequested += WebView_PermissionRequested;
@@ -321,6 +326,10 @@ namespace SmartBoxNext
                     await HandleGetWorklistCacheStatus();
                     break;
                     
+                case "selectworklistitem":
+                    await HandleSelectWorklistItem(message);
+                    break;
+                    
                 default:
                     _logger.LogWarning("Unknown action: {Action}", action);
                     await SendErrorToWebView($"Unknown action: {action}");
@@ -414,7 +423,10 @@ namespace SmartBoxNext
                         LastName = ExtractLastName(patient["name"]?.ToString()),
                         BirthDate = ParseBirthDate(patient["birthDate"]?.ToString()),
                         Gender = patient["gender"]?.ToString(),
-                        StudyDescription = patient["studyDescription"]?.ToString()
+                        StudyDescription = patient["studyDescription"]?.ToString(),
+                        // Critical: Use StudyInstanceUID from selected MWL item
+                        StudyInstanceUID = _selectedWorklistItem?.StudyInstanceUID,
+                        AccessionNumber = _selectedWorklistItem?.AccessionNumber
                     };
                     
                     // Export as DICOM if configured
@@ -754,7 +766,7 @@ namespace SmartBoxNext
             _logger.LogInformation("DOM content loaded");
         }
         
-        private void WebView_NavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
+        private void WebView_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             if (e.IsSuccess)
             {
@@ -767,7 +779,7 @@ namespace SmartBoxNext
                 // Hide emergency exit button if configured
                 if (_config?.Application.HideExitButton == true)
                 {
-                    emergencyExitButton.Visibility = Visibility.Collapsed;
+                    // Emergency exit button removed - using normal window controls
                 }
             }
             else
@@ -830,12 +842,27 @@ namespace SmartBoxNext
         
         private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            // Alt+F4 for emergency exit
+            // Alt+F4 with confirmation
             if (e.Key == System.Windows.Input.Key.F4 && 
                 (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Alt) == System.Windows.Input.ModifierKeys.Alt)
             {
-                _logger.LogWarning("Alt+F4 pressed, closing application");
-                Close();
+                _logger.LogInformation("Alt+F4 pressed");
+                
+                // If WebView is not ready, just close
+                if (webView == null || webView.CoreWebView2 == null)
+                {
+                    _logger.LogWarning("WebView not ready, closing directly");
+                    Close();
+                    return;
+                }
+                
+                e.Handled = true; // Prevent immediate close
+                
+                // Show exit confirmation in web UI
+                _ = SendMessageToWebView(new
+                {
+                    action = "showExitConfirmation"
+                });
             }
             
             // F11 for fullscreen toggle
@@ -1158,7 +1185,7 @@ namespace SmartBoxNext
                 DateTime? date = null;
                 if (message?.date != null)
                 {
-                    if (DateTime.TryParse(message.date.ToString(), out var parsedDate))
+                    if (DateTime.TryParse(message.date.ToString(), out DateTime parsedDate))
                     {
                         date = parsedDate;
                     }
@@ -1235,6 +1262,104 @@ namespace SmartBoxNext
             {
                 _logger.LogError(ex, "Failed to get worklist cache status");
                 await SendErrorToWebView($"Failed to get cache status: {ex.Message}");
+            }
+        }
+        
+        private async Task HandleQueryWorklist(JObject message)
+        {
+            try
+            {
+                var date = message["data"]?["date"]?.ToString();
+                DateTime? queryDate = null;
+                
+                if (!string.IsNullOrEmpty(date))
+                {
+                    queryDate = DateTime.Parse(date);
+                }
+                
+                var items = await _mwlService.GetWorklistAsync(queryDate);
+                
+                // Convert to JSON-friendly format
+                var jsonItems = items.Select(i => new
+                {
+                    studyInstanceUID = i.StudyInstanceUID,
+                    patientId = i.PatientId,
+                    patientName = i.DisplayName,
+                    birthDate = i.BirthDate?.ToString("yyyy-MM-dd"),
+                    sex = i.Sex,
+                    age = i.DisplayAge,
+                    accessionNumber = i.AccessionNumber,
+                    studyDescription = i.StudyDescription,
+                    scheduledDate = i.ScheduledDate.ToString("yyyy-MM-dd"),
+                    scheduledTime = i.DisplayTime,
+                    isEmergency = i.IsEmergency
+                }).ToList();
+                
+                await SendMessageToWebView(new
+                {
+                    action = "worklistResult",
+                    data = new
+                    {
+                        items = jsonItems,
+                        count = jsonItems.Count,
+                        isFromCache = _mwlService.GetCacheStatus().IsOffline
+                    }
+                });
+                
+                _logger.LogInformation("Sent {Count} worklist items to UI", jsonItems.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to query worklist");
+                await SendErrorToWebView($"Failed to query worklist: {ex.Message}");
+            }
+        }
+        
+        private async Task HandleSelectWorklistItem(JObject message)
+        {
+            try
+            {
+                var data = message["data"];
+                var studyInstanceUID = data?["studyInstanceUID"]?.ToString();
+                
+                if (string.IsNullOrEmpty(studyInstanceUID))
+                {
+                    _selectedWorklistItem = null;
+                    _logger.LogInformation("Cleared worklist selection");
+                    return;
+                }
+                
+                // Create WorklistItem from the selected data
+                _selectedWorklistItem = new WorklistItem
+                {
+                    StudyInstanceUID = studyInstanceUID,
+                    PatientId = data?["patientId"]?.ToString(),
+                    PatientName = data?["patientName"]?.ToString(),
+                    AccessionNumber = data?["accessionNumber"]?.ToString(),
+                    BirthDate = data?["birthDate"] != null ? DateTime.Parse(data["birthDate"].ToString()) : null,
+                    Sex = data?["sex"]?.ToString(),
+                    StudyDescription = data?["studyDescription"]?.ToString()
+                };
+                
+                _logger.LogInformation("Selected worklist item: {PatientId} - {PatientName}, StudyUID: {StudyUID}", 
+                    _selectedWorklistItem.PatientId, 
+                    _selectedWorklistItem.PatientName,
+                    _selectedWorklistItem.StudyInstanceUID);
+                
+                await SendMessageToWebView(new
+                {
+                    action = "worklistItemSelected",
+                    data = new
+                    {
+                        success = true,
+                        studyInstanceUID = _selectedWorklistItem.StudyInstanceUID
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to select worklist item");
+                await SendErrorToWebView($"Failed to select worklist item: {ex.Message}");
             }
         }
     }

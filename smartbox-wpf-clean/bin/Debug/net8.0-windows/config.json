@@ -29,7 +29,7 @@
     "Language": "de-DE",
     "Theme": "Light",
     "EnableTouchKeyboard": true,
-    "EnableDebugMode": false,
+    "EnableDebugMode": true,
     "AutoStartCapture": true,
     "WebServerPort": 5112,
     "EnableRemoteAccess": false,

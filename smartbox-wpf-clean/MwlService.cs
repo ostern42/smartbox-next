@@ -16,15 +16,13 @@ namespace SmartBoxNext
     public class MwlService
     {
         private readonly AppConfig _config;
-        private readonly Logger _logger;
         private readonly string _cacheFilePath;
         private MwlCache _cache;
         private readonly object _cacheLock = new object();
 
-        public MwlService(AppConfig config, Logger logger)
+        public MwlService(AppConfig config)
         {
             _config = config;
-            _logger = logger;
             
             // Ensure cache directory exists
             var cacheDir = Path.Combine(_config.StoragePath, "Cache");
@@ -57,7 +55,7 @@ namespace SmartBoxNext
             }
             catch (Exception ex)
             {
-                _logger.LogError($"MWL query failed, using cache: {ex.Message}");
+                Logger.LogError($"MWL query failed, using cache: {ex.Message}");
             }
 
             // Fall back to cache
@@ -116,12 +114,12 @@ namespace SmartBoxNext
                             if (item != null)
                             {
                                 items.Add(item);
-                                _logger.LogInfo($"MWL: Found patient {item.PatientName} ({item.PatientId})");
+                                Logger.LogInfo($"MWL: Found patient {item.PatientName} ({item.PatientId})");
                             }
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError($"Error parsing MWL response: {ex.Message}");
+                            Logger.LogError($"Error parsing MWL response: {ex.Message}");
                         }
                     }
                 };
@@ -129,12 +127,12 @@ namespace SmartBoxNext
                 await client.AddRequestAsync(request);
                 await client.SendAsync();
 
-                _logger.LogInfo($"MWL query completed: {items.Count} items found");
+                Logger.LogInfo($"MWL query completed: {items.Count} items found");
                 return items;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"MWL query error: {ex.Message}");
+                Logger.LogError($"MWL query error: {ex.Message}");
                 throw;
             }
         }
@@ -150,7 +148,7 @@ namespace SmartBoxNext
             item.StudyInstanceUID = dataset.GetSingleValueOrDefault(DicomTag.StudyInstanceUID, "");
             if (string.IsNullOrEmpty(item.StudyInstanceUID))
             {
-                _logger.LogWarning("MWL response missing StudyInstanceUID!");
+                Logger.LogWarning("MWL response missing StudyInstanceUID!");
             }
 
             // Patient demographics
@@ -245,11 +243,11 @@ namespace SmartBoxNext
                 File.WriteAllText(tempFile, json);
                 File.Move(tempFile, _cacheFilePath, true);
 
-                _logger.LogInfo($"MWL cache saved: {_cache.Items.Count} items");
+                Logger.LogInfo($"MWL cache saved: {_cache.Items.Count} items");
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Failed to save MWL cache: {ex.Message}");
+                Logger.LogError($"Failed to save MWL cache: {ex.Message}");
             }
         }
 
@@ -264,17 +262,17 @@ namespace SmartBoxNext
                 {
                     var json = File.ReadAllText(_cacheFilePath);
                     _cache = JsonSerializer.Deserialize<MwlCache>(json);
-                    _logger.LogInfo($"MWL cache loaded: {_cache?.Items?.Count ?? 0} items, age: {_cache?.Age}");
+                    Logger.LogInfo($"MWL cache loaded: {_cache?.Items?.Count ?? 0} items, age: {_cache?.Age}");
                 }
                 else
                 {
                     _cache = new MwlCache();
-                    _logger.LogInfo("No MWL cache found, starting fresh");
+                    Logger.LogInfo("No MWL cache found, starting fresh");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Failed to load MWL cache: {ex.Message}");
+                Logger.LogError($"Failed to load MWL cache: {ex.Message}");
                 _cache = new MwlCache();
             }
         }
@@ -320,7 +318,7 @@ namespace SmartBoxNext
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Cache refresh failed: {ex.Message}");
+                Logger.LogError($"Cache refresh failed: {ex.Message}");
             }
             return false;
         }

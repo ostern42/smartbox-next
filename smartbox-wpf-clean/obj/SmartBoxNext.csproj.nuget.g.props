@@ -17,6 +17,6 @@
     <Import Project="$(NuGetPackageRoot)sixlabors.imagesharp\3.1.7\build\SixLabors.ImageSharp.props" Condition="Exists('$(NuGetPackageRoot)sixlabors.imagesharp\3.1.7\build\SixLabors.ImageSharp.props')" />
   </ImportGroup>
   <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <PkgMicrosoft_Web_WebView2 Condition=" '$(PkgMicrosoft_Web_WebView2)' == '' ">C:\Users\oliver.stern\.nuget\packages\microsoft.web.webview2\1.0.2210.55</PkgMicrosoft_Web_WebView2>
+    <PkgMicrosoft_Web_WebView2 Condition=" '$(PkgMicrosoft_Web_WebView2)' == '' ">C:\Users\oliver.stern\.nuget\packages\microsoft.web.webview2\1.0.2739.15</PkgMicrosoft_Web_WebView2>
   </PropertyGroup>
 </Project>

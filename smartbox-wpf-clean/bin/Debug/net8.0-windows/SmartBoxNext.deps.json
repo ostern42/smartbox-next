@@ -10,10 +10,13 @@
         "dependencies": {
           "Microsoft.Extensions.Logging": "8.0.0",
           "Microsoft.Extensions.Logging.Console": "8.0.0",
-          "Microsoft.Web.WebView2": "1.0.2210.55",
+          "Microsoft.Web.WebView2": "1.0.2739.15",
           "Newtonsoft.Json": "13.0.3",
           "SixLabors.ImageSharp": "3.1.7",
-          "fo-dicom": "5.1.2"
+          "fo-dicom": "5.1.2",
+          "Microsoft.Web.WebView2.Core": "1.0.2739.15",
+          "Microsoft.Web.WebView2.WinForms": "1.0.2739.15",
+          "Microsoft.Web.WebView2.Wpf": "1.0.2739.15"
         },
         "runtime": {
           "SmartBoxNext.dll": {}
@@ -210,36 +213,22 @@
           }
         }
       },
-      "Microsoft.Web.WebView2/1.0.2210.55": {
-        "runtime": {
-          "lib/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll": {
-            "assemblyVersion": "1.0.2210.55",
-            "fileVersion": "1.0.2210.55"
-          },
-          "lib/netcoreapp3.0/Microsoft.Web.WebView2.WinForms.dll": {
-            "assemblyVersion": "1.0.2210.55",
-            "fileVersion": "1.0.2210.55"
-          },
-          "lib/netcoreapp3.0/Microsoft.Web.WebView2.Wpf.dll": {
-            "assemblyVersion": "1.0.2210.55",
-            "fileVersion": "1.0.2210.55"
-          }
-        },
+      "Microsoft.Web.WebView2/1.0.2739.15": {
         "runtimeTargets": {
           "runtimes/win-arm64/native/WebView2Loader.dll": {
             "rid": "win-arm64",
             "assetType": "native",
-            "fileVersion": "1.0.2210.55"
+            "fileVersion": "1.0.2739.15"
           },
           "runtimes/win-x64/native/WebView2Loader.dll": {
             "rid": "win-x64",
             "assetType": "native",
-            "fileVersion": "1.0.2210.55"
+            "fileVersion": "1.0.2739.15"
           },
           "runtimes/win-x86/native/WebView2Loader.dll": {
             "rid": "win-x86",
             "assetType": "native",
-            "fileVersion": "1.0.2210.55"
+            "fileVersion": "1.0.2739.15"
           }
         }
       },
@@ -272,7 +261,31 @@
           "System.Text.Encodings.Web": "8.0.0"
         }
       },
-      "System.Threading.Channels/6.0.0": {}
+      "System.Threading.Channels/6.0.0": {},
+      "Microsoft.Web.WebView2.Core/1.0.2739.15": {
+        "runtime": {
+          "Microsoft.Web.WebView2.Core.dll": {
+            "assemblyVersion": "1.0.2739.15",
+            "fileVersion": "1.0.2739.15"
+          }
+        }
+      },
+      "Microsoft.Web.WebView2.WinForms/1.0.2739.15": {
+        "runtime": {
+          "Microsoft.Web.WebView2.WinForms.dll": {
+            "assemblyVersion": "1.0.2739.15",
+            "fileVersion": "1.0.2739.15"
+          }
+        }
+      },
+      "Microsoft.Web.WebView2.Wpf/1.0.2739.15": {
+        "runtime": {
+          "Microsoft.Web.WebView2.Wpf.dll": {
+            "assemblyVersion": "1.0.2739.15",
+            "fileVersion": "1.0.2739.15"
+          }
+        }
+      }
     }
   },
   "libraries": {
@@ -393,12 +406,12 @@
       "path": "microsoft.extensions.primitives/8.0.0",
       "hashPath": "microsoft.extensions.primitives.8.0.0.nupkg.sha512"
     },
-    "Microsoft.Web.WebView2/1.0.2210.55": {
+    "Microsoft.Web.WebView2/1.0.2739.15": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-pb5kuzl8TQm+ztzOnOm/qX75DXXjOQMdKlcs2hyizbZobiGzJcMcIhpmMmgg1cTGYwof2fVhlC809YScvDbm3w==",
-      "path": "microsoft.web.webview2/1.0.2210.55",
-      "hashPath": "microsoft.web.webview2.1.0.2210.55.nupkg.sha512"
+      "sha512": "sha512-hZg7vHWBg4RIiK3rhkNqX3hcBqqoVXVrrO2BVrVOiSmEgfLa7lY64G1tWh2VY84MfHIFLCAQNwn3Rwvu+ICHyw==",
+      "path": "microsoft.web.webview2/1.0.2739.15",
+      "hashPath": "microsoft.web.webview2.1.0.2739.15.nupkg.sha512"
     },
     "Newtonsoft.Json/13.0.3": {
       "type": "package",
@@ -455,6 +468,21 @@
       "sha512": "sha512-TY8/9+tI0mNaUMgntOxxaq2ndTkdXqLSxvPmas7XEqOlv9lQtB7wLjYGd756lOaO7Dvb5r/WXhluM+0Xe87v5Q==",
       "path": "system.threading.channels/6.0.0",
       "hashPath": "system.threading.channels.6.0.0.nupkg.sha512"
+    },
+    "Microsoft.Web.WebView2.Core/1.0.2739.15": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Web.WebView2.WinForms/1.0.2739.15": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Web.WebView2.Wpf/1.0.2739.15": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
     }
   }
 }

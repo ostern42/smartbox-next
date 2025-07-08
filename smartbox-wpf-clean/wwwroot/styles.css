@@ -30,6 +30,101 @@
     }
 }
 
+/* MWL Styles */
+.mwl-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.mwl-status {
+    flex: 1;
+    text-align: right;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.mwl-status.online {
+    color: #107c10;
+}
+
+.mwl-status.offline {
+    color: #d83b01;
+}
+
+.mwl-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-small);
+    background: var(--background-tertiary);
+}
+
+.mwl-item {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mwl-item:hover {
+    background-color: var(--background-secondary);
+}
+
+.mwl-item.selected {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.mwl-item.selected .mwl-item-secondary {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.mwl-item:last-child {
+    border-bottom: none;
+}
+
+.mwl-item-primary {
+    flex: 1;
+}
+
+.mwl-item-name {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.mwl-item-details {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.mwl-item-secondary {
+    text-align: right;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.mwl-item.emergency .mwl-item-name {
+    color: #d83b01;
+}
+
+.mwl-cache-info {
+    margin-top: 8px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.mwl-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -363,4 +458,286 @@ body {
 .emergency-button i {
     font-size: 1.25rem;
     color: #d13438;
+}
+
+/* Danger Button Style */
+.action-button.danger {
+    background: #d13438;
+    color: white;
+}
+
+.action-button.danger:hover {
+    background: #a80000;
+}
+
+/* Exit Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 90%;
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 1.5rem;
+    background: #f3f2f1;
+    border-bottom: 1px solid #e1dfdd;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #323130;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-body p {
+    margin: 0 0 1rem 0;
+    color: #323130;
+    font-size: 1.1rem;
+}
+
+.modal-body .warning-text {
+    color: #d13438;
+    font-weight: 500;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    background: #f3f2f1;
+    border-top: 1px solid #e1dfdd;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.btn-danger {
+    background: #d13438;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #a80000;
+}
+
+.btn-secondary {
+    background: #e1dfdd;
+    color: #323130;
+}
+
+.btn-secondary:hover {
+    background: #d2d0ce;
+}
+
+/* MWL Worklist Styles */
+.mwl-controls {
+    margin-bottom: 1rem;
+}
+
+.mwl-control-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    align-items: center;
+}
+
+.mwl-date-select {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid #d1d1d1;
+    border-radius: 4px;
+    font-size: 1rem;
+    background: white;
+    min-height: 48px;
+    cursor: pointer;
+}
+
+.mwl-filter-row {
+    position: relative;
+    margin-bottom: 0.75rem;
+}
+
+.mwl-filter-input {
+    width: 100%;
+    padding: 0.75rem;
+    padding-right: 2.5rem;
+    border: 1px solid #d1d1d1;
+    border-radius: 4px;
+    font-size: 1rem;
+    min-height: 48px;
+}
+
+.mwl-filter-input:focus {
+    outline: none;
+    border-color: #0078d4;
+    box-shadow: 0 0 0 1px #0078d4;
+}
+
+.mwl-filter-clear {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #605e5c;
+    padding: 0.5rem;
+}
+
+.mwl-filter-clear:hover {
+    color: #323130;
+}
+
+.mwl-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    font-size: 0.875rem;
+    color: #605e5c;
+}
+
+.mwl-status.online {
+    color: #107c10;
+}
+
+.mwl-status.offline {
+    color: #d83b01;
+}
+
+.mwl-list-container {
+    border: 1px solid #e1e1e1;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.mwl-list-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 2fr 1fr;
+    background: #f3f2f1;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #323130;
+    border-bottom: 1px solid #e1e1e1;
+}
+
+.mwl-list {
+    max-height: 400px;
+    overflow-y: auto;
+    background: white;
+}
+
+.mwl-list:empty::after {
+    content: "Keine Einträge gefunden";
+    display: block;
+    padding: 2rem;
+    text-align: center;
+    color: #605e5c;
+}
+
+.mwl-item {
+    display: grid;
+    grid-template-columns: 2fr 1fr 2fr 1fr;
+    padding: 1rem;
+    border-bottom: 1px solid #f3f2f1;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    min-height: 60px;
+    align-items: center;
+}
+
+.mwl-item:hover {
+    background: #f8f8f8;
+}
+
+.mwl-item:active {
+    background: #e1e1e1;
+}
+
+.mwl-item.selected {
+    background: #e1f3ff;
+    border-left: 3px solid #0078d4;
+    padding-left: calc(1rem - 3px);
+}
+
+.mwl-item.emergency {
+    background: #fef2f2;
+}
+
+.mwl-item.emergency.selected {
+    background: #fde8e8;
+    border-left-color: #d13438;
+}
+
+.mwl-col {
+    padding: 0 0.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mwl-col-name {
+    font-weight: 500;
+    color: #323130;
+}
+
+.mwl-col-birth,
+.mwl-col-date {
+    color: #605e5c;
+    font-size: 0.875rem;
+}
+
+.mwl-col-procedure {
+    color: #323130;
+    font-size: 0.875rem;
+}
+
+/* Touch-optimized scrolling */
+.mwl-list {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+/* Scrollbar styling */
+.mwl-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.mwl-list::-webkit-scrollbar-track {
+    background: #f3f2f1;
+}
+
+.mwl-list::-webkit-scrollbar-thumb {
+    background: #c8c6c4;
+    border-radius: 4px;
+}
+
+.mwl-list::-webkit-scrollbar-thumb:hover {
+    background: #a19f9d;
+}
+
+.mwl-cache-info {
+    text-align: center;
+    color: #605e5c;
+    padding: 0.5rem;
+    border-top: 1px solid #f3f2f1;
 }

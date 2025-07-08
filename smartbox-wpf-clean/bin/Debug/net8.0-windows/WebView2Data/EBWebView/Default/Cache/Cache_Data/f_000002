@@ -8,12 +8,24 @@ class SmartBoxApp {
         this.isRecording = false;
         this.debugLog = [];
         this.config = null;
+        this.lastCapturedPhoto = null;
+        this.selectedWorklistItem = null;
+        this.worklistItems = [];
         
         // Delay initialization to ensure DOM is ready
         setTimeout(() => {
             this.initializeElements();
             this.attachEventListeners();
             this.log('SmartBox Next Web UI initialized');
+            
+            // Check WebView2 availability
+            if (window.chrome && window.chrome.webview) {
+                console.log('✅ WebView2 is available!');
+                this.log('WebView2 bridge detected');
+            } else {
+                console.error('❌ WebView2 NOT available - running in browser mode');
+                this.log('WebView2 bridge NOT available', 'error');
+            }
             
             // Auto-initialize webcam after a short delay
             setTimeout(() => {
@@ -50,11 +62,25 @@ class SmartBoxApp {
         this.openLogsButton = document.getElementById('openLogsButton');
         this.testButton = document.getElementById('testButton');
         
+        // MWL elements
+        this.refreshMwlBtn = document.getElementById('refreshMwlBtn');
+        this.mwlList = document.getElementById('mwlList');
+        this.mwlStatus = document.getElementById('mwlStatus');
+        this.cacheAge = document.getElementById('cacheAge');
+        this.cacheCount = document.getElementById('cacheCount');
+        this.dateRangeSelect = document.getElementById('dateRangeSelect');
+        this.mwlFilterInput = document.getElementById('mwlFilterInput');
+        this.mwlFilterClear = document.getElementById('mwlFilterClear');
+        this.mwlStatusCount = document.getElementById('mwlStatusCount');
+        
         // Recording elements - with null checks
         if (this.recordButton) {
             this.recordIcon = this.recordButton.querySelector('.record-icon');
         }
         this.recordText = document.getElementById('recordText');
+        
+        // Emergency section
+        this.emergencySection = document.getElementById('emergencySection');
         
         console.log('Elements initialized');
     }
@@ -65,31 +91,115 @@ class SmartBoxApp {
         // Only attach if elements exist
         if (this.captureButton) {
             this.captureButton.addEventListener('click', () => this.capturePhoto());
+            console.log('Capture button listener attached');
+        } else {
+            console.error('Capture button not found!');
         }
         if (this.recordButton) {
             this.recordButton.addEventListener('click', () => this.toggleRecording());
+            console.log('Record button listener attached');
+        } else {
+            console.error('Record button not found!');
         }
         if (this.exportDicomButton) {
             this.exportDicomButton.addEventListener('click', () => this.exportDicom());
+            console.log('Export DICOM button listener attached');
+        } else {
+            console.error('Export DICOM button not found!');
         }
         if (this.settingsButton) {
             this.settingsButton.addEventListener('click', () => this.openSettings());
+            console.log('Settings button listener attached');
+        } else {
+            console.error('Settings button not found!');
         }
         if (this.debugButton) {
             this.debugButton.addEventListener('click', () => this.toggleDebug());
+            console.log('Debug button listener attached');
+        } else {
+            console.error('Debug button not found!');
         }
         if (this.analyzeButton) {
             this.analyzeButton.addEventListener('click', () => this.analyzeCamera());
+            console.log('Analyze button listener attached');
+        } else {
+            console.error('Analyze button not found!');
         }
         if (this.openLogsButton) {
             this.openLogsButton.addEventListener('click', () => this.openLogs());
+            console.log('Open logs button listener attached');
+        } else {
+            console.error('Open logs button not found!');
         }
         if (this.testButton) {
             this.testButton.addEventListener('click', () => this.testWebView2());
+            console.log('Test button listener attached');
+        } else {
+            console.error('Test button not found!');
         }
         
         // Listen for messages from C# host
         window.addEventListener('message', (e) => this.handleHostMessage(e));
+        
+        // Emergency template buttons
+        const emergencyButtons = document.querySelectorAll('.emergency-button');
+        emergencyButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => this.applyEmergencyTemplate(e.currentTarget.dataset.template));
+        });
+        
+        // Exit button and modal
+        const exitButton = document.getElementById('exitButton');
+        const exitModal = document.getElementById('exitModal');
+        const cancelExitBtn = document.getElementById('cancelExitBtn');
+        const confirmExitBtn = document.getElementById('confirmExitBtn');
+        
+        if (exitButton) {
+            exitButton.addEventListener('click', () => this.showExitConfirmation());
+        }
+        
+        if (cancelExitBtn) {
+            cancelExitBtn.addEventListener('click', () => this.hideExitConfirmation());
+        }
+        
+        if (confirmExitBtn) {
+            confirmExitBtn.addEventListener('click', () => this.confirmExit());
+        }
+        
+        // Handle Escape key for modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && exitModal && exitModal.style.display !== 'none') {
+                this.hideExitConfirmation();
+            }
+        });
+        
+        // MWL event listeners
+        if (this.refreshMwlBtn) {
+            this.refreshMwlBtn.addEventListener('click', () => this.refreshWorklist());
+        }
+        
+        if (this.dateRangeSelect) {
+            this.dateRangeSelect.addEventListener('change', () => this.queryWorklist());
+        }
+        
+        if (this.mwlFilterInput) {
+            this.mwlFilterInput.addEventListener('input', () => this.filterWorklistItems());
+            this.mwlFilterInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.clearFilter();
+                }
+            });
+        }
+        
+        if (this.mwlFilterClear) {
+            this.mwlFilterClear.addEventListener('click', () => this.clearFilter());
+        }
+        
+        // Request config to check if emergency templates are enabled
+        setTimeout(() => {
+            this.sendToHost('requestConfig', {});
+            // Also query worklist on startup
+            this.queryWorklist();
+        }, 1000);
         
         console.log('Event listeners attached');
     }
@@ -209,6 +319,9 @@ class SmartBoxApp {
                     
                     // Remove data URL prefix for C#
                     const base64Image = base64data.split(',')[1];
+                    
+                    // Store for DICOM export
+                    this.lastCapturedPhoto = base64Image;
                     
                     // Send to C# host with correct message format
                     this.sendToHost('photoCaptured', {
@@ -417,8 +530,34 @@ class SmartBoxApp {
         }
     }
 
-    exportDicom() {
+    async exportDicom() {
         this.log('Export DICOM clicked');
+        
+        // Check if we have a recent photo
+        if (!this.lastCapturedPhoto) {
+            this.log('No photo captured yet', 'warn');
+            alert('Please capture a photo first');
+            return;
+        }
+        
+        // Get patient info
+        const patientInfo = this.getPatientInfo();
+        
+        // Validate required fields
+        if (!patientInfo.id || !patientInfo.name) {
+            this.log('Missing patient information', 'warn');
+            alert('Please enter patient ID and name');
+            return;
+        }
+        
+        // Send to C# for DICOM export
+        this.sendToHost('exportDicom', {
+            imageData: this.lastCapturedPhoto,
+            patientInfo: patientInfo,
+            timestamp: new Date().toISOString()
+        });
+        
+        this.log('DICOM export requested');
     }
 
     openSettings() {
@@ -481,6 +620,383 @@ class SmartBoxApp {
 
     handleHostMessage(event) {
         this.log(`Received message from host: ${JSON.stringify(event.data)}`);
+        
+        const message = event.data;
+        
+        switch(message.action) {
+            case 'updateConfig':
+                if (message.data && message.data.enableEmergencyTemplates) {
+                    // Show emergency templates section
+                    if (this.emergencySection) {
+                        this.emergencySection.style.display = 'block';
+                    }
+                }
+                // Check if MWL is enabled
+                if (message.data && message.data.enableWorklist) {
+                    const mwlSection = document.getElementById('mwlSection');
+                    if (mwlSection) {
+                        mwlSection.style.display = 'block';
+                    }
+                }
+                break;
+                
+            case 'worklistResult':
+                this.updateMwlStatus(message.data.isOnline ? 'Online' : 'Offline (cached)', message.data.isOnline);
+                this.displayWorklistItems(message.data.items);
+                if (message.data.cacheStatus) {
+                    this.updateCacheInfo(message.data.cacheStatus);
+                }
+                break;
+                
+            case 'worklistRefreshed':
+                this.updateMwlStatus(message.data.success ? 'Refreshed' : 'Refresh failed', message.data.success);
+                if (message.data.cacheStatus) {
+                    this.updateCacheInfo(message.data.cacheStatus);
+                }
+                // Re-query to get updated list
+                if (message.data.success) {
+                    setTimeout(() => this.queryWorklist(), 500);
+                }
+                break;
+                
+            case 'worklistCacheStatus':
+                this.updateCacheInfo(message.data);
+                break;
+                
+            case 'worklistItemSelected':
+                this.log(`Worklist item selected: ${message.data.studyInstanceUID}`);
+                break;
+                
+            case 'showExitConfirmation':
+                this.showExitConfirmation();
+                break;
+                
+            default:
+                this.log(`Unknown action: ${message.action}`);
+        }
+    }
+                break;
+        }
+    }
+    
+    applyEmergencyTemplate(template) {
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0];
+        
+        switch(template) {
+            case 'male':
+                this.patientName.value = 'Emergency, Male';
+                this.patientID.value = `EM${now.getTime()}`;
+                this.gender.value = 'M';
+                this.studyDescription.value = `Emergency admission ${dateStr} ${timeStr}`;
+                this.accessionNumber.value = `ACC${now.getTime()}`;
+                break;
+                
+            case 'female':
+                this.patientName.value = 'Emergency, Female';
+                this.patientID.value = `EF${now.getTime()}`;
+                this.gender.value = 'F';
+                this.studyDescription.value = `Emergency admission ${dateStr} ${timeStr}`;
+                this.accessionNumber.value = `ACC${now.getTime()}`;
+                break;
+                
+            case 'child':
+                this.patientName.value = 'Emergency, Child';
+                this.patientID.value = `EC${now.getTime()}`;
+                this.gender.value = 'O';
+                this.studyDescription.value = `Emergency pediatric ${dateStr} ${timeStr}`;
+                this.accessionNumber.value = `ACC${now.getTime()}`;
+                // Set approximate birth date (5 years old)
+                const childBirthDate = new Date();
+                childBirthDate.setFullYear(childBirthDate.getFullYear() - 5);
+                this.birthDate.value = childBirthDate.toISOString().split('T')[0];
+                break;
+        }
+        
+        this.log(`Applied emergency template: ${template}`);
+        
+        // Flash the form to indicate it was filled
+        this.patientName.parentElement.parentElement.style.background = '#e3f2fd';
+        setTimeout(() => {
+            this.patientName.parentElement.parentElement.style.background = '';
+        }, 500);
+    }
+    // MWL Methods
+    async queryWorklist() {
+        this.log('Querying worklist...');
+        this.updateMwlStatus('Lade...', false);
+        
+        // Get selected date range
+        const dateRange = this.dateRangeSelect ? this.dateRangeSelect.value : 'today';
+        let dates = [];
+        const today = new Date();
+        
+        switch(dateRange) {
+            case 'yesterday':
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                dates.push(yesterday.toISOString().split('T')[0]);
+                break;
+            case 'today':
+                dates.push(today.toISOString().split('T')[0]);
+                break;
+            case 'tomorrow':
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                dates.push(tomorrow.toISOString().split('T')[0]);
+                break;
+            case 'range':
+                // Yesterday, today, and tomorrow
+                const rangeYesterday = new Date(today);
+                rangeYesterday.setDate(rangeYesterday.getDate() - 1);
+                const rangeTomorrow = new Date(today);
+                rangeTomorrow.setDate(rangeTomorrow.getDate() + 1);
+                
+                dates.push(rangeYesterday.toISOString().split('T')[0]);
+                dates.push(today.toISOString().split('T')[0]);
+                dates.push(rangeTomorrow.toISOString().split('T')[0]);
+                break;
+        }
+        
+        // Store all items for filtering
+        this.allWorklistItems = [];
+        
+        // Query for each date
+        dates.forEach(date => {
+            this.sendToHost('queryworklist', { date: date });
+        });
+    }
+    
+    async refreshWorklist() {
+        this.log('Refreshing worklist from server...');
+        this.updateMwlStatus('Refreshing...', false);
+        
+        this.sendToHost('refreshworklist', {});
+    }
+    
+    updateMwlStatus(text, isOnline = null) {
+        if (this.mwlStatus) {
+            const statusText = this.mwlStatus.querySelector('.status-text');
+            if (statusText) {
+                statusText.textContent = text;
+            }
+            
+            if (isOnline !== null) {
+                this.mwlStatus.classList.toggle('online', isOnline);
+                this.mwlStatus.classList.toggle('offline', !isOnline);
+            }
+        }
+    }
+    
+    displayWorklistItems(items) {
+        if (!this.mwlList) return;
+        
+        // Store all items for filtering
+        if (!this.allWorklistItems) {
+            this.allWorklistItems = [];
+        }
+        
+        // Merge new items with existing ones (for multi-date queries)
+        items.forEach(newItem => {
+            const exists = this.allWorklistItems.some(item => 
+                item.studyInstanceUID === newItem.studyInstanceUID
+            );
+            if (!exists) {
+                this.allWorklistItems.push(newItem);
+            }
+        });
+        
+        // Apply filter if active
+        this.filterWorklistItems();
+    }
+    
+    filterWorklistItems() {
+        if (!this.mwlList || !this.allWorklistItems) return;
+        
+        const filterText = this.mwlFilterInput ? this.mwlFilterInput.value.toLowerCase() : '';
+        
+        // Show/hide clear button
+        if (this.mwlFilterClear) {
+            this.mwlFilterClear.style.display = filterText ? 'block' : 'none';
+        }
+        
+        // Filter items
+        let filteredItems = this.allWorklistItems;
+        if (filterText) {
+            filteredItems = this.allWorklistItems.filter(item => {
+                const searchableText = [
+                    item.patientName,
+                    item.patientId,
+                    item.studyDescription,
+                    item.scheduledProcedureStepDescription,
+                    item.accessionNumber
+                ].join(' ').toLowerCase();
+                
+                return searchableText.includes(filterText);
+            });
+        }
+        
+        // Sort items: emergency first, then by date/time
+        filteredItems.sort((a, b) => {
+            if (a.isEmergency && !b.isEmergency) return -1;
+            if (!a.isEmergency && b.isEmergency) return 1;
+            
+            const dateA = new Date(a.scheduledDate + ' ' + a.scheduledTime);
+            const dateB = new Date(b.scheduledDate + ' ' + b.scheduledTime);
+            return dateA - dateB;
+        });
+        
+        // Update status count
+        if (this.mwlStatusCount) {
+            this.mwlStatusCount.textContent = `(${filteredItems.length} von ${this.allWorklistItems.length})`;
+        }
+        
+        // Clear list
+        this.mwlList.innerHTML = '';
+        this.worklistItems = filteredItems;
+        
+        if (filteredItems.length === 0) {
+            this.mwlList.innerHTML = filterText 
+                ? '<div class="mwl-empty">Keine Einträge gefunden für "' + filterText + '"</div>'
+                : '<div class="mwl-empty">Keine Einträge gefunden</div>';
+            return;
+        }
+        
+        // Display filtered items
+        filteredItems.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'mwl-item';
+            if (item.isEmergency) {
+                div.classList.add('emergency');
+            }
+            
+            // Format birth date
+            const birthDate = item.birthDate ? new Date(item.birthDate).toLocaleDateString('de-DE') : '';
+            
+            // Format scheduled date
+            const schedDate = new Date(item.scheduledDate).toLocaleDateString('de-DE');
+            
+            div.innerHTML = `
+                <div class="mwl-col mwl-col-name">${item.patientName}</div>
+                <div class="mwl-col mwl-col-birth">${birthDate}</div>
+                <div class="mwl-col mwl-col-procedure">${item.scheduledProcedureStepDescription || item.studyDescription || 'Keine Beschreibung'}</div>
+                <div class="mwl-col mwl-col-date">${schedDate}</div>
+            `;
+            
+            div.addEventListener('click', () => this.selectWorklistItem(item, index));
+            this.mwlList.appendChild(div);
+        });
+    }
+    
+    clearFilter() {
+        if (this.mwlFilterInput) {
+            this.mwlFilterInput.value = '';
+            this.filterWorklistItems();
+        }
+    }
+    
+    selectWorklistItem(item, index) {
+        // Remove previous selection
+        document.querySelectorAll('.mwl-item').forEach((el, i) => {
+            el.classList.remove('selected');
+            if (i === index) {
+                el.classList.add('selected');
+            }
+        });
+        
+        this.selectedWorklistItem = item;
+        
+        // Fill patient form
+        this.fillPatientForm(item);
+        
+        // Notify C# backend
+        this.sendToHost('selectworklistitem', {
+            studyInstanceUID: item.studyInstanceUID,
+            patientId: item.patientId,
+            patientName: item.patientName,
+            accessionNumber: item.accessionNumber,
+            birthDate: item.birthDate,
+            sex: item.sex,
+            studyDescription: item.studyDescription
+        });
+        
+        this.log(`Selected patient: ${item.patientName} (${item.patientId})`);
+    }
+    
+    fillPatientForm(item) {
+        if (this.patientName) {
+            this.patientName.value = item.patientName || '';
+        }
+        if (this.patientID) {
+            this.patientID.value = item.patientId || '';
+        }
+        if (this.birthDate && item.birthDate) {
+            // birthDate should already be in YYYY-MM-DD format from server
+            this.birthDate.value = item.birthDate;
+        }
+        if (this.gender && item.sex) {
+            this.gender.value = item.sex;
+        }
+        if (this.studyDescription) {
+            this.studyDescription.value = item.studyDescription || '';
+        }
+        if (this.accessionNumber) {
+            this.accessionNumber.value = item.accessionNumber || '';
+        }
+    }
+    
+    updateCacheInfo(status) {
+        if (this.cacheAge && status.lastUpdate) {
+            const age = new Date() - new Date(status.lastUpdate);
+            const minutes = Math.floor(age / 60000);
+            const hours = Math.floor(minutes / 60);
+            
+            if (hours > 0) {
+                this.cacheAge.textContent = `${hours}h ago`;
+            } else {
+                this.cacheAge.textContent = `${minutes}m ago`;
+            }
+        }
+        
+        if (this.cacheCount) {
+            this.cacheCount.textContent = status.itemCount || 0;
+        }
+    }
+    
+    // Exit confirmation methods
+    showExitConfirmation() {
+        this.log('Showing exit confirmation dialog');
+        const exitModal = document.getElementById('exitModal');
+        if (exitModal) {
+            exitModal.style.display = 'flex';
+        }
+    }
+    
+    hideExitConfirmation() {
+        this.log('Hiding exit confirmation dialog');
+        const exitModal = document.getElementById('exitModal');
+        if (exitModal) {
+            exitModal.style.display = 'none';
+        }
+    }
+    
+    confirmExit() {
+        this.log('User confirmed exit');
+        
+        // Debug: Check if WebView2 bridge is available
+        if (!window.chrome || !window.chrome.webview) {
+            this.log('WebView2 bridge not available! Trying fallback...', 'error');
+            // Try direct window close as fallback
+            try {
+                window.close();
+            } catch (e) {
+                this.log('Window.close() failed: ' + e.message, 'error');
+            }
+            return;
+        }
+        
+        this.sendToHost('exit', {});
     }
 }
 

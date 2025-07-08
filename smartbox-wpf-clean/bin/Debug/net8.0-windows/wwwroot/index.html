@@ -30,6 +30,58 @@
 
             <!-- Patient Info -->
             <aside class="patient-info">
+                <!-- MWL Section -->
+                <div class="info-section" id="mwlSection" style="display: none;">
+                    <h2>Modality Worklist</h2>
+                    
+                    <div class="mwl-controls">
+                        <div class="mwl-control-row">
+                            <select id="dateRangeSelect" class="mwl-date-select">
+                                <option value="yesterday">Gestern</option>
+                                <option value="today" selected>Heute</option>
+                                <option value="tomorrow">Morgen</option>
+                                <option value="range">Gestern/Heute/Morgen</option>
+                            </select>
+                            <button class="btn btn-primary" id="refreshMwlBtn">
+                                <i class="ms-Icon ms-Icon--Refresh"></i>
+                                <span>Aktualisieren</span>
+                            </button>
+                        </div>
+                        
+                        <div class="mwl-filter-row">
+                            <input type="text" 
+                                   id="mwlFilterInput" 
+                                   class="mwl-filter-input" 
+                                   placeholder="Filter (z.B. Name oder Untersuchung)..."
+                                   autocomplete="off">
+                            <span class="mwl-filter-clear" id="mwlFilterClear" style="display: none;">
+                                <i class="ms-Icon ms-Icon--Clear"></i>
+                            </span>
+                        </div>
+                        
+                        <div class="mwl-status" id="mwlStatus">
+                            <span class="status-text">Lade...</span>
+                            <span class="status-count" id="mwlStatusCount"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="mwl-list-container">
+                        <div class="mwl-list-header">
+                            <div class="mwl-col mwl-col-name">Patient</div>
+                            <div class="mwl-col mwl-col-birth">Geburtsdatum</div>
+                            <div class="mwl-col mwl-col-procedure">Untersuchung</div>
+                            <div class="mwl-col mwl-col-date">Termin</div>
+                        </div>
+                        <div class="mwl-list" id="mwlList">
+                            <!-- Worklist items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="mwl-cache-info" id="mwlCacheInfo">
+                        <small>Cache: <span id="cacheAge">--</span> | <span id="cacheCount">0</span> Einträge</small>
+                    </div>
+                </div>
+                
                 <div class="info-section">
                     <h2>Patient Information</h2>
                     
@@ -126,6 +178,11 @@
                     <span>Settings</span>
                 </button>
                 
+                <button id="exitButton" class="action-button danger">
+                    <i class="ms-Icon ms-Icon--ChromeClose"></i>
+                    <span>Exit</span>
+                </button>
+                
                 <button id="debugButton" class="action-button">
                     <i class="ms-Icon ms-Icon--DeveloperTools"></i>
                     <span>Show Debug Info</span>
@@ -147,6 +204,29 @@
                 </button>
             </div>
         </footer>
+    </div>
+
+    <!-- Exit Confirmation Modal -->
+    <div id="exitModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Exit Application</h2>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to exit SmartBox Next?</p>
+                <p class="warning-text">Make sure all captures have been exported before exiting.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelExitBtn">
+                    <i class="ms-Icon ms-Icon--Cancel"></i>
+                    <span>Cancel</span>
+                </button>
+                <button class="btn btn-danger" id="confirmExitBtn">
+                    <i class="ms-Icon ms-Icon--ChromeClose"></i>
+                    <span>Exit</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <script src="keyboard.js"></script>

@@ -3,8 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="SmartBox Next - Medical Image Capture System"
-        WindowState="Maximized"
-        WindowStyle="None"
+        WindowState="Normal"
+        WindowStyle="SingleBorderWindow"
+        Width="1280"
+        Height="800"
+        MinWidth="1024"
+        MinHeight="600"
+        WindowStartupLocation="CenterScreen"
         Background="{StaticResource BackgroundBrush}"
         Loaded="Window_Loaded"
         Closing="Window_Closing">
@@ -12,8 +17,7 @@
     <Grid>
         <!-- Main WebView2 Container -->
         <wv2:WebView2 x:Name="webView" 
-                      Visibility="Collapsed"
-                      NavigationCompleted="WebView_NavigationCompleted"/>
+                      Visibility="Collapsed"/>
         
         <!-- Loading Overlay -->
         <Grid x:Name="loadingOverlay" 
@@ -66,30 +70,5 @@
                 </Border>
             </StackPanel>
         </Grid>
-        
-        <!-- Emergency Exit Button (Always Visible) -->
-        <Button x:Name="emergencyExitButton"
-                Content="✕"
-                FontSize="20"
-                Width="44"
-                Height="44"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Top"
-                Margin="10"
-                Background="#E81123"
-                Foreground="White"
-                BorderThickness="0"
-                Click="EmergencyExit_Click"
-                ToolTip="Emergency Exit (Alt+F4)">
-            <Button.Template>
-                <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
-                            CornerRadius="4">
-                        <ContentPresenter HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"/>
-                    </Border>
-                </ControlTemplate>
-            </Button.Template>
-        </Button>
     </Grid>
 </Window>

@@ -51,12 +51,16 @@ namespace SmartBoxNext
                 dataset.AddOrUpdate(DicomTag.PatientSex, patientInfo.Gender ?? "O"); // M, F, or O (other)
                 
                 // General Study Module
-                dataset.AddOrUpdate(DicomTag.StudyInstanceUID, DicomUID.Generate());
+                // CRITICAL: Use StudyInstanceUID from MWL if available, otherwise generate new
+                var studyInstanceUID = !string.IsNullOrEmpty(patientInfo.StudyInstanceUID) 
+                    ? patientInfo.StudyInstanceUID 
+                    : DicomUID.Generate().UID;
+                dataset.AddOrUpdate(DicomTag.StudyInstanceUID, studyInstanceUID);
                 dataset.AddOrUpdate(DicomTag.StudyDate, DateTime.Now.ToString("yyyyMMdd"));
                 dataset.AddOrUpdate(DicomTag.StudyTime, DateTime.Now.ToString("HHmmss"));
                 dataset.AddOrUpdate(DicomTag.ReferringPhysicianName, "");
                 dataset.AddOrUpdate(DicomTag.StudyID, DateTime.Now.ToString("yyyyMMddHHmmss"));
-                dataset.AddOrUpdate(DicomTag.AccessionNumber, "");
+                dataset.AddOrUpdate(DicomTag.AccessionNumber, patientInfo.AccessionNumber ?? "");
                 dataset.AddOrUpdate(DicomTag.StudyDescription, patientInfo.StudyDescription ?? "SmartBox Capture");
                 
                 // General Series Module
@@ -179,6 +183,10 @@ namespace SmartBoxNext
         public string? Gender { get; set; }
         public string? Institution { get; set; }
         public string? StudyDescription { get; set; }
+        
+        // Critical: StudyInstanceUID from MWL to maintain study coherence
+        public string? StudyInstanceUID { get; set; }
+        public string? AccessionNumber { get; set; }
         
         /// <summary>
         /// Get DICOM formatted patient name (Last^First)

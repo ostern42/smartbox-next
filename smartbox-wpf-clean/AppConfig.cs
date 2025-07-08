@@ -13,6 +13,7 @@ namespace SmartBoxNext
         public VideoConfig Video { get; set; } = new();
         public ApplicationConfig Application { get; set; } = new();
         public MwlConfig MwlSettings { get; set; } = new();
+        public MultiTargetConfig MultiTarget { get; set; } = new();
         
         // For backward compatibility
         public string LocalAET => Pacs?.CallingAeTitle ?? "SMARTBOX";
@@ -77,7 +78,8 @@ namespace SmartBoxNext
                     AutoRefreshSeconds = 300,
                     ShowEmergencyFirst = true,
                     CacheExpiryHours = 24
-                }
+                },
+                MultiTarget = MultiTargetConfig.CreateDefault()
             };
         }
     }
