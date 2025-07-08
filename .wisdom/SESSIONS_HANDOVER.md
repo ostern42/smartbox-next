@@ -5,6 +5,7 @@
 
 ## 📋 Quick Navigation
 
+- [Session 21](#session-21) - 2025-01-09 00:00 - SMARTBOXNEXT-2025-01-09-01
 - [Session 20](#session-20) - 2025-07-08 19:35 - SMARTBOXNEXT-2025-07-08-01
 - [Session 19](#session-19) - 2025-07-08 11:40 - SMARTBOXNEXT-2025-07-08-02
 - [Session 18](#session-18) - 2025-07-08 00:21 - SMARTBOX-2025-07-08-01
@@ -21,6 +22,41 @@
 - [Session 5](#session-5) - 2025-07-06 21:44 - DICOM Integration
 - [Session 4](#session-4) - 2025-07-06 21:11 - Basic Structure
 - [Session 3](#session-3) - 2025-07-06 18:28 - Project Setup
+
+---
+
+## Session 21
+**Date**: 2025-01-09 00:00  
+**Session ID**: SMARTBOXNEXT-2025-01-09-01
+**Duration**: 23:30 - 00:00 (30min)
+**Tokens**: ~25k/150k
+
+### ✅ Achievements
+- **Critical Bug Fix**: Case sensitivity in WebView2 message handlers
+  - Changed all 20+ case statements from camelCase to lowercase
+  - Fixed MwlService constructor call
+- **Repository Cleanup**: Moved WinUI3 to archive, removed duplicates
+- **Build Problem Analysis**: Identified persistent file lock issues
+
+### 🔴 Critical Issues
+- **Build Blockiert**: Alle DLLs und WebView2 Files sind gelockt
+  - `fix-locks.bat` killt Prozesse aber Locks bleiben
+  - 20 msedgewebview2.exe Prozesse mussten gekillt werden
+  - Vermutung: SmartBoxNext.exe beendet sich nicht sauber
+
+### 📚 Key Learnings
+- WebView2 Cleanup ist vermutlich fehlerhaft
+- Prozess hängt sich auf und gibt Resources nicht frei
+- Visual Studio Debugging könnte helfen das Problem zu finden
+
+### Next Steps
+1. **VS Debugging**: Breakpoints in Dispose/Destructor setzen
+2. **Check WebView2 Disposal**: Fehlt eventuell `webView.Dispose()`
+3. **Alternative**: Windows Neustart und manuelles Löschen von bin/obj
+4. **Code Review**: WebServer Task Cleanup prüfen
+
+### 🚨 WICHTIG
+Der Code-Fix ist korrekt, aber ohne erfolgreichen Build kann nicht getestet werden!
 
 ---
 
