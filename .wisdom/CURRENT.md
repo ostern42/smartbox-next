@@ -552,7 +552,7 @@ The app is now ready for demonstration! All major components work:
 
 ### Session 19: Complete Config Implementation & Medical Features! 🎉
 **Session ID**: SMARTBOXNEXT-2025-07-08-02
-**Duration**: 10:00 - 11:40 (08.01.2025)
+**Duration**: 10:00 - 11:40 (08.07.2025)
 **Status**: 100% Config Implementation Complete!
 
 #### Major Achievements:
@@ -614,8 +614,8 @@ The app is now ready for demonstration! All major components work:
 ---
 
 ### Session 20: MWL & Multi-Target Implementation Complete! 🎉
-**Session ID**: SMARTBOXNEXT-2025-01-08-01
-**Duration**: 12:00 - 12:30 (08.01.2025)
+**Session ID**: SMARTBOXNEXT-2025-07-08-01
+**Duration**: 12:00 - 12:30 (08.07.2025)
 **Status**: MWL fully implemented with StudyInstanceUID handling!
 
 #### Major Achievements:
@@ -685,8 +685,8 @@ The app is now ready for demonstration! All major components work:
 ---
 
 ### Session 21: Critical Bug Fix - Case Sensitivity in Action Handlers
-**Session ID**: SMARTBOXNEXT-2025-01-08-02
-**Duration**: 23:30 - 23:45 (08.01.2025)
+**Session ID**: SMARTBOXNEXT-2025-07-08-02
+**Duration**: 23:30 - 23:45 (08.07.2025)
 **Status**: Bug fixed - WebView2 message handlers working again!
 
 #### The Bug:
@@ -797,8 +797,8 @@ Access to the path '...\bin\Debug\net8.0-windows\*.dll' is denied
 ---
 
 ### Session 22: Window Closing Bug Fix & File Lock Investigation 🔧
-**Session ID**: SMARTBOXNEXT-2025-01-09-01
-**Duration**: 00:30 - 01:10 (09.01.2025)
+**Session ID**: SMARTBOXNEXT-2025-07-09-01
+**Duration**: 00:30 - 01:10 (09.07.2025)
 **Status**: Bug fixed, but build blocked by file locks
 
 #### Major Achievement:
@@ -857,3 +857,65 @@ Access to the path '...\bin\Debug\net8.0-windows\*.dll' is denied
 5. Continue with other pending bugs
 
 *Session 22: "Sometimes Windows just needs a fresh start"*
+
+---
+
+## 🐛 AKTUELLE BUG-LISTE & OFFENE PUNKTE (Stand: 09.07.2025)
+
+### 🔴 Kritische Bugs:
+1. **WebView2 Message Timeout** (von Session 13)
+   - Problem: Nachrichten zwischen C# und JavaScript haben Timeouts
+   - Symptom: Photo/Video capture fails after short time
+   - Vermutung: Async/Await handling oder Message Queue overflow
+   - Test: Nach Neustart prüfen ob Problem noch besteht
+
+2. **File Lock Issue** (Session 22 - TEILWEISE GEFIXT)
+   - ✅ Window_Closing Handler gefixt mit _isClosing flag
+   - ⚠️ Alte Locks müssen durch Neustart entfernt werden
+   - Nach Fix sollte Problem nicht mehr auftreten
+
+### 🟡 Wichtige Bugs:
+1. **Case Sensitivity Fix nicht getestet** (Session 21)
+   - Fix: Alle action handlers von camelCase zu lowercase geändert
+   - Test: Alle Buttons durchklicken (Open Logs, Save Settings, etc.)
+   - Datei: MainWindow.xaml.cs
+
+2. **WebView2 API Availability Check fehlt**
+   - Problem: Keine Prüfung ob WebView2 Runtime installiert ist
+   - TODO: Try-Catch um WebView2 Initialisierung
+   - Fallback/Fehlermeldung wenn nicht verfügbar
+
+### 🟢 Feature TODOs:
+1. **Settings UI Modernisierung**
+   - Von Terminal-Style zu Windows Terminal Style
+   - Segoe UI Variable Font
+   - Moderne Animationen
+   - Datei: settings.html/css
+
+2. **Assistant Mode**
+   - Auto-Start wenn config.json leer/ungültig
+   - Progressive Field Highlighting
+   - Validierung mit grünem Rahmen
+   - Kann nicht fortfahren bis alles valid
+
+3. **DICOM Export Implementation**
+   - Aktuell nur Platzhalter
+   - Real image data → DICOM conversion
+   - Metadata korrekt setzen
+   - StudyInstanceUID von MWL nutzen
+
+4. **PACS C-STORE Implementation**
+   - Queue System ist ready
+   - Actual C-STORE sending fehlt
+   - Multi-Target Failover testen
+
+### 📝 Dokumentations-TODOs:
+- Deployment Guide erstellen
+- User Manual für Touch-Bedienung
+- DICOM Conformance Statement
+
+### 🔧 Code Quality:
+- Nullable Reference Warnings beheben
+- Unused field warnings entfernen
+- Error Handling verbessern
+- Logging konsistenter machen

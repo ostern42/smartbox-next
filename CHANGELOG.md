@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Session 22 - 2025-01-09 (Window Closing Bug Fix)
+### Session 22 - 2025-07-09 (Window Closing Bug Fix)
 
 #### Fixed
 - **Critical Window Closing Bug**:
@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Window_Closing now checks flag before canceling close event
 - Proper cleanup sequence maintained while preventing re-entry
 
-### Session 19 - 2025-01-08 (Complete Config Implementation & Medical Features! 🎉)
+### Session 19 - 2025-07-08 (Complete Config Implementation & Medical Features! 🎉)
 
 #### Added
 - **Emergency Templates**:
