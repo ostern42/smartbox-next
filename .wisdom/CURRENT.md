@@ -185,6 +185,74 @@ MediaFrameReader delivers frames, but WinUI3 Image control doesn't display them 
 - Glove-friendly for medical use
 - Web-based configuration sync
 
+### 🚨 CRITICAL REQUIREMENTS - OFFLINE FUNCTIONALITY (Session 20):
+
+**ABSOLUTE REQUIREMENT: Complete Offline Functionality!**
+
+#### MWL Caching Strategy:
+1. **Persistent MWL Cache**:
+   - Query results → JSON file (e.g., `./Data/Cache/mwl_cache.json`)
+   - Survives restarts/crashes
+   - Timestamp for each entry
+   - Auto-refresh when online
+
+2. **StudyInstanceUID Handling**:
+   - **CRITICAL**: Use StudyInstanceUID from MWL!
+   - Store in cached patient data
+   - Apply to ALL images/videos from that study
+   - Maintains DICOM study coherence
+
+3. **Offline Workflow**:
+   ```
+   Start SmartBox → Load MWL Cache → Work Offline
+        ↓                              ↓
+   Select Cached Patient         Capture Images/Videos
+        ↓                              ↓
+   Use MWL StudyInstanceUID      Queue for Upload
+        ↓                              ↓
+   When Online → Send to Multiple Targets
+   ```
+
+4. **Multi-Target Architecture**:
+   ```json
+   "Targets": [
+     {
+       "Type": "C-STORE",
+       "Name": "Primary PACS",
+       "Host": "pacs.hospital.local",
+       "Priority": 1,
+       "Rules": ["*"]
+     },
+     {
+       "Type": "C-STORE", 
+       "Name": "Backup PACS",
+       "Host": "backup.hospital.local",
+       "Priority": 2,
+       "Rules": ["OnPrimaryFail"]
+     },
+     {
+       "Type": "FTP",
+       "Name": "Emergency Archive",
+       "Host": "ftp.hospital.local",
+       "Priority": 3,
+       "Rules": ["Emergency", "OnAllPacsFail"]
+     },
+     {
+       "Type": "FileShare",
+       "Name": "Local Backup",
+       "Path": "\\\\nas\\dicom-backup",
+       "Priority": 4,
+       "Rules": ["Always"]
+     }
+   ]
+   ```
+
+5. **Emergency Concept**:
+   - Primary fails → Try backup
+   - All PACS fail → FTP/FileShare
+   - Network down → Local queue
+   - Power loss → Persistent queue survives
+
 ### 🚨 CRITICAL ARCHITECTURE DISCUSSION for Session 14:
 
 Oliver's suggestion: **"oder alles als html basierte anwendung machen?"**
@@ -211,7 +279,7 @@ SmartBoxNext.exe (Minimal)
 ---
 
 ### Session 14: HTML UI Transformation Complete! 🎨
-**Session ID**: SMARTBOXNEXT-2025-01-07-01
+**Session ID**: SMARTBOXNEXT-2025-07-07-01
 
 #### Major Achievements:
 1. **Complete HTML UI Transformation**:
@@ -258,7 +326,7 @@ SmartBoxNext.exe (Minimal)
 ---
 
 ### Session 15: Settings, Logging & Deployment 🛠️
-**Session ID**: SMARTBOXNEXT-2025-01-07-02
+**Session ID**: SMARTBOXNEXT-2025-07-07-02
 **Token Exit**: 130k/150k (87%)
 
 #### Major Achievements:
@@ -483,7 +551,7 @@ The app is now ready for demonstration! All major components work:
 ---
 
 ### Session 19: Complete Config Implementation & Medical Features! 🎉
-**Session ID**: SMARTBOXNEXT-2025-01-08-02
+**Session ID**: SMARTBOXNEXT-2025-07-08-02
 **Duration**: 10:00 - 11:40 (08.01.2025)
 **Status**: 100% Config Implementation Complete!
 

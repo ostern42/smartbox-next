@@ -1,0 +1,367 @@
+/* Settings - Modern Windows Light Theme */
+:root {
+    --bg-primary: #f3f3f3;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #fafafa;
+    --bg-hover: #e8e8e8;
+    --bg-active: #0078d4;
+    
+    --text-primary: #323130;
+    --text-secondary: #605e5c;
+    --text-accent: #0078d4;
+    
+    --border-color: #e1dfdd;
+    --border-radius: 6px;
+    
+    --shadow-subtle: 0 2px 4px rgba(0, 0, 0, 0.04);
+    --shadow-medium: 0 4px 8px rgba(0, 0, 0, 0.08);
+    
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+.settings-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg-primary);
+}
+
+/* Header */
+.settings-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 24px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-header h1 {
+    flex: 1;
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.back-button,
+.save-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.back-button:hover,
+.save-button:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-color);
+}
+
+.save-button {
+    background: var(--bg-active);
+    color: white;
+}
+
+.save-button:hover {
+    background: #106ebe;
+    border-color: transparent;
+}
+
+/* Content Layout */
+.settings-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Navigation */
+.settings-nav {
+    width: 240px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    padding: 16px 8px;
+    overflow-y: auto;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    margin-bottom: 4px;
+    background: transparent;
+    border: none;
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.nav-item:hover {
+    background: var(--bg-hover);
+}
+
+.nav-item.active {
+    background: var(--bg-active);
+    color: white;
+}
+
+.nav-item i {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+}
+
+/* Main Content */
+.settings-main {
+    flex: 1;
+    padding: 32px;
+    overflow-y: auto;
+    background: var(--bg-primary);
+}
+
+.settings-section {
+    display: none;
+    max-width: 600px;
+}
+
+.settings-section.active {
+    display: block;
+}
+
+.settings-section h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    color: var(--text-primary);
+}
+
+/* Form Elements */
+.setting-group {
+    margin-bottom: 24px;
+}
+
+.setting-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.setting-group input[type="text"],
+.setting-group input[type="number"],
+.setting-group select,
+.setting-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: all var(--transition-fast);
+}
+
+.setting-group input:hover,
+.setting-group select:hover,
+.setting-group textarea:hover {
+    border-color: var(--text-secondary);
+}
+
+.setting-group input:focus,
+.setting-group select:focus,
+.setting-group textarea:focus {
+    outline: none;
+    border-color: var(--bg-active);
+    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+}
+
+/* Input with Button */
+.input-with-button {
+    display: flex;
+    gap: 8px;
+}
+
+.input-with-button input {
+    flex: 1;
+}
+
+.browse-button {
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.browse-button:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-secondary);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    margin-bottom: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    transition: all var(--transition-normal);
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: var(--text-secondary);
+    border-radius: 50%;
+    transition: all var(--transition-normal);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: var(--bg-active);
+    border-color: var(--bg-active);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    background-color: white;
+    transform: translateX(20px);
+}
+
+/* Help Text */
+.help-text {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* Test Button */
+.test-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.test-button:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-secondary);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--bg-hover);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .settings-nav {
+        width: 60px;
+    }
+    
+    .nav-item span {
+        display: none;
+    }
+    
+    .nav-item {
+        justify-content: center;
+        padding: 12px;
+    }
+    
+    .settings-main {
+        padding: 16px;
+    }
+}
+
+/* Touch optimizations */
+@media (pointer: coarse) {
+    .setting-group input,
+    .setting-group select,
+    .setting-group textarea,
+    .browse-button,
+    .test-button,
+    .nav-item {
+        min-height: 48px;
+    }
+    
+    .toggle-switch {
+        width: 52px;
+        height: 28px;
+    }
+    
+    .toggle-slider:before {
+        height: 20px;
+        width: 20px;
+    }
+}

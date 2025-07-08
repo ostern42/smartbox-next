@@ -1,0 +1,33 @@
+version: '3'
+
+services:
+  orthanc:
+    image: jodogne/orthanc-plugins:latest
+    container_name: orthanc-mwl
+    ports:
+      - "105:4242"     # DICOM port (MWL on port 105)
+      - "8043:8042"    # Web interface (8043 to avoid conflict)
+    environment:
+      # Enable Modality Worklist plugin
+      - ORTHANC__PLUGINS=["libModalityWorklist.so"]
+      - ORTHANC__WORKLISTS__ENABLE=true
+      - ORTHANC__WORKLISTS__DATABASE=/var/lib/orthanc/worklists
+      
+      # Basic Orthanc config
+      - ORTHANC__NAME=SmartBoxOrthanc
+      - ORTHANC__DICOM_AET=ORTHANC
+      
+      # Enable DICOM modalities (for SmartBox)
+      - ORTHANC__DICOM_MODALITIES={"SMARTBOX":["SMARTBOX","localhost",5678]}
+      
+      # Authentication (optional, remove for testing)
+      - ORTHANC__AUTHENTICATION_ENABLED=false
+      
+      # Enable all transfer syntaxes
+      - ORTHANC__ACCEPTED_TRANSFER_SYNTAXES=["*"]
+      
+    volumes:
+      - ./orthanc-storage:/var/lib/orthanc/db
+      - ./worklists:/var/lib/orthanc/worklists
+      
+    restart: unless-stopped

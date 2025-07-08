@@ -23,7 +23,6 @@ namespace SmartBoxNext
         private PacsSender? _pacsSender;
         private QueueManager? _queueManager;
         private QueueProcessor? _queueProcessor;
-        private MwlService? _mwlService;
         private bool _isInitialized = false;
         
         private static readonly ILoggerFactory _loggerFactory = LoggerFactory.Create(builder =>
@@ -71,7 +70,6 @@ namespace SmartBoxNext
                 _pacsSender = new PacsSender(_config);
                 _queueManager = new QueueManager(_config);
                 _queueProcessor = new QueueProcessor(_config, _queueManager, _pacsSender);
-                _mwlService = new MwlService(_config, new Logger(_config));
                 
                 // Start queue processor
                 _queueProcessor.Start();
@@ -307,18 +305,6 @@ namespace SmartBoxNext
                     
                 case "testpacsconnection":
                     await HandleTestPacsConnection(message);
-                    break;
-                    
-                case "queryworklist":
-                    await HandleQueryWorklist(message);
-                    break;
-                    
-                case "refreshworklist":
-                    await HandleRefreshWorklist();
-                    break;
-                    
-                case "getworklistcachestatus":
-                    await HandleGetWorklistCacheStatus();
                     break;
                     
                 default:
@@ -1140,101 +1126,13 @@ namespace SmartBoxNext
                         defaultResolution = _config.Video.DefaultResolution,
                         photoFormat = "jpeg",
                         videoFormat = "webm",
-                        enableEmergencyTemplates = _config.Application.EnableEmergencyTemplates,
-                        enableWorklist = _config.MwlSettings?.EnableWorklist ?? false
+                        enableEmergencyTemplates = _config.Application.EnableEmergencyTemplates
                     }
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send configuration");
-            }
-        }
-        
-        private async Task HandleQueryWorklist(dynamic message)
-        {
-            try
-            {
-                DateTime? date = null;
-                if (message?.date != null)
-                {
-                    if (DateTime.TryParse(message.date.ToString(), out var parsedDate))
-                    {
-                        date = parsedDate;
-                    }
-                }
-
-                var items = await _mwlService.GetWorklistAsync(date);
-                
-                await SendMessageToWebView(new
-                {
-                    action = "worklistResult",
-                    data = new
-                    {
-                        items = items.Select(i => new
-                        {
-                            studyInstanceUID = i.StudyInstanceUID,
-                            accessionNumber = i.AccessionNumber,
-                            patientId = i.PatientId,
-                            patientName = i.DisplayName,
-                            birthDate = i.BirthDate?.ToString("yyyy-MM-dd"),
-                            sex = i.Sex,
-                            age = i.DisplayAge,
-                            scheduledDate = i.ScheduledDate.ToString("yyyy-MM-dd"),
-                            scheduledTime = i.DisplayTime,
-                            studyDescription = i.StudyDescription,
-                            isEmergency = i.IsEmergency
-                        }),
-                        cacheStatus = _mwlService.GetCacheStatus()
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to query worklist");
-                await SendErrorToWebView($"Worklist query failed: {ex.Message}");
-            }
-        }
-        
-        private async Task HandleRefreshWorklist()
-        {
-            try
-            {
-                var success = await _mwlService.RefreshCacheAsync();
-                
-                await SendMessageToWebView(new
-                {
-                    action = "worklistRefreshResult",
-                    data = new
-                    {
-                        success,
-                        cacheStatus = _mwlService.GetCacheStatus()
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to refresh worklist");
-                await SendErrorToWebView($"Worklist refresh failed: {ex.Message}");
-            }
-        }
-        
-        private async Task HandleGetWorklistCacheStatus()
-        {
-            try
-            {
-                var status = _mwlService.GetCacheStatus();
-                
-                await SendMessageToWebView(new
-                {
-                    action = "worklistCacheStatus",
-                    data = status
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get worklist cache status");
-                await SendErrorToWebView($"Failed to get cache status: {ex.Message}");
             }
         }
     }

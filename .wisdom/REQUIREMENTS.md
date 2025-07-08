@@ -48,6 +48,38 @@ Die aktuelle SmartBox-Lösung:
 - Automatic retry with backoff
 - Status monitoring (local and remote)
 
+#### Queue Management UI Requirements (**Session 20**)
+- **Local Touch Interface**:
+  - View queue status on device
+  - Retry failed uploads manually
+  - Delete/skip problematic items
+  - Priority reordering (drag & drop)
+  - Clear error display
+  - Touch-optimized (48x48px targets)
+  
+- **Remote Web Management**:
+  - Same features via web interface
+  - Bulk operations (retry all, clear errors)
+  - Download failed images for manual handling
+  - Queue statistics and history
+  - Real-time status updates (WebSocket)
+  - Multi-device management dashboard
+
+#### Multi-Target Upload (**Session 20**)
+- **Multiple Destinations**:
+  - Primary PACS (C-STORE)
+  - Backup PACS (failover)
+  - FTP server (emergency)
+  - Network share (always-on backup)
+  - Cloud storage (future)
+  
+- **Rule-Based Routing**:
+  - Emergency → Priority targets
+  - Normal → Standard flow
+  - Failed primary → Automatic failover
+  - Time-based rules (night = different target)
+  - Modality-based routing
+
 ### 4. Emergency Operation Features
 - **Emergency Patient Templates**:
   - "Notfall männlich" (auto date/time)
@@ -79,11 +111,39 @@ Die aktuelle SmartBox-Lösung:
 5. Basic error recovery
 
 ### Phase 3 Features
-1. On-screen keyboard
+1. On-screen keyboard ✓
 2. Worklist integration
 3. Multiple camera support
 4. Overlay functionality
 5. Remote management
+
+### Worklist Integration Requirements (**Session 20**)
+1. **MWL Query & Cache**:
+   - C-FIND to configured MWL server
+   - Persistent JSON cache for offline
+   - Auto-refresh when online
+   - Manual refresh button
+   - Cache age indicator
+
+2. **Critical: StudyInstanceUID Handling**:
+   - **MUST use StudyInstanceUID from MWL**
+   - All images/videos get same StudyUID
+   - Maintains DICOM study coherence
+   - No local UID generation when MWL used
+
+3. **Offline Workflow**:
+   - Full functionality without network
+   - Select from cached worklist
+   - Queue captures for later upload
+   - Sync when connection returns
+   - Never lose data
+
+4. **UI Requirements**:
+   - One-click patient selection
+   - Emergency entries highlighted
+   - Search/filter in worklist
+   - Touch-optimized selection
+   - Clear status indicators
 
 ## Technical Constraints
 

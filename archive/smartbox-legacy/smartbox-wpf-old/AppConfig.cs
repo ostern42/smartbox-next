@@ -12,11 +12,6 @@ namespace SmartBoxNext
         public PacsConfig Pacs { get; set; } = new();
         public VideoConfig Video { get; set; } = new();
         public ApplicationConfig Application { get; set; } = new();
-        public MwlConfig MwlSettings { get; set; } = new();
-        
-        // For backward compatibility
-        public string LocalAET => Pacs?.CallingAeTitle ?? "SMARTBOX";
-        public string StoragePath => Storage?.PhotosPath?.Replace("\\Photos", "") ?? ".";
         
         /// <summary>
         /// Creates a default configuration suitable for medical environments
@@ -67,16 +62,6 @@ namespace SmartBoxNext
                     EnableRemoteAccess = false,
                     HideExitButton = false,
                     EnableEmergencyTemplates = true
-                },
-                MwlSettings = new MwlConfig
-                {
-                    EnableWorklist = false,
-                    MwlServerHost = "localhost",
-                    MwlServerPort = 105,
-                    MwlServerAET = "ORTHANC",
-                    AutoRefreshSeconds = 300,
-                    ShowEmergencyFirst = true,
-                    CacheExpiryHours = 24
                 }
             };
         }

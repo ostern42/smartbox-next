@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<NativeDicomModel>
+    <DicomAttribute tag="0008,0050" vr="SH" keyword="AccessionNumber">ACC003</DicomAttribute>
+    <DicomAttribute tag="0010,0010" vr="PN" keyword="PatientName">Mueller^Klaus</DicomAttribute>
+    <DicomAttribute tag="0010,0020" vr="LO" keyword="PatientID">PAT003</DicomAttribute>
+    <DicomAttribute tag="0010,0030" vr="DA" keyword="PatientBirthDate">19650312</DicomAttribute>
+    <DicomAttribute tag="0010,0040" vr="CS" keyword="PatientSex">M</DicomAttribute>
+    <DicomAttribute tag="0020,000D" vr="UI" keyword="StudyInstanceUID">1.2.276.0.7230010.3.1.4.865394202</DicomAttribute>
+    <DicomAttribute tag="0032,1060" vr="LO" keyword="RequestedProcedureDescription">Hand X-Ray</DicomAttribute>
+    <DicomAttribute tag="0040,0100" vr="SQ" keyword="ScheduledProcedureStepSequence">
+        <Item number="1">
+            <DicomAttribute tag="0008,0060" vr="CS" keyword="Modality">CR</DicomAttribute>
+            <DicomAttribute tag="0040,0001" vr="AE" keyword="ScheduledStationAETitle">SMARTBOX</DicomAttribute>
+            <DicomAttribute tag="0040,0002" vr="DA" keyword="ScheduledProcedureStepStartDate">20250708</DicomAttribute>
+            <DicomAttribute tag="0040,0003" vr="TM" keyword="ScheduledProcedureStepStartTime">183004</DicomAttribute>
+            <DicomAttribute tag="0040,0006" vr="PN" keyword="ScheduledPerformingPhysicianName">Dr. Smith</DicomAttribute>
+            <DicomAttribute tag="0040,0007" vr="LO" keyword="ScheduledProcedureStepDescription">Hand X-Ray</DicomAttribute>
+            <DicomAttribute tag="0040,0009" vr="SH" keyword="ScheduledProcedureStepID">SPS2796</DicomAttribute>
+        </Item>
+    </DicomAttribute>
+</NativeDicomModel>
