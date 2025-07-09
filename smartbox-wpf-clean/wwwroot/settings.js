@@ -1,4 +1,4 @@
-// SmartBox Settings Manager - Fixed Version
+// SmartBox Settings Manager - Refactored with Automatic Mapping
 class SettingsManager {
     constructor() {
         this.config = null;
@@ -102,6 +102,36 @@ class SettingsManager {
         });
     }
 
+    // Convert HTML ID to C# property path
+    // Example: storage-photos-path → Storage.PhotosPath
+    htmlIdToPropertyPath(htmlId) {
+        const parts = htmlId.split('-');
+        if (parts.length < 2) return null;
+        
+        const section = this.capitalizeSection(parts[0]);
+        const property = parts.slice(1)
+            .map((p, i) => i === 0 ? this.capitalize(p) : this.capitalize(p))
+            .join('');
+        
+        return { section, property };
+    }
+
+    // Special handling for section names
+    capitalizeSection(section) {
+        const sectionMap = {
+            'storage': 'Storage',
+            'pacs': 'Pacs',
+            'mwlsettings': 'MwlSettings',
+            'video': 'Video',
+            'application': 'Application'
+        };
+        return sectionMap[section.toLowerCase()] || section;
+    }
+
+    capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    }
+
     async loadSettings() {
         try {
             // Send request to C# host
@@ -113,346 +143,246 @@ class SettingsManager {
 
     async saveSettings() {
         try {
-            // Create field mapping from HTML IDs to C# property names
-            const fieldMapping = {
-                // Storage fields
-                'photos-path': { section: 'Storage', field: 'PhotosPath' },
-                'videos-path': { section: 'Storage', field: 'VideosPath' },
-                'dicom-path': { section: 'Storage', field: 'DicomPath' },
-                'queue-path': { section: 'Storage', field: 'QueuePath' },
-                'temp-path': { section: 'Storage', field: 'TempPath' },
-                'max-storage-days': { section: 'Storage', field: 'MaxStorageDays' },
-                'enable-auto-cleanup': { section: 'Storage', field: 'EnableAutoCleanup' },
-                
-                // PACS fields
-                'pacs-serverHost': { section: 'Pacs', field: 'ServerHost' },
-                'pacs-serverPort': { section: 'Pacs', field: 'ServerPort' },
-                'pacs-calledAeTitle': { section: 'Pacs', field: 'CalledAeTitle' },
-                'pacs-callingAeTitle': { section: 'Pacs', field: 'CallingAeTitle' },
-                'pacs-timeout': { section: 'Pacs', field: 'Timeout' },
-                'pacs-enableTls': { section: 'Pacs', field: 'EnableTls' },
-                'pacs-maxRetries': { section: 'Pacs', field: 'MaxRetries' },
-                'pacs-retryDelay': { section: 'Pacs', field: 'RetryDelay' },
-                
-                // MWL fields
-                'mwl-enable': { section: 'MwlSettings', field: 'EnableWorklist' },
-                'mwl-server-ip': { section: 'MwlSettings', field: 'MwlServerHost' },
-                'mwl-server-port': { section: 'MwlSettings', field: 'MwlServerPort' },
-                'mwl-server-ae': { section: 'MwlSettings', field: 'MwlServerAET' },
-                'mwl-cache-hours': { section: 'MwlSettings', field: 'CacheExpiryHours' },
-                // These fields don't exist in MwlConfig, skip them
-                // 'mwl-local-ae': { section: 'MwlSettings', field: 'LocalAET' },
-                // 'mwl-modality': { section: 'MwlSettings', field: 'Modality' },
-                // 'mwl-station-name': { section: 'MwlSettings', field: 'StationName' },
-                // 'mwl-auto-refresh': { section: 'MwlSettings', field: 'AutoRefresh' },
-                
-                // Video fields
-                'preferred-width': { section: 'Video', field: 'DefaultWidth' },
-                'preferred-height': { section: 'Video', field: 'DefaultHeight' },
-                'preferred-fps': { section: 'Video', field: 'DefaultFrameRate' },
-                'video-quality': { section: 'Video', field: 'DefaultQuality' },
-                'enable-hardware-acceleration': { section: 'Video', field: 'EnableHardwareAcceleration' },
-                'preferred-camera': { section: 'Video', field: 'PreferredCamera' },
-                
-                // Application fields
-                'language': { section: 'Application', field: 'Language' },
-                'theme': { section: 'Application', field: 'Theme' },
-                'enable-touch-keyboard': { section: 'Application', field: 'EnableTouchKeyboard' },
-                'enable-debug-mode': { section: 'Application', field: 'EnableDebugMode' },
-                'auto-start-capture': { section: 'Application', field: 'AutoStartCapture' },
-                'web-server-port': { section: 'Application', field: 'WebServerPort' },
-                'enable-remote-access': { section: 'Application', field: 'EnableRemoteAccess' },
-                'hide-exit-button': { section: 'Application', field: 'HideExitButton' },
-                'enable-emergency-templates': { section: 'Application', field: 'EnableEmergencyTemplates' }
-            };
-
-            const settings = {
-                Storage: {},
-                Pacs: {},
-                MwlSettings: {},
-                Video: {},
-                Application: {}
-            };
-
-            // Get all form inputs
-            const inputs = this.form.querySelectorAll('input, select');
-            
-            inputs.forEach(input => {
-                const mapping = fieldMapping[input.id];
-                if (!mapping) {
-                    console.warn('No mapping found for field:', input.id);
-                    return;
-                }
-                
-                // Get value based on input type
-                let value;
-                if (input.type === 'checkbox') {
-                    value = input.checked;
-                } else if (input.type === 'number') {
-                    value = parseInt(input.value) || 0;
-                } else {
-                    value = input.value;
-                }
-                
-                settings[mapping.section][mapping.field] = value;
-            });
-            
-            // Special handling for video resolution
-            const width = document.getElementById('preferred-width')?.value || '1920';
-            const height = document.getElementById('preferred-height')?.value || '1080';
-            settings.Video.DefaultResolution = `${width}x${height}`;
-            // Remove the individual width/height fields that don't exist in C#
-            delete settings.Video.DefaultWidth;
-            delete settings.Video.DefaultHeight;
-
-            console.log('Saving settings:', settings);
+            const config = this.gatherFormData();
+            console.log('Saving config:', config);
             
             // Send to C# host
-            this.sendToHost('savesettings', settings);
-            this.showNotification('Settings saved successfully', 'success');
+            this.sendToHost('savesettings', config);
+            
+            // Show success notification
+            this.showNotification('Settings saved successfully!', 'success');
         } catch (error) {
             console.error('Failed to save settings:', error);
-            this.showNotification('Failed to save settings', 'error');
+            this.showNotification('Failed to save settings: ' + error.message, 'error');
         }
     }
 
-    testPacsConnection() {
-        if (this.testPacsButton) {
-            this.testPacsButton.disabled = true;
-            this.testPacsButton.innerHTML = '<i class="ms-Icon ms-Icon--Sync"></i><span>Testing...</span>';
-        }
-
-        // Get PACS settings from form
-        const pacsSettings = {
-            serverHost: document.getElementById('pacs-serverHost').value,
-            serverPort: parseInt(document.getElementById('pacs-serverPort').value),
-            calledAeTitle: document.getElementById('pacs-calledAeTitle').value,
-            callingAeTitle: document.getElementById('pacs-callingAeTitle').value
+    gatherFormData() {
+        const config = {
+            Storage: {},
+            Pacs: {},
+            MwlSettings: {},
+            Video: {},
+            Application: {}
         };
 
-        // Send test request to C# host (lowercase!)
-        this.sendToHost('testpacsconnection', pacsSettings);
+        // Get all input elements
+        const inputs = this.form.querySelectorAll('input, select');
+        
+        inputs.forEach(input => {
+            const mapping = this.htmlIdToPropertyPath(input.id);
+            if (!mapping) {
+                console.warn('No mapping for input:', input.id);
+                return;
+            }
+
+            const { section, property } = mapping;
+            
+            // Get value based on input type
+            let value;
+            if (input.type === 'checkbox') {
+                value = input.checked;
+            } else if (input.type === 'number') {
+                value = parseInt(input.value) || 0;
+            } else {
+                value = input.value;
+            }
+
+            // Special handling for certain fields
+            if (property === 'EnablePacs') {
+                // PACS doesn't have EnablePacs, it's determined by ServerHost
+                return;
+            }
+
+            // Set value in config
+            if (config[section]) {
+                config[section][property] = value;
+            }
+        });
+
+        console.log('Gathered config:', config);
+        return config;
     }
 
-    testMwlConnection() {
-        if (this.testMwlButton) {
-            this.testMwlButton.disabled = true;
-            this.testMwlButton.innerHTML = '<i class="ms-Icon ms-Icon--Sync"></i><span>Testing...</span>';
-        }
+    populateForm(config) {
+        if (!config) return;
+        
+        console.log('Populating form with config:', config);
+        this.config = config;
 
-        // Get MWL settings from form
-        const mwlSettings = {
-            serverHost: document.getElementById('mwl-server-ip').value,
-            serverPort: parseInt(document.getElementById('mwl-server-port').value),
-            serverAeTitle: document.getElementById('mwl-server-ae').value,
-            localAeTitle: document.getElementById('mwl-local-ae').value
-        };
+        // Populate all inputs
+        const inputs = this.form.querySelectorAll('input, select');
+        
+        inputs.forEach(input => {
+            const mapping = this.htmlIdToPropertyPath(input.id);
+            if (!mapping) return;
 
-        // Send test request to C# host (lowercase!)
-        this.sendToHost('testmwlconnection', mwlSettings);
-    }
+            const { section, property } = mapping;
+            const sectionConfig = config[section];
+            
+            if (!sectionConfig) return;
 
-    browseFolder(button) {
-        const inputId = button.dataset.for;
-        this.sendToHost('browsefolder', { 
-            inputId: inputId,
-            currentPath: document.getElementById(inputId).value 
+            // Special handling for EnablePacs
+            if (input.id === 'pacs-enable-pacs') {
+                input.checked = !!(sectionConfig.ServerHost);
+                return;
+            }
+
+            const value = sectionConfig[property];
+            if (value === undefined) return;
+
+            // Set value based on input type
+            if (input.type === 'checkbox') {
+                input.checked = value;
+            } else {
+                input.value = value;
+            }
         });
     }
 
-    showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
+    async testPacsConnection() {
+        try {
+            this.showNotification('Testing PACS connection...', 'info');
+            
+            // Gather current PACS settings
+            const pacsConfig = {
+                ServerHost: document.getElementById('pacs-server-host').value,
+                ServerPort: parseInt(document.getElementById('pacs-server-port').value) || 104,
+                CalledAeTitle: document.getElementById('pacs-called-ae-title').value,
+                CallingAeTitle: document.getElementById('pacs-calling-ae-title').value,
+                Timeout: parseInt(document.getElementById('pacs-timeout').value) || 30
+            };
+
+            console.log('Testing PACS with config:', pacsConfig);
+            this.sendToHost('testpacsconnection', pacsConfig);
+        } catch (error) {
+            console.error('Failed to test PACS connection:', error);
+            this.showNotification('Failed to test connection: ' + error.message, 'error');
+        }
+    }
+
+    async testMwlConnection() {
+        try {
+            this.showNotification('Testing MWL connection...', 'info');
+            
+            // Gather current MWL settings
+            const mwlConfig = {
+                EnableWorklist: document.getElementById('mwlsettings-enable-worklist').checked,
+                MwlServerHost: document.getElementById('mwlsettings-mwl-server-host').value,
+                MwlServerPort: parseInt(document.getElementById('mwlsettings-mwl-server-port').value) || 104,
+                MwlServerAET: document.getElementById('mwlsettings-mwl-server-aet').value
+            };
+
+            console.log('Testing MWL with config:', mwlConfig);
+            this.sendToHost('testmwlconnection', mwlConfig);
+        } catch (error) {
+            console.error('Failed to test MWL connection:', error);
+            this.showNotification('Failed to test connection: ' + error.message, 'error');
+        }
+    }
+
+    browseFolder(button) {
+        const fieldId = button.dataset.for;
+        console.log('Browse folder for field:', fieldId);
         
-        document.body.appendChild(notification);
-        
-        // Remove after 3 seconds
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
+        this.sendToHost('browsefolder', { fieldId });
     }
 
     sendToHost(action, data) {
+        const message = {
+            action: action,
+            data: data
+        };
+        
+        console.log('Sending to host:', message);
+        
         if (window.chrome && window.chrome.webview) {
-            const message = JSON.stringify({ action, data });
-            window.chrome.webview.postMessage(message);
-            console.log(`Sent to host: ${action}`, data);
+            window.chrome.webview.postMessage(JSON.stringify(message));
         } else {
-            console.warn('WebView2 bridge not available');
+            console.warn('WebView2 not available, using mock response');
+            // Mock response for testing
+            setTimeout(() => {
+                this.handleHostMessage({
+                    data: {
+                        action: action + 'Response',
+                        success: true,
+                        data: {}
+                    }
+                });
+            }, 100);
         }
     }
 
     handleHostMessage(event) {
         const message = event.data;
-        console.log('Handling host message:', message);
-        
-        switch (message.action || message.type) {
+        console.log('Received from host:', message);
+
+        switch (message.action) {
             case 'settingsLoaded':
                 this.populateForm(message.data);
                 break;
                 
             case 'settingsSaved':
-                console.log('Settings saved successfully');
-                this.showNotification('Settings saved successfully', 'success');
-                break;
-                
-            case 'pacsTestResult':
-                if (this.testPacsButton) {
-                    this.testPacsButton.disabled = false;
-                    if (message.data && message.data.success) {
-                        this.testPacsButton.innerHTML = '<i class="ms-Icon ms-Icon--CheckMark"></i><span>Connected!</span>';
-                        this.testPacsButton.style.background = '#107c10';
-                        this.showNotification('PACS connection successful', 'success');
-                    } else {
-                        this.testPacsButton.innerHTML = '<i class="ms-Icon ms-Icon--ErrorBadge"></i><span>Failed</span>';
-                        this.testPacsButton.style.background = '#d13438';
-                        const error = message.data ? message.data.error : 'Unknown error';
-                        this.showNotification(`Connection failed: ${error}`, 'error');
-                    }
-                    
-                    setTimeout(() => {
-                        this.testPacsButton.innerHTML = '<i class="ms-Icon ms-Icon--TestBeaker"></i><span>Test Connection</span>';
-                        this.testPacsButton.style.background = '';
-                    }, 3000);
-                }
-                break;
-
-            case 'mwlTestResult':
-                if (this.testMwlButton) {
-                    this.testMwlButton.disabled = false;
-                    if (message.data && message.data.success) {
-                        this.testMwlButton.innerHTML = '<i class="ms-Icon ms-Icon--CheckMark"></i><span>Connected!</span>';
-                        this.testMwlButton.style.background = '#107c10';
-                        this.showNotification(`MWL Connected! Found ${message.data.count || 0} worklist items.`, 'success');
-                    } else {
-                        this.testMwlButton.innerHTML = '<i class="ms-Icon ms-Icon--ErrorBadge"></i><span>Failed</span>';
-                        this.testMwlButton.style.background = '#d13438';
-                        const error = message.data ? message.data.error : 'Unknown error';
-                        this.showNotification(`MWL Connection failed: ${error}`, 'error');
-                    }
-                    
-                    setTimeout(() => {
-                        this.testMwlButton.innerHTML = '<i class="ms-Icon ms-Icon--TestBeaker"></i><span>Test MWL Connection</span>';
-                        this.testMwlButton.style.background = '';
-                    }, 3000);
+                if (message.success) {
+                    this.showNotification('Settings saved successfully!', 'success');
+                } else {
+                    this.showNotification('Failed to save settings', 'error');
                 }
                 break;
                 
             case 'folderSelected':
-                if (message.data && message.data.inputId && message.data.path) {
-                    const input = document.getElementById(message.data.inputId);
+                if (message.fieldId && message.path) {
+                    const input = document.getElementById(message.fieldId);
                     if (input) {
-                        input.value = message.data.path;
+                        input.value = message.path;
                     }
                 }
                 break;
                 
-            case 'success':
-                this.showNotification(message.message || 'Operation successful', 'success');
+            case 'pacsTestResult':
+                if (message.success) {
+                    this.showNotification('PACS connection successful!', 'success');
+                } else {
+                    this.showNotification('PACS connection failed: ' + (message.error || 'Unknown error'), 'error');
+                }
                 break;
                 
-            case 'error':
-                this.showNotification(message.message || 'Operation failed', 'error');
+            case 'mwlTestResult':
+                if (message.success) {
+                    const count = message.data?.itemCount || 0;
+                    this.showNotification(`MWL connection successful! Found ${count} worklist items.`, 'success');
+                } else {
+                    this.showNotification('MWL connection failed: ' + (message.error || 'Unknown error'), 'error');
+                }
                 break;
-                
-            default:
-                console.log(`Unknown message from host: ${message.action || message.type}`);
         }
     }
 
-    populateForm(config) {
-        this.config = config;
-        console.log('Populating form with config:', config);
+    showNotification(message, type = 'info') {
+        console.log(`[${type.toUpperCase()}] ${message}`);
         
-        // Create reverse field mapping from C# property names to HTML IDs
-        const reverseFieldMapping = {
-            // Storage fields
-            'Storage.PhotosPath': 'photos-path',
-            'Storage.VideosPath': 'videos-path',
-            'Storage.DicomPath': 'dicom-path',
-            'Storage.QueuePath': 'queue-path',
-            'Storage.TempPath': 'temp-path',
-            'Storage.MaxStorageDays': 'max-storage-days',
-            'Storage.EnableAutoCleanup': 'enable-auto-cleanup',
-            
-            // PACS fields
-            'Pacs.ServerHost': 'pacs-serverHost',
-            'Pacs.ServerPort': 'pacs-serverPort',
-            'Pacs.CalledAeTitle': 'pacs-calledAeTitle',
-            'Pacs.CallingAeTitle': 'pacs-callingAeTitle',
-            'Pacs.Timeout': 'pacs-timeout',
-            'Pacs.EnableTls': 'pacs-enableTls',
-            'Pacs.MaxRetries': 'pacs-maxRetries',
-            'Pacs.RetryDelay': 'pacs-retryDelay',
-            
-            // MWL fields
-            'MwlSettings.EnableWorklist': 'mwl-enable',
-            'MwlSettings.MwlServerHost': 'mwl-server-ip',
-            'MwlSettings.MwlServerPort': 'mwl-server-port',
-            'MwlSettings.MwlServerAET': 'mwl-server-ae',
-            'MwlSettings.CacheExpiryHours': 'mwl-cache-hours',
-            'MwlSettings.AutoRefreshSeconds': 'mwl-auto-refresh-seconds',
-            'MwlSettings.ShowEmergencyFirst': 'mwl-show-emergency-first',
-            
-            // Video fields
-            'Video.DefaultFrameRate': 'preferred-fps',
-            'Video.DefaultQuality': 'video-quality',
-            'Video.EnableHardwareAcceleration': 'enable-hardware-acceleration',
-            'Video.PreferredCamera': 'preferred-camera',
-            
-            // Application fields
-            'Application.Language': 'language',
-            'Application.Theme': 'theme',
-            'Application.EnableTouchKeyboard': 'enable-touch-keyboard',
-            'Application.EnableDebugMode': 'enable-debug-mode',
-            'Application.AutoStartCapture': 'auto-start-capture',
-            'Application.WebServerPort': 'web-server-port',
-            'Application.EnableRemoteAccess': 'enable-remote-access',
-            'Application.HideExitButton': 'hide-exit-button',
-            'Application.EnableEmergencyTemplates': 'enable-emergency-templates'
-        };
-        
-        // Populate all form fields
-        Object.keys(config).forEach(section => {
-            if (!config[section]) return;
-            
-            Object.keys(config[section]).forEach(field => {
-                const key = `${section}.${field}`;
-                const inputId = reverseFieldMapping[key];
-                
-                if (inputId) {
-                    const input = document.getElementById(inputId);
-                    if (input) {
-                        if (input.type === 'checkbox') {
-                            input.checked = config[section][field];
-                        } else {
-                            input.value = config[section][field];
-                        }
-                        console.log(`Set ${inputId} to ${config[section][field]}`);
-                    } else {
-                        console.warn(`Input not found: ${inputId}`);
-                    }
-                } else {
-                    console.log(`No mapping for ${key}`);
-                }
-            });
-        });
-        
-        // Special handling for video resolution
-        if (config.Video && config.Video.DefaultResolution) {
-            const [width, height] = config.Video.DefaultResolution.split('x');
-            const widthInput = document.getElementById('preferred-width');
-            const heightInput = document.getElementById('preferred-height');
-            if (widthInput) widthInput.value = width || '1920';
-            if (heightInput) heightInput.value = height || '1080';
+        // Remove any existing notification
+        const existing = document.querySelector('.notification');
+        if (existing) {
+            existing.remove();
         }
+
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.textContent = message;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 5000);
     }
 }
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Settings page loaded');
     window.settingsManager = new SettingsManager();
 });

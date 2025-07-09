@@ -56,21 +56,49 @@
                     <h2>Storage Settings</h2>
                     
                     <div class="setting-group">
-                        <label for="photos-path">Photos Directory</label>
-                        <div class="input-with-button">
-                            <input type="text" id="storage-photosPath" name="storage-photosPath" class="use-keyboard" value="./Data/Photos">
-                            <button class="browse-button" data-for="photos-path">
-                                <i class="ms-Icon ms-Icon--FolderOpen"></i>
-                            </button>
-                        </div>
+                        <label for="video-default-resolution">Default Resolution</label>
+                        <select id="video-default-resolution">
+                            <option value="1920x1080">1920x1080 (Full HD)</option>
+                            <option value="1280x720" selected>1280x720 (HD)</option>
+                            <option value="640x480">640x480 (VGA)</option>
+                        </select>
+                        <p class="help-text">Default video capture resolution</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="video-default-frame-rate">Default Frame Rate</label>
+                        <input type="number" id="video-default-frame-rate" class="use-keyboard numeric-input" value="30" min="15" max="60">
+                        <p class="help-text">Default frames per second (15-60)</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="video-default-quality">Default Quality (%)</label>
+                        <input type="number" id="video-default-quality" class="use-keyboard numeric-input" value="85" min="50" max="100">
+                        <p class="help-text">JPEG compression quality for photos (50-100)</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="video-enable-hardware-acceleration">Hardware Acceleration</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="video-enable-hardware-acceleration" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Use GPU for video encoding when available</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="video-preferred-camera">Preferred Camera</label>
+                        <input type="text" id="video-preferred-camera" class="use-keyboard" placeholder="Auto-detect">
+                        <p class="help-text">Camera device name or leave empty for auto-detection</p>
+                    </div>
                         <p class="help-text">Directory where captured photos will be saved</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="videos-path">Videos Directory</label>
+                        <label for="storage-videos-path">Videos Directory</label>
                         <div class="input-with-button">
-                            <input type="text" id="videos-path" class="use-keyboard" value="./Data/Videos">
-                            <button class="browse-button" data-for="videos-path">
+                            <input type="text" id="storage-videos-path" class="use-keyboard" value="./Data/Videos">
+                            <button class="browse-button" data-for="storage-videos-path">
                                 <i class="ms-Icon ms-Icon--FolderOpen"></i>
                             </button>
                         </div>
@@ -78,10 +106,10 @@
                     </div>
 
                     <div class="setting-group">
-                        <label for="dicom-path">DICOM Directory</label>
+                        <label for="storage-dicom-path">DICOM Directory</label>
                         <div class="input-with-button">
-                            <input type="text" id="dicom-path" class="use-keyboard" value="./Data/DICOM">
-                            <button class="browse-button" data-for="dicom-path">
+                            <input type="text" id="storage-dicom-path" class="use-keyboard" value="./Data/DICOM">
+                            <button class="browse-button" data-for="storage-dicom-path">
                                 <i class="ms-Icon ms-Icon--FolderOpen"></i>
                             </button>
                         </div>
@@ -89,14 +117,40 @@
                     </div>
 
                     <div class="setting-group">
-                        <label for="temp-path">Temporary Directory</label>
+                        <label for="storage-temp-path">Temporary Directory</label>
                         <div class="input-with-button">
-                            <input type="text" id="temp-path" class="use-keyboard" value="./Data/Temp">
-                            <button class="browse-button" data-for="temp-path">
+                            <input type="text" id="storage-temp-path" class="use-keyboard" value="./Data/Temp">
+                            <button class="browse-button" data-for="storage-temp-path">
                                 <i class="ms-Icon ms-Icon--FolderOpen"></i>
                             </button>
                         </div>
                         <p class="help-text">Directory for temporary files during processing</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="storage-queue-path">Queue Directory</label>
+                        <div class="input-with-button">
+                            <input type="text" id="storage-queue-path" class="use-keyboard" value="./Data/Queue">
+                            <button class="browse-button" data-for="storage-queue-path">
+                                <i class="ms-Icon ms-Icon--FolderOpen"></i>
+                            </button>
+                        </div>
+                        <p class="help-text">Directory for PACS upload queue</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="storage-max-storage-days">Max Storage Days</label>
+                        <input type="number" id="storage-max-storage-days" class="use-keyboard numeric-input" value="30" min="1" max="365">
+                        <p class="help-text">Maximum days to keep files before auto-cleanup (1-365)</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="storage-enable-auto-cleanup">Enable Auto-Cleanup</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="storage-enable-auto-cleanup">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Automatically delete old files after max storage days</p>
                     </div>
                 </section>
 
@@ -105,42 +159,54 @@
                     <h2>PACS Configuration</h2>
                     
                     <div class="setting-group">
-                        <label for="pacs-enabled">Enable PACS</label>
+                        <label for="pacs-enable-pacs">Enable PACS</label>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="pacs-enabled">
+                            <input type="checkbox" id="pacs-enable-pacs">
                             <span class="toggle-slider"></span>
                         </label>
                         <p class="help-text">Enable automatic upload to PACS server</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="server-ae">Server AE Title</label>
-                        <input type="text" id="server-ae" class="use-keyboard" value="PACS_SERVER">
-                        <p class="help-text">Application Entity title of the PACS server</p>
+                        <label for="pacs-server-host">Server IP Address</label>
+                        <input type="text" id="pacs-server-host" class="use-keyboard numeric-input" value="192.168.1.100">
+                        <p class="help-text">IP address or hostname of the PACS server</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="server-ip">Server IP Address</label>
-                        <input type="text" id="server-ip" class="use-keyboard numeric-input" value="192.168.1.100">
-                        <p class="help-text">IP address of the PACS server</p>
-                    </div>
-
-                    <div class="setting-group">
-                        <label for="server-port">Server Port</label>
-                        <input type="text" id="server-port" class="use-keyboard numeric-input" value="104">
+                        <label for="pacs-server-port">Server Port</label>
+                        <input type="text" id="pacs-server-port" class="use-keyboard numeric-input" value="104">
                         <p class="help-text">DICOM port (usually 104 or 11112)</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="local-ae">Local AE Title</label>
-                        <input type="text" id="local-ae" class="use-keyboard" value="SMARTBOX">
+                        <label for="pacs-called-ae-title">Server AE Title</label>
+                        <input type="text" id="pacs-called-ae-title" class="use-keyboard" value="PACS_SERVER">
+                        <p class="help-text">Application Entity title of the PACS server</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="pacs-calling-ae-title">Local AE Title</label>
+                        <input type="text" id="pacs-calling-ae-title" class="use-keyboard" value="SMARTBOX">
                         <p class="help-text">This device's Application Entity title</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="local-port">Local Port</label>
-                        <input type="text" id="local-port" class="use-keyboard numeric-input" value="11113">
-                        <p class="help-text">Local port for DICOM communication</p>
+                        <label for="pacs-timeout">Timeout (seconds)</label>
+                        <input type="number" id="pacs-timeout" class="use-keyboard numeric-input" value="30" min="5" max="300">
+                        <p class="help-text">Connection timeout in seconds (5-300)</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="pacs-max-retries">Max Retries</label>
+                        <input type="number" id="pacs-max-retries" class="use-keyboard numeric-input" value="3" min="0" max="10">
+                        <p class="help-text">Maximum retry attempts for failed uploads (0-10)</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="pacs-retry-delay">Retry Delay (seconds)</label>
+                        <input type="number" id="pacs-retry-delay" class="use-keyboard numeric-input" value="5" min="1" max="60">
+                        <p class="help-text">Delay between retry attempts (1-60 seconds)</p>
                     </div>
 
                     <div class="setting-group">
@@ -156,70 +222,51 @@
                     <h2>Modality Worklist (MWL)</h2>
                     
                     <div class="setting-group">
-                        <label for="mwl-enabled">Enable Worklist</label>
+                        <label for="mwlsettings-enable-worklist">Enable Worklist</label>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="mwl-enabled">
+                            <input type="checkbox" id="mwlsettings-enable-worklist">
                             <span class="toggle-slider"></span>
                         </label>
                         <p class="help-text">Enable DICOM Modality Worklist query for patient data</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="mwl-server-ae">MWL Server AE Title</label>
-                        <input type="text" id="mwl-server-ae" class="use-keyboard" value="MWL_SERVER">
-                        <p class="help-text">Application Entity title of the Worklist server</p>
-                    </div>
-
-                    <div class="setting-group">
-                        <label for="mwl-server-ip">MWL Server IP Address</label>
-                        <input type="text" id="mwl-server-ip" class="use-keyboard numeric-input" value="192.168.1.100">
+                        <label for="mwlsettings-mwl-server-host">MWL Server IP Address</label>
+                        <input type="text" id="mwlsettings-mwl-server-host" class="use-keyboard numeric-input" value="192.168.1.100">
                         <p class="help-text">IP address of the Worklist server (often same as PACS)</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="mwl-server-port">MWL Server Port</label>
-                        <input type="text" id="mwl-server-port" class="use-keyboard numeric-input" value="104">
+                        <label for="mwlsettings-mwl-server-port">MWL Server Port</label>
+                        <input type="text" id="mwlsettings-mwl-server-port" class="use-keyboard numeric-input" value="104">
                         <p class="help-text">DICOM port for worklist queries (usually 104 or 11112)</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="mwl-local-ae">MWL Local AE Title</label>
-                        <input type="text" id="mwl-local-ae" class="use-keyboard" value="SMARTBOX_MWL">
-                        <p class="help-text">This device's AE title for worklist queries</p>
+                        <label for="mwlsettings-mwl-server-aet">MWL Server AE Title</label>
+                        <input type="text" id="mwlsettings-mwl-server-aet" class="use-keyboard" value="MWL_SERVER">
+                        <p class="help-text">Application Entity title of the Worklist server</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="mwl-modality">Modality</label>
-                        <select id="mwl-modality">
-                            <option value="ES">ES - Endoscopy</option>
-                            <option value="US">US - Ultrasound</option>
-                            <option value="XA">XA - X-Ray Angiography</option>
-                            <option value="CR">CR - Computed Radiography</option>
-                            <option value="DX">DX - Digital Radiography</option>
-                            <option value="OT">OT - Other</option>
-                        </select>
-                        <p class="help-text">Modality type to filter worklist results</p>
-                    </div>
-
-                    <div class="setting-group">
-                        <label for="mwl-station-name">Station Name</label>
-                        <input type="text" id="mwl-station-name" class="use-keyboard" value="SMARTBOX01">
-                        <p class="help-text">Scheduled station name for worklist filtering</p>
-                    </div>
-
-                    <div class="setting-group">
-                        <label for="mwl-cache-hours">Cache Duration (Hours)</label>
-                        <input type="number" id="mwl-cache-hours" class="use-keyboard numeric-input" value="24" min="1" max="168">
+                        <label for="mwlsettings-cache-expiry-hours">Cache Duration (Hours)</label>
+                        <input type="number" id="mwlsettings-cache-expiry-hours" class="use-keyboard numeric-input" value="24" min="1" max="168">
                         <p class="help-text">How long to keep worklist entries in offline cache (1-168 hours)</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="mwl-auto-refresh">Auto-Refresh</label>
+                        <label for="mwlsettings-auto-refresh-seconds">Auto-Refresh Interval (seconds)</label>
+                        <input type="number" id="mwlsettings-auto-refresh-seconds" class="use-keyboard numeric-input" value="300" min="60" max="3600">
+                        <p class="help-text">How often to refresh worklist automatically (60-3600 seconds)</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="mwlsettings-show-emergency-first">Show Emergency First</label>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="mwl-auto-refresh" checked>
+                            <input type="checkbox" id="mwlsettings-show-emergency-first" checked>
                             <span class="toggle-slider"></span>
                         </label>
-                        <p class="help-text">Automatically refresh worklist when network is available</p>
+                        <p class="help-text">Display emergency patients at the top of the worklist</p>
                     </div>
 
                     <div class="setting-group">
@@ -235,36 +282,40 @@
                     <h2>Video Settings</h2>
                     
                     <div class="setting-group">
-                        <label for="preferred-width">Preferred Width</label>
-                        <input type="number" id="preferred-width" class="use-keyboard numeric-input" value="1920">
-                        <p class="help-text">Preferred video width in pixels</p>
-                    </div>
-
-                    <div class="setting-group">
-                        <label for="preferred-height">Preferred Height</label>
-                        <input type="number" id="preferred-height" class="use-keyboard numeric-input" value="1080">
-                        <p class="help-text">Preferred video height in pixels</p>
-                    </div>
-
-                    <div class="setting-group">
-                        <label for="preferred-fps">Preferred FPS</label>
-                        <input type="number" id="preferred-fps" class="use-keyboard numeric-input" value="30">
-                        <p class="help-text">Target frames per second (30-60 recommended)</p>
-                    </div>
-
-                    <div class="setting-group">
-                        <label for="video-format">Video Format</label>
-                        <select id="video-format">
-                            <option value="webm">WebM (VP9)</option>
-                            <option value="mp4">MP4 (H.264)</option>
+                        <label for="video-default-resolution">Default Resolution</label>
+                        <select id="video-default-resolution">
+                            <option value="1920x1080">1920x1080 (Full HD)</option>
+                            <option value="1280x720" selected>1280x720 (HD)</option>
+                            <option value="640x480">640x480 (VGA)</option>
                         </select>
-                        <p class="help-text">Video recording format</p>
+                        <p class="help-text">Default video capture resolution</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="video-bitrate">Video Bitrate (Mbps)</label>
-                        <input type="number" id="video-bitrate" class="use-keyboard numeric-input" value="5">
-                        <p class="help-text">Video encoding bitrate in megabits per second</p>
+                        <label for="video-default-frame-rate">Default Frame Rate</label>
+                        <input type="number" id="video-default-frame-rate" class="use-keyboard numeric-input" value="30" min="15" max="60">
+                        <p class="help-text">Default frames per second (15-60)</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="video-default-quality">Default Quality (%)</label>
+                        <input type="number" id="video-default-quality" class="use-keyboard numeric-input" value="85" min="50" max="100">
+                        <p class="help-text">JPEG compression quality for photos (50-100)</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="video-enable-hardware-acceleration">Hardware Acceleration</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="video-enable-hardware-acceleration" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Use GPU for video encoding when available</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="video-preferred-camera">Preferred Camera</label>
+                        <input type="text" id="video-preferred-camera" class="use-keyboard" placeholder="Auto-detect">
+                        <p class="help-text">Camera device name or leave empty for auto-detection</p>
                     </div>
                 </section>
 
@@ -273,57 +324,81 @@
                     <h2>Application Settings</h2>
                     
                     <div class="setting-group">
-                        <label for="auto-start">Auto-Start Capture</label>
+                        <label for="application-auto-start-capture">Auto-Start Capture</label>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="auto-start">
+                            <input type="checkbox" id="application-auto-start-capture" checked>
                             <span class="toggle-slider"></span>
                         </label>
                         <p class="help-text">Automatically initialize webcam on startup</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="fullscreen">Start Fullscreen</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="fullscreen" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <p class="help-text">Launch application in fullscreen mode</p>
+                        <label for="application-language">Language</label>
+                        <select id="application-language">
+                            <option value="de-DE">Deutsch</option>
+                            <option value="en-US">English</option>
+                        </select>
+                        <p class="help-text">User interface language</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="touch-mode">Touch Mode</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="touch-mode" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <p class="help-text">Enable touch-optimized interface</p>
+                        <label for="application-theme">Theme</label>
+                        <select id="application-theme">
+                            <option value="Light">Light</option>
+                            <option value="Dark">Dark</option>
+                        </select>
+                        <p class="help-text">Application color theme</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="debug-mode">Debug Mode</label>
+                        <label for="application-enable-touch-keyboard">Touch Keyboard</label>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="debug-mode">
+                            <input type="checkbox" id="application-enable-touch-keyboard" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Enable on-screen touch keyboard</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="application-enable-debug-mode">Debug Mode</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="application-enable-debug-mode">
                             <span class="toggle-slider"></span>
                         </label>
                         <p class="help-text">Show debug information and logs</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="emergency-templates">Emergency Templates</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="emergency-templates">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <p class="help-text">Enable quick emergency patient templates (Male/Female/Child)</p>
+                        <label for="application-web-server-port">Web Server Port</label>
+                        <input type="number" id="application-web-server-port" class="use-keyboard numeric-input" value="5111" min="1024" max="65535">
+                        <p class="help-text">Local web server port (1024-65535)</p>
                     </div>
 
                     <div class="setting-group">
-                        <label for="language">Language</label>
-                        <select id="language">
-                            <option value="en">English</option>
-                            <option value="de">Deutsch</option>
-                        </select>
-                        <p class="help-text">User interface language</p>
+                        <label for="application-enable-remote-access">Remote Access</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="application-enable-remote-access">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Allow remote configuration access</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="application-hide-exit-button">Hide Exit Button</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="application-hide-exit-button">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Hide the application exit button (kiosk mode)</p>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="application-enable-emergency-templates">Emergency Templates</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="application-enable-emergency-templates" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <p class="help-text">Enable quick emergency patient templates (Male/Female/Child)</p>
                     </div>
                 </section>
                 </form>
