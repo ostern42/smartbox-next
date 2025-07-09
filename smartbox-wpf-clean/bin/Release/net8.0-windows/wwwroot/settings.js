@@ -14,7 +14,6 @@ class SettingsManager {
         
         // Buttons
         this.backButton = document.getElementById('backButton');
-        this.homeButton = document.getElementById('homeButton');
         this.saveButton = document.getElementById('saveButton');
         this.testPacsButton = document.getElementById('test-pacs');
         this.testMwlButton = document.getElementById('test-mwl');
@@ -24,8 +23,9 @@ class SettingsManager {
         
         console.log('Elements initialized:', {
             backButton: !!this.backButton,
-            homeButton: !!this.homeButton,
-            saveButton: !!this.saveButton
+            saveButton: !!this.saveButton,
+            testPacsButton: !!this.testPacsButton,
+            testMwlButton: !!this.testMwlButton
         });
     }
 
@@ -42,14 +42,6 @@ class SettingsManager {
         if (this.backButton) {
             this.backButton.addEventListener('click', () => {
                 console.log('Back button clicked');
-                window.location.href = 'index.html';
-            });
-        }
-
-        // Home button
-        if (this.homeButton) {
-            this.homeButton.addEventListener('click', () => {
-                console.log('Home button clicked');
                 window.location.href = 'index.html';
             });
         }
@@ -83,8 +75,11 @@ class SettingsManager {
             }
         });
 
-        // Listen for messages from C# host
-        window.addEventListener('message', (e) => this.handleHostMessage(e));
+        // Also add receiveMessage function for C# to call
+        window.receiveMessage = (message) => {
+            console.log('Received message from C#:', message);
+            this.handleHostMessage({ data: message });
+        };
     }
 
     showSection(sectionName) {
@@ -110,7 +105,7 @@ class SettingsManager {
     async loadSettings() {
         try {
             // Send request to C# host
-            this.sendToHost('getSettings', {});
+            this.sendToHost('getsettings', {});
         } catch (error) {
             console.error('Failed to load settings:', error);
         }
@@ -118,33 +113,57 @@ class SettingsManager {
 
     async saveSettings() {
         try {
-            const formData = new FormData(this.form);
-            const settings = {};
+            const settings = {
+                Storage: {},
+                Pacs: {},
+                MwlSettings: {},
+                Video: {},
+                Application: {}
+            };
 
-            // Convert form data to nested object
-            for (const [key, value] of formData.entries()) {
-                const parts = key.split('-');
-                if (parts.length === 2) {
-                    const [section, field] = parts;
-                    if (!settings[section]) {
-                        settings[section] = {};
+            // Get all form inputs
+            const inputs = this.form.querySelectorAll('input, select');
+            
+            inputs.forEach(input => {
+                const parts = input.id.split('-');
+                if (parts.length >= 2) {
+                    let section = parts[0];
+                    let field = parts.slice(1).join('');
+                    
+                    // Map section names to config structure
+                    const sectionMap = {
+                        'storage': 'Storage',
+                        'pacs': 'Pacs',
+                        'mwl': 'MwlSettings',
+                        'video': 'Video',
+                        'application': 'Application'
+                    };
+                    
+                    const configSection = sectionMap[section];
+                    if (!configSection) return;
+                    
+                    // Convert field names to PascalCase
+                    field = field.charAt(0).toUpperCase() + field.slice(1);
+                    
+                    // Get value based on input type
+                    let value;
+                    if (input.type === 'checkbox') {
+                        value = input.checked;
+                    } else if (input.type === 'number') {
+                        value = parseInt(input.value) || 0;
+                    } else {
+                        value = input.value;
                     }
                     
-                    // Convert numeric values
-                    if (value && !isNaN(value)) {
-                        settings[section][field] = Number(value);
-                    } else if (value === 'true' || value === 'false') {
-                        settings[section][field] = value === 'true';
-                    } else {
-                        settings[section][field] = value;
-                    }
+                    settings[configSection][field] = value;
                 }
-            }
+            });
 
-            // Send to C# host
-            this.sendToHost('saveSettings', settings);
+            console.log('Saving settings:', settings);
             
-            this.showNotification('Settings saved successfully!', 'success');
+            // Send to C# host
+            this.sendToHost('savesettings', settings);
+            this.showNotification('Settings saved successfully', 'success');
         } catch (error) {
             console.error('Failed to save settings:', error);
             this.showNotification('Failed to save settings', 'error');
@@ -165,8 +184,8 @@ class SettingsManager {
             callingAeTitle: document.getElementById('pacs-callingAeTitle').value
         };
 
-        // Send test request to C# host
-        this.sendToHost('testPacsConnection', pacsSettings);
+        // Send test request to C# host (lowercase!)
+        this.sendToHost('testpacsconnection', pacsSettings);
     }
 
     testMwlConnection() {
@@ -183,13 +202,13 @@ class SettingsManager {
             localAeTitle: document.getElementById('mwl-local-ae').value
         };
 
-        // Send test request to C# host
-        this.sendToHost('testMwlConnection', mwlSettings);
+        // Send test request to C# host (lowercase!)
+        this.sendToHost('testmwlconnection', mwlSettings);
     }
 
     browseFolder(button) {
         const inputId = button.dataset.for;
-        this.sendToHost('browseFolder', { 
+        this.sendToHost('browsefolder', { 
             inputId: inputId,
             currentPath: document.getElementById(inputId).value 
         });
@@ -221,26 +240,30 @@ class SettingsManager {
 
     handleHostMessage(event) {
         const message = event.data;
+        console.log('Handling host message:', message);
         
-        switch (message.action) {
+        switch (message.action || message.type) {
             case 'settingsLoaded':
                 this.populateForm(message.data);
                 break;
                 
             case 'settingsSaved':
                 console.log('Settings saved successfully');
+                this.showNotification('Settings saved successfully', 'success');
                 break;
                 
             case 'pacsTestResult':
                 if (this.testPacsButton) {
                     this.testPacsButton.disabled = false;
-                    if (message.data.success) {
+                    if (message.data && message.data.success) {
                         this.testPacsButton.innerHTML = '<i class="ms-Icon ms-Icon--CheckMark"></i><span>Connected!</span>';
                         this.testPacsButton.style.background = '#107c10';
+                        this.showNotification('PACS connection successful', 'success');
                     } else {
                         this.testPacsButton.innerHTML = '<i class="ms-Icon ms-Icon--ErrorBadge"></i><span>Failed</span>';
                         this.testPacsButton.style.background = '#d13438';
-                        alert(`Connection failed: ${message.data.error}`);
+                        const error = message.data ? message.data.error : 'Unknown error';
+                        this.showNotification(`Connection failed: ${error}`, 'error');
                     }
                     
                     setTimeout(() => {
@@ -253,14 +276,15 @@ class SettingsManager {
             case 'mwlTestResult':
                 if (this.testMwlButton) {
                     this.testMwlButton.disabled = false;
-                    if (message.data.success) {
+                    if (message.data && message.data.success) {
                         this.testMwlButton.innerHTML = '<i class="ms-Icon ms-Icon--CheckMark"></i><span>Connected!</span>';
                         this.testMwlButton.style.background = '#107c10';
                         this.showNotification(`MWL Connected! Found ${message.data.count || 0} worklist items.`, 'success');
                     } else {
                         this.testMwlButton.innerHTML = '<i class="ms-Icon ms-Icon--ErrorBadge"></i><span>Failed</span>';
                         this.testMwlButton.style.background = '#d13438';
-                        this.showNotification(`MWL Connection failed: ${message.data.error}`, 'error');
+                        const error = message.data ? message.data.error : 'Unknown error';
+                        this.showNotification(`MWL Connection failed: ${error}`, 'error');
                     }
                     
                     setTimeout(() => {
@@ -271,7 +295,7 @@ class SettingsManager {
                 break;
                 
             case 'folderSelected':
-                if (message.data.inputId && message.data.path) {
+                if (message.data && message.data.inputId && message.data.path) {
                     const input = document.getElementById(message.data.inputId);
                     if (input) {
                         input.value = message.data.path;
@@ -279,18 +303,44 @@ class SettingsManager {
                 }
                 break;
                 
+            case 'success':
+                this.showNotification(message.message || 'Operation successful', 'success');
+                break;
+                
+            case 'error':
+                this.showNotification(message.message || 'Operation failed', 'error');
+                break;
+                
             default:
-                console.log(`Unknown message from host: ${message.action}`);
+                console.log(`Unknown message from host: ${message.action || message.type}`);
         }
     }
 
     populateForm(config) {
         this.config = config;
+        console.log('Populating form with config:', config);
+        
+        // Map config sections to form prefixes
+        const sectionMap = {
+            'Storage': 'storage',
+            'Pacs': 'pacs',
+            'MwlSettings': 'mwl',
+            'Video': 'video',
+            'Application': 'application'
+        };
         
         // Populate all form fields
         Object.keys(config).forEach(section => {
+            const formPrefix = sectionMap[section];
+            if (!formPrefix) return;
+            
             Object.keys(config[section]).forEach(field => {
-                const inputId = `${section.toLowerCase()}-${field.charAt(0).toLowerCase() + field.slice(1)}`;
+                // Convert PascalCase to kebab-case for form IDs
+                const fieldId = field.replace(/([A-Z])/g, (match, p1, offset) => 
+                    offset > 0 ? '-' + p1.toLowerCase() : p1.toLowerCase()
+                );
+                
+                const inputId = `${formPrefix}-${fieldId}`;
                 const input = document.getElementById(inputId);
                 
                 if (input) {
@@ -299,20 +349,14 @@ class SettingsManager {
                     } else {
                         input.value = config[section][field];
                     }
+                    console.log(`Set ${inputId} to ${config[section][field]}`);
+                } else {
+                    console.warn(`Input not found: ${inputId}`);
                 }
             });
         });
     }
 }
-
-// Global function for receiving messages from C#
-window.receiveMessage = function(message) {
-    console.log('Received message from C#:', message);
-    
-    if (window.settingsManager) {
-        window.settingsManager.handleHostMessage({ data: message });
-    }
-};
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {

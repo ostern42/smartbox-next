@@ -26,7 +26,7 @@
     "PreferredCamera": ""
   },
   "Application": {
-    "Language": "de-DE",
+    "Language": "",
     "Theme": "Light",
     "EnableTouchKeyboard": true,
     "EnableDebugMode": true,
@@ -34,6 +34,21 @@
     "WebServerPort": 5112,
     "EnableRemoteAccess": false,
     "HideExitButton": false,
-    "EnableEmergencyTemplates": true
-  }
+    "EnableEmergencyTemplates": true,
+    "AutoExportDicom": false
+  },
+  "MwlSettings": {
+    "EnableWorklist": false,
+    "MwlServerHost": "localhost",
+    "MwlServerPort": 105,
+    "MwlServerAET": "ORTHANC",
+    "AutoRefreshSeconds": 300,
+    "ShowEmergencyFirst": true,
+    "CacheExpiryHours": 24
+  },
+  "MultiTarget": {
+    "Targets": []
+  },
+  "LocalAET": "SMARTBOX",
+  "StoragePath": "./Data/Photos"
 }

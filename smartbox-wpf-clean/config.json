@@ -35,5 +35,14 @@
     "EnableRemoteAccess": false,
     "HideExitButton": false,
     "EnableEmergencyTemplates": true
+  },
+  "MwlSettings": {
+    "EnableWorklist": false,
+    "MwlServerHost": "localhost",
+    "MwlServerPort": 105,
+    "MwlServerAET": "ORTHANC",
+    "AutoRefreshSeconds": 300,
+    "ShowEmergencyFirst": true,
+    "CacheExpiryHours": 24
   }
 }

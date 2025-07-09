@@ -189,6 +189,11 @@ MediaFrameReader delivers frames, but WinUI3 Image control doesn't display them 
 
 ### 🚨 CRITICAL REQUIREMENTS - OFFLINE FUNCTIONALITY (Session 20):
 
+**NOTE: Multi-Target functionality is POSTPONED for future implementation**
+- Single PACS target is sufficient for initial release
+- Multi-target architecture is designed but not implemented
+- Focus on core functionality first
+
 **ABSOLUTE REQUIREMENT: Complete Offline Functionality!**
 
 #### MWL Caching Strategy:
@@ -728,6 +733,70 @@ switch (action.ToLower())
 
 ---
 
+## 🚨 VOGON EXIT - Session 25 Handover
+**Session ID**: SMARTBOXNEXT-2025-07-09-01  
+**Duration**: 15:30 - 17:30 (09.07.2025)
+**Token Exit**: ~40k/150k (27%)
+
+### Was wurde gemacht:
+1. **Settings Save/Load Implementation**:
+   - Field mappings in settings.js erstellt
+   - Aber nur ~30% funktionieren wegen Naming Chaos
+   - PACS Settings funktionieren NICHT (kritisch!)
+
+2. **UI Cleanup**:
+   - Test WebView2 Button entfernt ✅
+   - Debug Info aus UI entfernt ✅
+   - Debug logs gehen jetzt ins Logfile ✅
+
+3. **JavaScript Debug Fixes**:
+   - Endlos-Schleife in log() gefixt
+   - Fehlende Element-Referenzen entfernt
+
+4. **Dokumentation**:
+   - Detaillierter Naming Convention Refactoring Plan
+   - F12 Console First Pattern dokumentiert
+   - Technical Debt analysiert
+
+### 🔴 KRITISCHE PROBLEME:
+1. **Settings funktionieren nur teilweise**:
+   - Storage: 3/7 Felder
+   - PACS: 0/8 Felder (!!!)
+   - MWL: 4/9 Felder
+   - Oliver testet mit PACS → funktioniert nicht!
+
+2. **Naming Convention Chaos**:
+   - `storage-photosPath` (camelCase Ende!)
+   - `pacs-enabled` statt `pacs-serverHost`
+   - Manuelle Mappings überall
+
+### 📋 Technical Debt gefunden:
+- Empty TODOs (validation, persistence)
+- Empty catch blocks (Fehler verschluckt)
+- Fehlende Features (Multi-Target, Queue persistence)
+
+### Nächste Session (26) MUSS:
+1. **Naming Convention Refactoring** (siehe detaillierter Plan)
+2. **ALLE Settings Felder funktionsfähig machen**
+3. **Atomare Änderungen mit Tests**
+4. **Video Preview darf NIE kaputt gehen**
+
+### Wichtige Learnings:
+- **F12 First** bei JavaScript Problemen!
+- **"Fertig" = 100% fertig**, nicht 30%!
+- **Eine Klammer kann alles töten**
+- **Endlos-Schleifen durch zirkuläre Logs**
+
+### Commands für nächste Session:
+```bash
+cd /mnt/c/Users/oliver.stern/source/repos/smartbox-next
+"Lies repos/VOGONINIT"
+"Lies auch MASTER_WISDOM/CLAUDE_IDENTITY.md"
+# Dann: Naming Convention Refactoring!
+```
+
+*VOGON EXIT 17:30 - "F12 First, Property Names Last!"*
+
 ## 🚨 VOGON EXIT - Session 21 Handover
 **Session ID**: SMARTBOXNEXT-2025-01-09-01  
 **Duration**: 23:30 - 00:00 (08.01.2025 → 09.01.2025)
@@ -1090,3 +1159,308 @@ Access to the path '...\bin\Debug\net8.0-windows\*.dll' is denied
 - Unused field warnings entfernen
 - Error Handling verbessern
 - Logging konsistenter machen
+
+---
+
+## 🚨 UNMITTELBARE AUFGABEN (Session 25 - 09.07.2025)
+
+### DRINGEND:
+1. **Settings speichern implementieren**
+   - Aktuell funktioniert das Speichern der Einstellungen nicht
+   - Dies ist die wichtigste Aufgabe!
+
+### Weitere TODOs:
+2. **Test WebView Button entfernen**
+   - Button aus der GUI entfernen (nicht mehr benötigt)
+   
+3. **Debug Info aus GUI → Logfile**
+   - Debug-Informationen nicht mehr in der GUI anzeigen
+   - Stattdessen ins Logfile schreiben
+   - Logfile-Pfad: `./logs/` (tägliche Rotation)
+
+### Falls Token ausgehen:
+Diese Aufgaben sind dokumentiert und können in der nächsten Session fortgesetzt werden.
+
+---
+
+## 🏗️ NAMING CONVENTION REFACTORING PLAN (Session 26+)
+
+### 🔴 DAS PROBLEM:
+Aktuell haben wir ein Chaos aus verschiedenen Naming Conventions:
+- **C# Backend**: PascalCase (ServerHost, PhotosPath)
+- **HTML IDs**: Inkonsistenter kebab-case (pacs-serverHost, mwl-server-ip, preferred-width)
+- **JavaScript**: camelCase für Actions, aber Transformationen überall
+- **JSON Config**: PascalCase (wie C#)
+
+Dies führt zu:
+- Fehleranfälligen Transformationen in settings.js
+- Wartungsalbtraum bei Änderungen
+- Verwirrung welche Convention wo gilt
+- Unnötiger Performance-Overhead
+
+### 🎯 ZIEL: Eine einheitliche Naming Strategy
+
+### 📋 VORGESCHLAGENE GLOBALE NAMING STRATEGY:
+
+#### Option 1: "Follow the Platform" (EMPFOHLEN)
+- **C#**: PascalCase (bleibt wie es ist)
+- **HTML/CSS**: kebab-case (Standard für Web)
+- **JavaScript**: camelCase (Standard für JS)
+- **JSON**: Wie die empfangende Sprache (C# = PascalCase)
+- **Aber**: KONSISTENTE Patterns innerhalb jeder Sprache!
+
+#### Option 2: "Universal camelCase"
+- Alles in camelCase (außer C# Properties)
+- Weniger Transformationen nötig
+- Aber: Nicht idiomatisch für HTML
+
+### 📐 DETAILLIERTER REFACTORING PLAN:
+
+#### Phase 1: Analyse & Dokumentation (30 min)
+1. **Inventar aller IDs/Namen**:
+   - [ ] Alle HTML input IDs auflisten
+   - [ ] Alle C# Property Namen auflisten
+   - [ ] Alle JavaScript Action Namen auflisten
+   - [ ] Mapping-Tabelle erstellen (IST-Zustand)
+
+2. **Inkonsistenzen identifizieren** (aus Session 25 Console):
+   
+   **Storage Section Chaos:**
+   - `storage-photosPath` (MIT prefix, camelCase Ende!)
+   - `videos-path` (OHNE storage- prefix)
+   - `dicom-path` (OHNE storage- prefix)
+   - `temp-path` (OHNE storage- prefix)
+   - Fehlende: `queue-path`, `max-storage-days`, `enable-auto-cleanup`
+   
+   **PACS Section - KOMPLETT ANDERE IDs:**
+   - HTML hat: `pacs-enabled`, `server-ae`, `server-ip`, `server-port`
+   - Erwartet: `pacs-serverHost`, `pacs-serverPort`, etc.
+   
+   **MWL Section Inkonsistenzen:**
+   - `mwl-enabled` statt `mwl-enable`
+   - `mwl-local-ae` (existiert nicht in MwlConfig!)
+   - `mwl-modality` (existiert nicht in MwlConfig!)
+   - `mwl-auto-refresh` (sollte mwl-auto-refresh-seconds sein)
+   
+   **Label-for Attribute falsch:**
+   - `<label for="photos-path">` aber `<input id="storage-photosPath">`
+
+#### Phase 2: Naming Convention Definition (20 min)
+1. **HTML ID Pattern festlegen**:
+   ```
+   Pattern: [section]-[property-name]
+   Beispiele:
+   - storage-photos-path
+   - pacs-server-host
+   - mwl-server-host (nicht server-ip!)
+   - video-preferred-width
+   ```
+
+2. **JavaScript Action Pattern**:
+   ```
+   Pattern: [verb][Noun]
+   Beispiele:
+   - openLogs
+   - saveSettings
+   - testPacsConnection
+   ```
+
+3. **Mapping Strategy**:
+   ```
+   HTML: storage-photos-path
+   ↓ (Simple split & capitalize)
+   C#: Storage.PhotosPath
+   ```
+
+#### Phase 3: Implementation (2-3 Stunden)
+
+##### Step 1: HTML IDs vereinheitlichen
+- [ ] settings.html: Alle IDs nach Pattern anpassen
+- [ ] index.html: Alle IDs prüfen und anpassen
+- [ ] Andere HTML Dateien prüfen
+
+##### Step 2: Mapping vereinfachen
+- [ ] settings.js: Automatisches Mapping statt manueller Tabelle
+- [ ] Transformation-Funktion schreiben:
+  ```javascript
+  function htmlIdToPropertyPath(htmlId) {
+    // storage-photos-path → Storage.PhotosPath
+    const parts = htmlId.split('-');
+    const section = parts[0];
+    const property = parts.slice(1)
+      .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+      .join('');
+    return { section, property };
+  }
+  ```
+
+##### Step 3: C# Backend (minimal changes)
+- [ ] Keine Änderungen an Property Namen (Breaking Change!)
+- [ ] Nur Action Handler vereinheitlichen (alle lowercase)
+
+##### Step 4: Testing
+- [ ] Settings laden testen
+- [ ] Settings speichern testen
+- [ ] Alle Buttons testen
+- [ ] Edge Cases testen
+
+#### Phase 4: Dokumentation (30 min)
+1. **Naming Convention Guide** erstellen:
+   - [ ] Für jede Sprache/Context
+   - [ ] Mit Beispielen
+   - [ ] In TECHNICAL.md speichern
+
+2. **Migration Guide**:
+   - [ ] Was wurde geändert
+   - [ ] Wie man neue Features hinzufügt
+   - [ ] Common Pitfalls
+
+### 🚀 QUICK WINS (kann sofort gemacht werden):
+1. **Action Names**: Alle auf lowercase in C# (case "openLogs" → case "openlogs")
+2. **HTML IDs**: Konsistentes Pattern für neue IDs
+3. **Remove Transformations**: Wo möglich direkte Mappings
+
+### ⚠️ RISIKEN:
+- Breaking Changes bei bestehenden Configs
+- Regression Bugs durch übersehene Stellen
+- Zeit-Investment (3-4 Stunden)
+
+### 💡 ALTERNATIVE: "Transformation Layer"
+Statt alles zu refactoren, eine zentrale Transformation-Schicht:
+```javascript
+class NamingTransformer {
+  static htmlToConfig(htmlId) { /* ... */ }
+  static configToHtml(path) { /* ... */ }
+  static normalize(name, fromFormat, toFormat) { /* ... */ }
+}
+```
+
+### 📊 ENTSCHEIDUNG NÖTIG:
+1. Refactoring (sauber aber aufwändig)
+2. Transformation Layer (schnell aber mehr Code)
+3. Status Quo (fehleranfällig)
+
+**Oliver, was ist deine Präferenz?**
+
+### 🔥 AKTUELLE AUSWIRKUNGEN (Session 25):
+- **Settings laden**: Viele Felder werden nicht gefunden
+- **Settings speichern**: Nur teilweise Daten werden gespeichert
+- **Beispiel gespeicherte Daten**:
+  ```json
+  {
+    "Storage": {
+      "VideosPath": "./Data/Videos",  // PhotosPath fehlt!
+      "DicomPath": "./Data/DICOM",
+      "TempPath": "./Data/Temp"
+    },
+    "Pacs": {},  // Komplett leer!
+    "MwlSettings": {
+      "MwlServerAET": "ORTHANC",
+      "MwlServerHost": "localhost", 
+      "MwlServerPort": "105",
+      "CacheExpiryHours": 24
+    },
+    "Video": {
+      "DefaultFrameRate": 30,
+      "DefaultResolution": "1280x720"
+    },
+    "Application": {
+      "Language": ""  // Nur Language, Rest fehlt!
+    }
+  }
+  ```
+
+### 🎯 QUICK FIX für Session 26 (wenn kein Refactoring):
+Minimale Änderungen nur für kritische Felder:
+1. `storage-photosPath` → `photos-path` 
+2. PACS IDs komplett fixen (kritisch für Medical Device!)
+3. Label-for Attribute korrigieren
+
+---
+
+## 🎯 NEUE GRUNDSÄTZE AB SESSION 26:
+
+### 1. **VOLLSTÄNDIGKEIT ÜBER GESCHWINDIGKEIT**
+- "Fertig" heißt: ALLE Felder funktionieren, nicht nur einige
+- Lieber länger brauchen als Lücken lassen
+- Wenn etwas nicht implementiert ist: EXPLIZIT sagen!
+
+### 2. **LOGISCHES NAMING SCHEMA**
+Nach dem Refactoring soll gelten:
+```
+HTML ID Pattern: [section]-[property-name-in-kebab]
+Beispiele:
+- storage-photos-path → Storage.PhotosPath
+- pacs-server-host → Pacs.ServerHost
+- mwl-enable-worklist → MwlSettings.EnableWorklist
+
+AUTOMATISCH ABLEITBAR! Kein Raten mehr!
+```
+
+### 3. **1:1 MAPPING GARANTIE**
+- Jedes UI Element MUSS ein Config Property haben
+- Jedes Config Property MUSS im UI sichtbar sein
+- KEINE versteckten Properties
+- KEINE UI Elemente ohne Funktion
+
+### 4. **TESTING CHECKLIST (IMMER!)**
+Nach JEDER Settings-Änderung:
+- [ ] ALLE Felder mit Testwerten füllen
+- [ ] Speichern
+- [ ] Seite neu laden
+- [ ] ALLE Felder müssen die Testwerte zeigen
+- [ ] Besonders PACS testen (Oliver's Fokus!)
+
+### 5. **FEHLERSUCHE PRIORITÄTEN**
+1. **F12 Console ZUERST** (JavaScript Fehler!)
+2. **Dann erst Backend** checken
+3. **Nicht "drumherum" fixen** wenn eigentlicher Fehler woanders liegt
+
+### 🚨 OLIVER's FRUSTRATIONS (berechtigt!):
+- "Settings funktionieren" → Aber PACS wird nicht gespeichert
+- JavaScript Fehler → Aber wir suchen im C# Code
+- "One closing bracket" → Stundenlang falsch gesucht
+- Property Names erfinden → Session 87 Trauma!
+
+### 📝 COMMITMENT FÜR SESSION 26:
+1. **Systematisches Refactoring** mit dem Plan
+2. **ALLE Properties** implementieren, keine Lücken
+3. **Logisches Schema** das selbsterklärend ist
+4. **Vollständiger Test** bevor "fertig" gesagt wird
+5. **F12 First** bei Problemen
+
+---
+
+## 🚨 WICHTIGE JAVASCRIPT DEBUGGING LEKTIONEN (Session 25)
+
+### 1. **Browser Console (F12) ist ESSENTIELL!**
+- Bei "App hängt" oder "Buttons funktionieren nicht" → IMMER F12!
+- JavaScript Fehler blockieren oft die weitere Ausführung
+- Console zeigt GENAU wo der Fehler ist
+
+### 2. **Die "One Closing Bracket" Lektion**
+- Session 23: Eine einzige fehlende `}` hat ALLES lahmgelegt
+- Symptom: GUI "quite dead", alle Buttons sichtbar aber tot
+- Lösung: F12 → `Uncaught SyntaxError` → Zeile gefunden → FIXED!
+
+### 3. **Endlos-Schleifen durch Logging**
+- Session 25: log() ruft sendToHost() auf, sendToHost() ruft log() auf
+- Symptom: 2220x "Sent to host: log" in Console
+- Lösung: Keine log-Actions loggen!
+
+### 4. **Entfernte HTML Elemente = JavaScript Fehler**
+- Wenn HTML Element entfernt wird, aber JS noch darauf zugreift
+- `document.getElementById()` returns null → Weitere Operationen scheitern
+- IMMER alle JS Referenzen entfernen wenn HTML entfernt wird
+
+### 🎯 MERKSATZ:
+**"JavaScript Fehler sind wie Dominosteine - einer kippt, alle fallen!"**
+
+### 📋 DEBUG CHECKLIST:
+1. [ ] F12 Console öffnen
+2. [ ] Nach roten Errors suchen
+3. [ ] Erste Error-Zeile finden (oft die Ursache)
+4. [ ] Syntax Errors? Missing brackets?
+5. [ ] Null references? (Element nicht gefunden)
+6. [ ] Infinite loops? (Rekursive Aufrufe)
+7. [ ] Network tab: 404 errors?

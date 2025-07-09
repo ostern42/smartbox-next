@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -124,6 +125,9 @@ namespace SmartBoxNext
             }
         }
         
+        private CoreWebView2Environment? _webViewEnvironment;
+        private string? _webViewUserDataFolder;
+        
         private async Task InitializeWebView()
         {
             try
@@ -132,17 +136,17 @@ namespace SmartBoxNext
                 UpdateStatus("Creating WebView2 environment...");
                 
                 // Set WebView2 user data folder
-                var userDataFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WebView2Data");
-                Directory.CreateDirectory(userDataFolder);
-                _logger.LogInformation("WebView2 user data folder: {Folder}", userDataFolder);
+                _webViewUserDataFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WebView2Data");
+                Directory.CreateDirectory(_webViewUserDataFolder);
+                _logger.LogInformation("WebView2 user data folder: {Folder}", _webViewUserDataFolder);
                 
                 UpdateStatus("Creating CoreWebView2Environment...");
                 _logger.LogInformation("Creating CoreWebView2Environment...");
                 
-                CoreWebView2Environment? env = null;
                 try
                 {
-                    env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                    // Store the environment reference for cleanup
+                    _webViewEnvironment = await CoreWebView2Environment.CreateAsync(null, _webViewUserDataFolder);
                     _logger.LogInformation("CoreWebView2Environment created successfully");
                 }
                 catch (Exception envEx)
@@ -157,7 +161,7 @@ namespace SmartBoxNext
                 
                 try
                 {
-                    await webView.EnsureCoreWebView2Async(env);
+                    await webView.EnsureCoreWebView2Async(_webViewEnvironment);
                     _logger.LogInformation("CoreWebView2 initialized successfully");
                 }
                 catch (Exception coreEx)
@@ -318,6 +322,10 @@ namespace SmartBoxNext
             
             switch (action)
             {
+                case "log":
+                    await HandleLog(message);
+                    break;
+                    
                 case "openLogs":
                     await OpenLogsFolder();
                     break;
@@ -370,15 +378,15 @@ namespace SmartBoxNext
                     await UpdateConfiguration(message);
                     break;
                     
-                case "browseFolder":
+                case "browsefolder":
                     await HandleBrowseFolder(message);
                     break;
                     
-                case "getSettings":
+                case "getsettings":
                     await HandleGetSettings();
                     break;
                     
-                case "saveSettings":
+                case "savesettings":
                     await HandleSaveSettings(message);
                     break;
                     
@@ -449,6 +457,39 @@ namespace SmartBoxNext
             {
                 _logger.LogError(ex, "Failed to open settings");
                 await SendErrorToWebView($"Failed to open settings: {ex.Message}");
+            }
+        }
+        
+        private async Task HandleLog(JObject message)
+        {
+            try
+            {
+                var data = message["data"];
+                var logMessage = data?["message"]?.ToString() ?? "No message";
+                var level = data?["level"]?.ToString() ?? "info";
+                var timestamp = data?["timestamp"]?.ToString();
+                
+                // Log to file using our Logger
+                switch (level.ToLower())
+                {
+                    case "error":
+                        Logger.LogError($"[WebUI] {logMessage}");
+                        break;
+                    case "warn":
+                    case "warning":
+                        Logger.LogWarning($"[WebUI] {logMessage}");
+                        break;
+                    case "debug":
+                        Logger.LogDebug($"[WebUI] {logMessage}");
+                        break;
+                    default:
+                        Logger.LogInfo($"[WebUI] {logMessage}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to handle log message from WebUI");
             }
         }
         
@@ -999,6 +1040,8 @@ namespace SmartBoxNext
                 // Clean up WebView2 properly
                 if (webView != null)
                 {
+                    _logger.LogInformation("Starting WebView2 cleanup...");
+                    
                     // Remove event handlers first
                     if (webView.CoreWebView2 != null)
                     {
@@ -1007,14 +1050,52 @@ namespace SmartBoxNext
                         webView.CoreWebView2.NavigationStarting -= WebView_NavigationStarting;
                         webView.CoreWebView2.NavigationCompleted -= WebView_NavigationCompleted;
                         webView.CoreWebView2.DOMContentLoaded -= WebView_DOMContentLoaded;
+                        webView.CoreWebView2.PermissionRequested -= WebView_PermissionRequested;
+                        
+                        // Stop all content
+                        try
+                        {
+                            await webView.CoreWebView2.ExecuteScriptAsync("window.stop();");
+                        }
+                        catch { }
                     }
                     
-                    // Navigate away from the page
-                    webView.CoreWebView2?.Navigate("about:blank");
-                    await Task.Delay(100);
+                    // Navigate away from the page to release resources
+                    try
+                    {
+                        webView.CoreWebView2?.Navigate("about:blank");
+                        await Task.Delay(200); // Give it more time to clean up
+                    }
+                    catch { }
                     
-                    // Now dispose
+                    // Close the WebView2 controller
+                    try
+                    {
+                        webView.CoreWebView2?.Stop();
+                    }
+                    catch { }
+                    
+                    // Dispose the WebView2 control
                     webView.Dispose();
+                    _logger.LogInformation("WebView2 disposed");
+                }
+                
+                // Clean up the WebView2 environment
+                if (_webViewEnvironment != null)
+                {
+                    try
+                    {
+                        // Force garbage collection to release COM objects
+                        GC.Collect();
+                        GC.WaitForPendingFinalizers();
+                        GC.Collect();
+                        
+                        _logger.LogInformation("WebView2 environment cleanup completed");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error cleaning up WebView2 environment");
+                    }
                 }
                 
                 _logger.LogInformation("Cleanup completed, shutting down application");
@@ -1025,8 +1106,73 @@ namespace SmartBoxNext
             }
             finally
             {
+                // Kill any remaining WebView2 processes associated with our user data folder
+                await KillWebView2ProcessesAsync();
+                
                 // Now actually close - this will trigger Window_Closing again, but _isClosing prevents re-entry
                 System.Windows.Application.Current.Shutdown();
+            }
+        }
+        
+        private async Task KillWebView2ProcessesAsync()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_webViewUserDataFolder))
+                    return;
+                    
+                _logger.LogInformation("Checking for remaining WebView2 processes...");
+                
+                // Get all msedgewebview2 processes
+                var webViewProcesses = Process.GetProcessesByName("msedgewebview2");
+                
+                foreach (var process in webViewProcesses)
+                {
+                    try
+                    {
+                        // Check if this process is using our user data folder
+                        var commandLine = GetProcessCommandLine(process);
+                        if (!string.IsNullOrEmpty(commandLine) && 
+                            commandLine.Contains(_webViewUserDataFolder, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogWarning("Killing WebView2 process {ProcessId} that's still using our data folder", process.Id);
+                            process.Kill();
+                            await Task.Delay(100);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error checking/killing WebView2 process {ProcessId}", process.Id);
+                    }
+                    finally
+                    {
+                        process.Dispose();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during WebView2 process cleanup");
+            }
+        }
+        
+        private string GetProcessCommandLine(Process process)
+        {
+            try
+            {
+                using (var searcher = new System.Management.ManagementObjectSearcher(
+                    $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {process.Id}"))
+                {
+                    using (var objects = searcher.Get())
+                    {
+                        var obj = objects.Cast<System.Management.ManagementObject>().FirstOrDefault();
+                        return obj?["CommandLine"]?.ToString() ?? string.Empty;
+                    }
+                }
+            }
+            catch
+            {
+                return string.Empty;
             }
         }
         
@@ -1173,50 +1319,60 @@ namespace SmartBoxNext
                 var storage = newSettings["Storage"];
                 if (storage != null)
                 {
-                    _config!.Storage.PhotosPath = storage["photosPath"]?.ToString() ?? _config.Storage.PhotosPath;
-                    _config.Storage.VideosPath = storage["videosPath"]?.ToString() ?? _config.Storage.VideosPath;
-                    _config.Storage.DicomPath = storage["dicomPath"]?.ToString() ?? _config.Storage.DicomPath;
-                    _config.Storage.QueuePath = storage["queuePath"]?.ToString() ?? _config.Storage.QueuePath;
-                    _config.Storage.TempPath = storage["tempPath"]?.ToString() ?? _config.Storage.TempPath;
-                    _config.Storage.MaxStorageDays = storage["maxStorageDays"]?.Value<int>() ?? _config.Storage.MaxStorageDays;
-                    _config.Storage.EnableAutoCleanup = storage["enableAutoCleanup"]?.Value<bool>() ?? _config.Storage.EnableAutoCleanup;
+                    _config!.Storage.PhotosPath = storage["PhotosPath"]?.ToString() ?? _config.Storage.PhotosPath;
+                    _config.Storage.VideosPath = storage["VideosPath"]?.ToString() ?? _config.Storage.VideosPath;
+                    _config.Storage.DicomPath = storage["DicomPath"]?.ToString() ?? _config.Storage.DicomPath;
+                    _config.Storage.QueuePath = storage["QueuePath"]?.ToString() ?? _config.Storage.QueuePath;
+                    _config.Storage.TempPath = storage["TempPath"]?.ToString() ?? _config.Storage.TempPath;
+                    _config.Storage.MaxStorageDays = storage["MaxStorageDays"]?.Value<int>() ?? _config.Storage.MaxStorageDays;
+                    _config.Storage.EnableAutoCleanup = storage["EnableAutoCleanup"]?.Value<bool>() ?? _config.Storage.EnableAutoCleanup;
                 }
                 
                 var pacs = newSettings["Pacs"];
                 if (pacs != null)
                 {
-                    _config!.Pacs.ServerHost = pacs["serverHost"]?.ToString() ?? _config.Pacs.ServerHost;
-                    _config.Pacs.ServerPort = pacs["serverPort"]?.Value<int>() ?? _config.Pacs.ServerPort;
-                    _config.Pacs.CalledAeTitle = pacs["calledAeTitle"]?.ToString() ?? _config.Pacs.CalledAeTitle;
-                    _config.Pacs.CallingAeTitle = pacs["callingAeTitle"]?.ToString() ?? _config.Pacs.CallingAeTitle;
-                    _config.Pacs.Timeout = pacs["timeout"]?.Value<int>() ?? _config.Pacs.Timeout;
-                    _config.Pacs.EnableTls = pacs["enableTls"]?.Value<bool>() ?? _config.Pacs.EnableTls;
-                    _config.Pacs.MaxRetries = pacs["maxRetries"]?.Value<int>() ?? _config.Pacs.MaxRetries;
-                    _config.Pacs.RetryDelay = pacs["retryDelay"]?.Value<int>() ?? _config.Pacs.RetryDelay;
+                    _config!.Pacs.ServerHost = pacs["ServerHost"]?.ToString() ?? _config.Pacs.ServerHost;
+                    _config.Pacs.ServerPort = pacs["ServerPort"]?.Value<int>() ?? _config.Pacs.ServerPort;
+                    _config.Pacs.CalledAeTitle = pacs["CalledAeTitle"]?.ToString() ?? _config.Pacs.CalledAeTitle;
+                    _config.Pacs.CallingAeTitle = pacs["CallingAeTitle"]?.ToString() ?? _config.Pacs.CallingAeTitle;
+                    _config.Pacs.Timeout = pacs["Timeout"]?.Value<int>() ?? _config.Pacs.Timeout;
+                    _config.Pacs.EnableTls = pacs["EnableTls"]?.Value<bool>() ?? _config.Pacs.EnableTls;
+                    _config.Pacs.MaxRetries = pacs["MaxRetries"]?.Value<int>() ?? _config.Pacs.MaxRetries;
+                    _config.Pacs.RetryDelay = pacs["RetryDelay"]?.Value<int>() ?? _config.Pacs.RetryDelay;
                 }
                 
                 var video = newSettings["Video"];
                 if (video != null)
                 {
-                    _config!.Video.DefaultResolution = video["defaultResolution"]?.ToString() ?? _config.Video.DefaultResolution;
-                    _config.Video.DefaultFrameRate = video["defaultFrameRate"]?.Value<int>() ?? _config.Video.DefaultFrameRate;
-                    _config.Video.DefaultQuality = video["defaultQuality"]?.Value<int>() ?? _config.Video.DefaultQuality;
-                    _config.Video.EnableHardwareAcceleration = video["enableHardwareAcceleration"]?.Value<bool>() ?? _config.Video.EnableHardwareAcceleration;
-                    _config.Video.PreferredCamera = video["preferredCamera"]?.ToString() ?? _config.Video.PreferredCamera;
+                    _config!.Video.DefaultResolution = video["DefaultResolution"]?.ToString() ?? _config.Video.DefaultResolution;
+                    _config.Video.DefaultFrameRate = video["DefaultFrameRate"]?.Value<int>() ?? _config.Video.DefaultFrameRate;
+                    _config.Video.DefaultQuality = video["DefaultQuality"]?.Value<int>() ?? _config.Video.DefaultQuality;
+                    _config.Video.EnableHardwareAcceleration = video["EnableHardwareAcceleration"]?.Value<bool>() ?? _config.Video.EnableHardwareAcceleration;
+                    _config.Video.PreferredCamera = video["PreferredCamera"]?.ToString() ?? _config.Video.PreferredCamera;
                 }
                 
                 var application = newSettings["Application"];
                 if (application != null)
                 {
-                    _config!.Application.Language = application["language"]?.ToString() ?? _config.Application.Language;
-                    _config.Application.Theme = application["theme"]?.ToString() ?? _config.Application.Theme;
-                    _config.Application.EnableTouchKeyboard = application["enableTouchKeyboard"]?.Value<bool>() ?? _config.Application.EnableTouchKeyboard;
-                    _config.Application.EnableDebugMode = application["enableDebugMode"]?.Value<bool>() ?? _config.Application.EnableDebugMode;
-                    _config.Application.AutoStartCapture = application["autoStartCapture"]?.Value<bool>() ?? _config.Application.AutoStartCapture;
-                    _config.Application.WebServerPort = application["webServerPort"]?.Value<int>() ?? _config.Application.WebServerPort;
-                    _config.Application.EnableRemoteAccess = application["enableRemoteAccess"]?.Value<bool>() ?? _config.Application.EnableRemoteAccess;
-                    _config.Application.HideExitButton = application["hideExitButton"]?.Value<bool>() ?? _config.Application.HideExitButton;
-                    _config.Application.EnableEmergencyTemplates = application["enableEmergencyTemplates"]?.Value<bool>() ?? _config.Application.EnableEmergencyTemplates;
+                    _config!.Application.Language = application["Language"]?.ToString() ?? _config.Application.Language;
+                    _config.Application.Theme = application["Theme"]?.ToString() ?? _config.Application.Theme;
+                    _config.Application.EnableTouchKeyboard = application["EnableTouchKeyboard"]?.Value<bool>() ?? _config.Application.EnableTouchKeyboard;
+                    _config.Application.EnableDebugMode = application["EnableDebugMode"]?.Value<bool>() ?? _config.Application.EnableDebugMode;
+                    _config.Application.AutoStartCapture = application["AutoStartCapture"]?.Value<bool>() ?? _config.Application.AutoStartCapture;
+                    _config.Application.WebServerPort = application["WebServerPort"]?.Value<int>() ?? _config.Application.WebServerPort;
+                    _config.Application.EnableRemoteAccess = application["EnableRemoteAccess"]?.Value<bool>() ?? _config.Application.EnableRemoteAccess;
+                    _config.Application.HideExitButton = application["HideExitButton"]?.Value<bool>() ?? _config.Application.HideExitButton;
+                    _config.Application.EnableEmergencyTemplates = application["EnableEmergencyTemplates"]?.Value<bool>() ?? _config.Application.EnableEmergencyTemplates;
+                }
+                
+                var mwlSettings = newSettings["MwlSettings"];
+                if (mwlSettings != null && _config!.MwlSettings != null)
+                {
+                    _config.MwlSettings.EnableWorklist = mwlSettings["EnableWorklist"]?.Value<bool>() ?? _config.MwlSettings.EnableWorklist;
+                    _config.MwlSettings.MwlServerHost = mwlSettings["MwlServerHost"]?.ToString() ?? _config.MwlSettings.MwlServerHost;
+                    _config.MwlSettings.MwlServerPort = mwlSettings["MwlServerPort"]?.Value<int>() ?? _config.MwlSettings.MwlServerPort;
+                    _config.MwlSettings.MwlServerAET = mwlSettings["MwlServerAET"]?.ToString() ?? _config.MwlSettings.MwlServerAET;
+                    // Note: Modality, StationName, CacheDurationHours, AutoRefresh are not in MwlConfig
                 }
                 
                 // Save to file
@@ -1251,11 +1407,36 @@ namespace SmartBoxNext
                 
                 _logger.LogInformation("Testing PACS connection to {Host}:{Port}", serverHost, serverPort);
                 
-                // TODO: Implement actual PACS C-ECHO test
-                // For now, just simulate
-                await Task.Delay(1000);
+                if (string.IsNullOrEmpty(serverHost) || string.IsNullOrEmpty(calledAeTitle) || string.IsNullOrEmpty(callingAeTitle))
+                {
+                    await SendMessageToWebView(new
+                    {
+                        action = "pacsTestResult",
+                        data = new 
+                        { 
+                            success = false,
+                            error = "Missing required PACS configuration"
+                        }
+                    });
+                    return;
+                }
                 
-                bool success = !string.IsNullOrEmpty(serverHost);
+                // Create temporary config for testing
+                var testConfig = new AppConfig
+                {
+                    Pacs = new PacsConfig
+                    {
+                        ServerHost = serverHost,
+                        ServerPort = serverPort,
+                        CalledAeTitle = calledAeTitle,
+                        CallingAeTitle = callingAeTitle,
+                        MaxRetries = 1
+                    }
+                };
+                
+                // Test PACS connection using actual PacsSender
+                var testPacsSender = new PacsSender(testConfig);
+                var success = await testPacsSender.TestConnectionAsync();
                 
                 await SendMessageToWebView(new
                 {
@@ -1263,7 +1444,7 @@ namespace SmartBoxNext
                     data = new 
                     { 
                         success = success,
-                        error = success ? null : "No server host specified"
+                        error = success ? null : "PACS C-ECHO failed"
                     }
                 });
             }

@@ -6,7 +6,7 @@ class SmartBoxApp {
         this.mediaRecorder = null;
         this.recordedChunks = [];
         this.isRecording = false;
-        this.debugLog = [];
+
         this.config = null;
         this.lastCapturedPhoto = null;
         this.selectedWorklistItem = null;
@@ -50,17 +50,17 @@ class SmartBoxApp {
         this.gender = document.getElementById('gender');
         this.studyDescription = document.getElementById('studyDescription');
         this.accessionNumber = document.getElementById('accessionNumber');
-        this.debugInfo = document.getElementById('debugInfo');
+
         
         // Buttons - with null checks
         this.captureButton = document.getElementById('captureButton');
         this.recordButton = document.getElementById('recordButton');
         this.exportDicomButton = document.getElementById('exportDicomButton');
         this.settingsButton = document.getElementById('settingsButton');
-        this.debugButton = document.getElementById('debugButton');
+
         this.analyzeButton = document.getElementById('analyzeButton');
         this.openLogsButton = document.getElementById('openLogsButton');
-        this.testButton = document.getElementById('testButton');
+
         
         // MWL elements
         this.refreshMwlBtn = document.getElementById('refreshMwlBtn');
@@ -113,12 +113,7 @@ class SmartBoxApp {
         } else {
             console.error('Settings button not found!');
         }
-        if (this.debugButton) {
-            this.debugButton.addEventListener('click', () => this.toggleDebug());
-            console.log('Debug button listener attached');
-        } else {
-            console.error('Debug button not found!');
-        }
+
         if (this.analyzeButton) {
             this.analyzeButton.addEventListener('click', () => this.analyzeCamera());
             console.log('Analyze button listener attached');
@@ -131,12 +126,7 @@ class SmartBoxApp {
         } else {
             console.error('Open logs button not found!');
         }
-        if (this.testButton) {
-            this.testButton.addEventListener('click', () => this.testWebView2());
-            console.log('Test button listener attached');
-        } else {
-            console.error('Test button not found!');
-        }
+
         
         // Listen for messages from C# host
         window.addEventListener('message', (e) => this.handleHostMessage(e));
@@ -208,18 +198,16 @@ class SmartBoxApp {
         const timestamp = new Date().toLocaleTimeString();
         const logEntry = `[${timestamp}] ${level.toUpperCase()}: ${message}`;
         
+        // Always log to browser console
         console.log(logEntry);
-        this.debugLog.push(logEntry);
         
-        // Keep only last 100 entries
-        if (this.debugLog.length > 100) {
-            this.debugLog.shift();
-        }
-        
-        // Update debug display if visible
-        if (this.debugInfo && this.debugInfo.style.display !== 'none') {
-            this.debugInfo.textContent = this.debugLog.join('\n');
-            this.debugInfo.scrollTop = this.debugInfo.scrollHeight;
+        // Send to C# logger if WebView2 is available
+        if (window.chrome && window.chrome.webview) {
+            this.sendToHost('log', { 
+                message: message,
+                level: level,
+                timestamp: new Date().toISOString()
+            });
         }
     }
 
@@ -280,9 +268,13 @@ class SmartBoxApp {
         if (window.chrome && window.chrome.webview) {
             const message = JSON.stringify({ action, data });
             window.chrome.webview.postMessage(message);
-            this.log(`Sent to host: ${action}`);
+            // Don't log 'log' actions to avoid infinite loop!
+            if (action !== 'log') {
+                this.log(`Sent to host: ${action}`);
+            }
         } else {
-            this.log('WebView2 bridge not available', 'warn');
+            // Don't use log here to avoid recursion when WebView2 is not available
+            console.warn('WebView2 bridge not available');
         }
     }
 
@@ -565,12 +557,7 @@ class SmartBoxApp {
         window.location.href = 'settings.html';
     }
 
-    toggleDebug() {
-        this.log('Toggle debug clicked');
-        if (this.debugInfo) {
-            this.debugInfo.style.display = this.debugInfo.style.display === 'none' ? 'block' : 'none';
-        }
-    }
+
 
     async analyzeCamera() {
         this.log('Analyzing camera capabilities...');

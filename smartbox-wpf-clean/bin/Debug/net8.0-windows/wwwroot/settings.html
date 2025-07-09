@@ -17,10 +17,6 @@
             </button>
             <h1>Settings</h1>
             <div class="header-actions">
-                <button class="home-button" id="homeButton" style="margin-right: 10px;">
-                    <i class="ms-Icon ms-Icon--Home"></i>
-                    <span>Home</span>
-                </button>
                 <button class="save-button" id="saveButton">
                     <i class="ms-Icon ms-Icon--Save"></i>
                     <span>Save</span>
@@ -30,7 +26,6 @@
 
         <!-- Settings Content -->
         <div class="settings-content">
-            <form id="settingsForm">
             <nav class="settings-nav">
                 <button class="nav-item active" data-section="storage">
                     <i class="ms-Icon ms-Icon--FabricFolder"></i>
@@ -55,6 +50,7 @@
             </nav>
 
             <main class="settings-main">
+                <form id="settingsForm">
                 <!-- Storage Section -->
                 <section id="storage-section" class="settings-section active">
                     <h2>Storage Settings</h2>
@@ -330,8 +326,8 @@
                         <p class="help-text">User interface language</p>
                     </div>
                 </section>
+                </form>
             </main>
-            </form>
         </div>
     </div>
 

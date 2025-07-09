@@ -42,6 +42,8 @@ C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\Microsoft.Extensions.Primitives.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\Newtonsoft.Json.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\SixLabors.ImageSharp.dll
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\System.Management.dll
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\runtimes\win\lib\net8.0\System.Management.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\Microsoft.Web.WebView2.Core.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\Microsoft.Web.WebView2.WinForms.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\Microsoft.Web.WebView2.Wpf.dll
