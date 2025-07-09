@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Session 24 - 2025-07-09 (Settings Layout Fix & MWL UI)
+
+#### Fixed
+- **Settings Layout Bug**:
+  - Form tag was incorrectly wrapping both navigation and main content
+  - This caused settings elements to be pushed into navigation column
+  - Fixed by moving form tag to only wrap content inside main element
+  - Navigation and main content now properly separated
+
+#### Added
+- **MWL Settings UI**:
+  - Complete Modality Worklist configuration section
+  - Server settings (Host, Port, AE Title)
+  - Modality selection dropdown
+  - Cache duration and auto-refresh options
+  - Test MWL Connection button with result display
+- **Emergency Templates Toggle**:
+  - Added to Application Settings section
+  - Enables/disables emergency patient templates feature
+
+#### Known Issues
+- Settings field IDs don't match JavaScript expectations (save/load broken)
+- Test button IDs mismatch between HTML and JavaScript
+- WebView2 processes holding file locks even after Window_Closing fix
+
 ### Session 22 - 2025-07-09 (Window Closing Bug Fix)
 
 #### Fixed

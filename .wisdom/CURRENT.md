@@ -868,10 +868,11 @@ Access to the path '...\bin\Debug\net8.0-windows\*.dll' is denied
 
 ---
 
-### Session 24: MWL Settings UI Implementation 🎨
+### Session 24: MWL Settings UI Implementation & Layout Fix 🎨
 **Session ID**: SMARTBOXNEXT-2025-07-09-03
-**Duration**: 09:00 - ongoing (09.07.2025)
-**Status**: MWL Settings UI complete, build successful!
+**Duration**: 09:00 - 14:40 (09.07.2025)
+**Status**: Settings layout fixed, build blocked by file locks
+**Token Exit**: ~35k/150k (23%)
 
 #### Major Achievements:
 1. **MWL Settings UI Added**:
@@ -909,19 +910,32 @@ Access to the path '...\bin\Debug\net8.0-windows\*.dll' is denied
    - AppConfig.Pacs not PacsSettings
    - PacsConfig.CallingAeTitle not LocalAeTitle
 
+6. **Settings Layout Bug FIXED**:
+   - Problem: `<form>` tag was wrapping both navigation and main content
+   - This caused layout to break - elements pushed into navigation column
+   - Solution: Moved `<form>` to only wrap content inside `<main>`
+   - Navigation and main content now properly separated
+
 #### Current Status:
 - ✅ MWL Settings UI complete
 - ✅ Emergency Templates toggle added
 - ✅ Test MWL button functional
-- ✅ Build successful (only warnings)
+- ✅ Settings layout fixed
+- ❌ Build blocked by file locks (WebView2 processes)
 - ⏳ Multi-Target Configuration UI still pending
+
+#### Build Lock Issue:
+- Multiple WebView2 processes holding file locks
+- Window_Closing bug was fixed in Session 22 but processes still hanging
+- Created fix-locks-aggressive.bat but locks persist
+- Need Windows restart or Visual Studio to force close processes
 
 #### Design Clarification:
 - NO terminal emulation look
 - Modern, clean medical application design
 - Windows Terminal Settings page as inspiration (not terminal look)
 
-#### ⚠️ KNOWN ISSUES (Session 24):
+#### ⚠️ KNOWN ISSUES:
 1. **Settings Page Field IDs**:
    - Field IDs in settings.html don't match the naming pattern expected by settings.js
    - Example: `id="mwl-server-ae"` but settings.js expects pattern like `id="mwl-serverAeTitle"`
@@ -932,15 +946,21 @@ Access to the path '...\bin\Debug\net8.0-windows\*.dll' is denied
    - Test PACS button has wrong ID (`id="testPacsButton"` in JS but `id="test-pacs"` in HTML)
    - Same pattern mismatch throughout
 
+3. **File Lock Issue**:
+   - WebView2 processes not releasing files after app exit
+   - Window_Closing fix from Session 22 not preventing all locks
+   - May need to investigate WebView2 disposal in MainWindow destructor
+
 #### What Works:
 - ✅ UI displays correctly
 - ✅ Navigation between sections works
-- ✅ Build compiles successfully
+- ✅ Settings layout now fixed
 - ✅ MWL test handler implemented in C#
 - ❌ Settings save/load broken due to ID mismatches
 - ❌ Test buttons won't work due to ID mismatches
+- ❌ Build blocked by file locks
 
-*Session 24: "GUI looks good but IDs are a mess"*
+*Session 24: "Layout fixed but WebView2 won't let go"*
 
 #### The Ultimate VOGON MOMENT:
 1. **The Problem**:
