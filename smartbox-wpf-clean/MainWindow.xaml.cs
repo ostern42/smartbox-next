@@ -128,21 +128,58 @@ namespace SmartBoxNext
         {
             try
             {
+                _logger.LogInformation("Starting WebView2 initialization...");
+                UpdateStatus("Creating WebView2 environment...");
+                
                 // Set WebView2 user data folder
                 var userDataFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WebView2Data");
                 Directory.CreateDirectory(userDataFolder);
+                _logger.LogInformation("WebView2 user data folder: {Folder}", userDataFolder);
                 
-                var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
-                await webView.EnsureCoreWebView2Async(env);
+                UpdateStatus("Creating CoreWebView2Environment...");
+                _logger.LogInformation("Creating CoreWebView2Environment...");
                 
+                CoreWebView2Environment? env = null;
+                try
+                {
+                    env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                    _logger.LogInformation("CoreWebView2Environment created successfully");
+                }
+                catch (Exception envEx)
+                {
+                    _logger.LogError(envEx, "Failed to create CoreWebView2Environment - WebView2 Runtime may not be installed!");
+                    UpdateStatus("ERROR: WebView2 Runtime not found!");
+                    throw new InvalidOperationException("WebView2 Runtime is not installed. Please install it from https://go.microsoft.com/fwlink/p/?LinkId=2124703", envEx);
+                }
+                
+                UpdateStatus("Initializing CoreWebView2...");
+                _logger.LogInformation("Ensuring CoreWebView2 is initialized...");
+                
+                try
+                {
+                    await webView.EnsureCoreWebView2Async(env);
+                    _logger.LogInformation("CoreWebView2 initialized successfully");
+                }
+                catch (Exception coreEx)
+                {
+                    _logger.LogError(coreEx, "Failed to initialize CoreWebView2");
+                    UpdateStatus("ERROR: Failed to initialize WebView2!");
+                    throw;
+                }
+                
+                UpdateStatus("Configuring WebView2 settings...");
+                _logger.LogInformation("CoreWebView2 initialized, configuring settings...");
                 // Configure WebView2
-                ConfigureWebView();
+                await ConfigureWebView();
                 
-                // Navigate to the application (DEBUG: using debug page)
-                var url = $"http://localhost:{_config!.Application.WebServerPort}/debug-webview.html";
+                // Navigate to the application
+                var url = $"http://localhost:{_config!.Application.WebServerPort}/index.html";
+                UpdateStatus($"Navigating to {url}...");
+                _logger.LogInformation("Navigating to: {Url}", url);
                 webView.Source = new Uri(url);
                 
-                _logger.LogInformation("WebView2 initialized, navigating to {Url}", url);
+                UpdateStatus("WebView2 ready!");
+                _logger.LogInformation("WebView2 initialization complete!");
             }
             catch (Exception ex)
             {
@@ -151,8 +188,16 @@ namespace SmartBoxNext
             }
         }
         
-        private async void ConfigureWebView()
+        private async Task ConfigureWebView()
         {
+            _logger.LogInformation("Configuring WebView2 settings...");
+            
+            if (webView.CoreWebView2 == null)
+            {
+                _logger.LogError("CoreWebView2 is null in ConfigureWebView!");
+                throw new InvalidOperationException("CoreWebView2 is not initialized");
+            }
+            
             var settings = webView.CoreWebView2.Settings;
             
             // Security settings for medical application
@@ -337,23 +382,27 @@ namespace SmartBoxNext
                     await HandleSaveSettings(message);
                     break;
                     
-                case "testPacsConnection":
+                case "testpacsconnection":
                     await HandleTestPacsConnection(message);
                     break;
                     
-                case "queryWorklist":
+                case "testmwlconnection":
+                    await HandleTestMwlConnection(message);
+                    break;
+                    
+                case "queryworklist":
                     await HandleQueryWorklist(message);
                     break;
                     
-                case "refreshWorklist":
+                case "refreshworklist":
                     await HandleRefreshWorklist();
                     break;
                     
-                case "getWorklistCacheStatus":
+                case "getworklistcachestatus":
                     await HandleGetWorklistCacheStatus();
                     break;
                     
-                case "selectWorklistItem":
+                case "selectworklistitem":
                     await HandleSelectWorklistItem(message);
                     break;
                     
@@ -1224,6 +1273,78 @@ namespace SmartBoxNext
                 await SendMessageToWebView(new
                 {
                     action = "pacsTestResult",
+                    data = new 
+                    { 
+                        success = false,
+                        error = ex.Message
+                    }
+                });
+            }
+        }
+        
+        private async Task HandleTestMwlConnection(JObject message)
+        {
+            try
+            {
+                var data = message["data"];
+                var serverHost = data?["serverHost"]?.ToString();
+                var serverPort = data?["serverPort"]?.Value<int>() ?? 104;
+                var serverAeTitle = data?["serverAeTitle"]?.ToString();
+                var localAeTitle = data?["localAeTitle"]?.ToString();
+                
+                _logger.LogInformation("Testing MWL connection to {Host}:{Port}", serverHost, serverPort);
+                
+                if (string.IsNullOrEmpty(serverHost) || string.IsNullOrEmpty(serverAeTitle) || string.IsNullOrEmpty(localAeTitle))
+                {
+                    await SendMessageToWebView(new
+                    {
+                        action = "mwlTestResult",
+                        data = new 
+                        { 
+                            success = false,
+                            error = "Missing required MWL configuration"
+                        }
+                    });
+                    return;
+                }
+                
+                // Create temporary config for testing
+                var testConfig = new AppConfig
+                {
+                    MwlSettings = new MwlConfig
+                    {
+                        EnableWorklist = true,
+                        MwlServerHost = serverHost,
+                        MwlServerPort = serverPort,
+                        MwlServerAET = serverAeTitle
+                    },
+                    Pacs = new PacsConfig
+                    {
+                        CallingAeTitle = localAeTitle
+                    }
+                };
+                
+                // Test MWL connection
+                var mwlService = new MwlService(testConfig);
+                var items = await mwlService.GetWorklistAsync(DateTime.Today);
+                
+                await SendMessageToWebView(new
+                {
+                    action = "mwlTestResult",
+                    data = new 
+                    { 
+                        success = true,
+                        count = items?.Count ?? 0,
+                        error = (string?)null
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to test MWL connection");
+                await SendMessageToWebView(new
+                {
+                    action = "mwlTestResult",
                     data = new 
                     { 
                         success = false,

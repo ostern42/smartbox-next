@@ -160,11 +160,11 @@ MediaFrameReader delivers frames, but WinUI3 Image control doesn't display them 
 - Help: Dictionary<string, (Title, Content)> system
 
 ### Next Session Should:
-1. **UPDATE Settings UI to Modern Windows Terminal Style**
+1. **UPDATE Settings UI to Modern Clean Design**
    - Segoe UI Variable font family
-   - Clean, modern design like Windows Terminal
+   - Clean, modern design inspired by Windows Terminal Settings page
    - Subtle animations and transitions
-   - Remove old "terminal" monospace look
+   - Professional medical application look
 2. **Implement Assistant Mode**
    - Auto-launch when config empty/invalid
    - Progressive field highlighting
@@ -176,6 +176,8 @@ MediaFrameReader delivers frames, but WinUI3 Image control doesn't display them 
 
 ### IMPORTANT Design Clarification from Oliver:
 "das mit dem terminal look hast du falsch verstanden bei den settings. das MS Terminal (mit multitab usw, super modern) das hat sogar vom aufbau her den gleichen stil, aber hat mit einer sehr schönen serifenlosen schriftart fett/light und dezenten graubalken usw."
+
+**KLARSTELLUNG**: Es geht NICHT um Terminal-Emulation oder Konsolenschrift! Oliver meint das moderne, klare Design der Windows Terminal SETTINGS-Seite als Vorbild für ein schönes, modernes Settings-UI.
 
 ### New Requirements Added:
 - Complete touch operation (no mouse needed)
@@ -798,10 +800,10 @@ Access to the path '...\bin\Debug\net8.0-windows\*.dll' is denied
 
 ### Session 22: Window Closing Bug Fix & File Lock Investigation 🔧
 **Session ID**: SMARTBOXNEXT-2025-07-09-01
-**Duration**: 00:30 - 01:10 (09.07.2025)
-**Status**: Bug fixed, but build blocked by file locks
+**Duration**: 00:30 - 01:30 (09.07.2025)
+**Status**: Bug fixed and verified after restart! ✅
 
-#### Major Achievement:
+#### Major Achievements:
 1. **Window Closing Bug FIXED**:
    - Problem: Window_Closing handler set `e.Cancel = true` without re-entry protection
    - Cause: When `Application.Shutdown()` was called, it re-triggered the event → endless loop
@@ -830,33 +832,181 @@ Access to the path '...\bin\Debug\net8.0-windows\*.dll' is denied
    }
    ```
 
-3. **File Lock Investigation**:
-   - Killed all dotnet.exe processes
-   - Killed all msedgewebview2.exe processes (20+!)
-   - Visual Studio closed
-   - Still couldn't delete bin/obj folders
-   - Process Explorer showed no SmartBoxNext-related processes
-   - **Conclusion**: System-level lock, requires restart
+3. **Post-Restart Verification**:
+   - ✅ Build successful with only nullable warnings
+   - ✅ Application starts correctly on port 5112
+   - ✅ Window closes cleanly without hanging
+   - ✅ No file locks after application closes
+   - ✅ Can delete files immediately after exit
+
+4. **WebView2 Debug Page Found**:
+   - Application navigates to `debug-webview.html`
+   - Contains test buttons for all WebView2 handlers
+   - Ready to test case sensitivity fix
 
 #### What Works:
-- ✅ Window closing bug fix implemented
-- ✅ Proper cleanup sequence in place
-- ✅ WebView2 disposal code correct
-- ✅ WebServer StopAsync implemented
+- ✅ Window closing bug FIXED and VERIFIED
+- ✅ Build system working perfectly
+- ✅ No more file lock issues
+- ✅ WebView2 initialized successfully
+- ✅ Web server running on port 5112
 
-#### Known Issues:
-- ⚠️ Build blocked by file locks from previous runs
-- ⚠️ bin/obj folders cannot be deleted
-- ⚠️ Requires system restart to clear locks
+#### Next Steps:
+- Test WebView2 message handlers with debug page
+- Verify case sensitivity fix works
+- Debug WebView2 timeout issues
 
-#### Next Session Must:
-1. **RESTART WINDOWS FIRST!**
-2. Build the project with fixed code
-3. Test that window closes properly
-4. Verify no file locks after app closes
-5. Continue with other pending bugs
+*Session 22: "Sometimes Windows just needs a fresh start - and it worked!"*
 
-*Session 22: "Sometimes Windows just needs a fresh start"*
+---
+
+### Session 23: The One Closing Bracket VOGON MOMENT! 🎉
+**Session ID**: SMARTBOXNEXT-2025-07-09-02
+**Duration**: 01:30 - 02:05 (09.07.2025)
+**Status**: VOGON EXIT - App working, wisdom documented!
+**Token Exit**: ~30k/150k (20%)
+
+---
+
+### Session 24: MWL Settings UI Implementation 🎨
+**Session ID**: SMARTBOXNEXT-2025-07-09-03
+**Duration**: 09:00 - ongoing (09.07.2025)
+**Status**: MWL Settings UI complete, build successful!
+
+#### Major Achievements:
+1. **MWL Settings UI Added**:
+   - Complete Modality Worklist section in settings.html
+   - All configuration fields:
+     - Enable/Disable toggle
+     - Server settings (Host, Port, AE Title)
+     - Local AE Title
+     - Modality selection (ES, US, XA, CR, DX, OT)
+     - Station Name
+     - Cache duration (1-168 hours)
+     - Auto-refresh toggle
+   - Test MWL Connection button
+
+2. **Emergency Templates Toggle Added**:
+   - Added to Application Settings section
+   - Enable/disable emergency patient templates
+   - Help text explains Male/Female/Child templates
+
+3. **Settings JavaScript Enhanced**:
+   - Added testMwlConnection() method
+   - Added mwlTestResult handler
+   - Shows success with worklist item count
+   - Error handling with notifications
+
+4. **C# Backend Integration**:
+   - HandleTestMwlConnection implemented in MainWindow.xaml.cs
+   - Creates temporary MwlConfig for testing
+   - Uses MwlService.GetWorklistAsync()
+   - Returns success/failure with item count
+
+5. **Build Issues Fixed**:
+   - Property name mismatches resolved
+   - MwlConfig uses EnableWorklist, MwlServerHost, etc.
+   - AppConfig.Pacs not PacsSettings
+   - PacsConfig.CallingAeTitle not LocalAeTitle
+
+#### Current Status:
+- ✅ MWL Settings UI complete
+- ✅ Emergency Templates toggle added
+- ✅ Test MWL button functional
+- ✅ Build successful (only warnings)
+- ⏳ Multi-Target Configuration UI still pending
+
+#### Design Clarification:
+- NO terminal emulation look
+- Modern, clean medical application design
+- Windows Terminal Settings page as inspiration (not terminal look)
+
+#### ⚠️ KNOWN ISSUES (Session 24):
+1. **Settings Page Field IDs**:
+   - Field IDs in settings.html don't match the naming pattern expected by settings.js
+   - Example: `id="mwl-server-ae"` but settings.js expects pattern like `id="mwl-serverAeTitle"`
+   - This causes save/load to not work properly
+   - NEEDS FIX in next session!
+
+2. **Test Buttons IDs**:
+   - Test PACS button has wrong ID (`id="testPacsButton"` in JS but `id="test-pacs"` in HTML)
+   - Same pattern mismatch throughout
+
+#### What Works:
+- ✅ UI displays correctly
+- ✅ Navigation between sections works
+- ✅ Build compiles successfully
+- ✅ MWL test handler implemented in C#
+- ❌ Settings save/load broken due to ID mismatches
+- ❌ Test buttons won't work due to ID mismatches
+
+*Session 24: "GUI looks good but IDs are a mess"*
+
+#### The Ultimate VOGON MOMENT:
+1. **The Problem**:
+   - GUI was "quite dead" - all buttons visible but nothing worked
+   - Console showed: `app.js:680 Uncaught SyntaxError: Unexpected token '}'`
+   - SmartBoxApp was not defined
+   - WebView2 communication actually worked fine!
+
+2. **The Hunt**:
+   - Added debug messages everywhere
+   - Checked WebView2 initialization
+   - Tested message handlers
+   - Everything in C# was perfect!
+
+3. **The Discovery**:
+   ```javascript
+   // ONE EXTRA CLOSING BRACKET:
+           }
+       }
+                   break;
+           }
+       }  // <-- THIS KILLED EVERYTHING!
+   ```
+
+4. **The Fix**:
+   - Removed 3 lines
+   - App instantly came to life
+   - All features working!
+
+5. **Oliver's Reaction**:
+   "it's working! on closing braket in a js file. this is my new best VOGON MOMENT! write this in the wisdom RIGHT NOW! WISDOM!"
+
+#### Additional Fixes:
+1. **Folder Browse Buttons**:
+   - Simplified HandleBrowseFolder method
+   - Removed nested Dispatcher.InvokeAsync
+   - Now works like other dialogs
+
+2. **MWL Configuration**:
+   - Added MwlSettings to config.json
+   - Complete MWL implementation ready
+   - Just needs to be enabled in settings
+
+#### What We Learned:
+- **Always check console FIRST** when UI is "dead"
+- JavaScript syntax errors = silent UI death
+- Backend can be perfect while frontend is completely broken
+- One character can destroy everything
+- The smallest bugs often have the biggest impact
+
+#### Current Status:
+- ✅ App fully functional
+- ✅ WebView2 communication working
+- ✅ All buttons responsive
+- ✅ Folder browse dialogs fixed
+- ✅ MWL ready to enable
+- ✅ VOGON MOMENT documented in WISDOM!
+
+#### Next Session Should:
+1. Test folder browse functionality
+2. Enable and test MWL
+3. Test DICOM export with real images
+4. Test PACS integration
+5. Create deployment package
+
+*Session 23: "One bracket to rule them all, one bracket to break them"*
 
 ---
 
@@ -887,10 +1037,11 @@ Access to the path '...\bin\Debug\net8.0-windows\*.dll' is denied
 
 ### 🟢 Feature TODOs:
 1. **Settings UI Modernisierung**
-   - Von Terminal-Style zu Windows Terminal Style
+   - Modernes, klares Design (wie Windows Terminal Settings-Seite)
    - Segoe UI Variable Font
    - Moderne Animationen
    - Datei: settings.html/css
+   - KEIN Terminal-Look, sondern professionelles Medical App Design
 
 2. **Assistant Mode**
    - Auto-Start wenn config.json leer/ungültig

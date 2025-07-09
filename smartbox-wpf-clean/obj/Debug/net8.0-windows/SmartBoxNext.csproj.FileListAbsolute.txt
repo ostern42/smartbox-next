@@ -40,11 +40,14 @@ C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\ne
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Extensions.Options.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Extensions.Options.ConfigurationExtensions.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Extensions.Primitives.dll
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Newtonsoft.Json.dll
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\SixLabors.ImageSharp.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.Core.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.WinForms.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.Wpf.dll
-C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Newtonsoft.Json.dll
-C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\SixLabors.ImageSharp.dll
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.Core.xml
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.Wpf.xml
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.WinForms.xml
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Debug\net8.0-windows\SmartBoxNext.csproj.AssemblyReference.cache
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Debug\net8.0-windows\MainWindow.baml
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Debug\net8.0-windows\App.baml
@@ -63,6 +66,3 @@ C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Debug\ne
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Debug\net8.0-windows\SmartBoxNext.pdb
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Debug\net8.0-windows\SmartBoxNext.genruntimeconfig.cache
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Debug\net8.0-windows\ref\SmartBoxNext.dll
-C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.Core.xml
-C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.Wpf.xml
-C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Debug\net8.0-windows\Microsoft.Web.WebView2.WinForms.xml

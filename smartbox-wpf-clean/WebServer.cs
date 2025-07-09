@@ -81,10 +81,23 @@ namespace SmartBoxNext
                 return;
 
             _cancellationTokenSource?.Cancel();
-            _listener.Stop();
             
+            // Stop the listener - this will cause GetContextAsync to throw
+            _listener.Stop();
+            _listener.Close();
+            
+            // Wait for server task to complete, but with timeout
             if (_serverTask != null)
-                await _serverTask;
+            {
+                try
+                {
+                    await _serverTask.WaitAsync(TimeSpan.FromSeconds(1));
+                }
+                catch (TimeoutException)
+                {
+                    // Server task didn't complete in time, but that's OK
+                }
+            }
 
             _cancellationTokenSource?.Dispose();
             Console.WriteLine("Web server stopped");
