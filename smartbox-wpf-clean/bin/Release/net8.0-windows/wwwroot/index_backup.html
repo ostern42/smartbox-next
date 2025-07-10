@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBox Next - Medical Imaging</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="keyboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/segoe-fluent-icons/font/SegoeFluentIcons.css">
+    <!-- Layout and theme CSS will be loaded dynamically -->
+    <link id="theme-css" rel="stylesheet" href="styles/theme-default.css">
+    <link id="layout-css" rel="stylesheet" href="styles/layout-standard.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Left Panel: Preview + Patient Info -->
+            <div class="left-panel">
+                <!-- Webcam Preview -->
+                <section class="webcam-section">
+                    <div class="webcam-container">
+                        <video id="webcamPreview" autoplay playsinline></video>
+                        <canvas id="captureCanvas" style="display: none;"></canvas>
+                        <div id="webcamPlaceholder" class="placeholder">
+                            <span>Webcam Preview</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Patient Info - Compact -->
+                <aside class="patient-info">
+                    <div class="info-section">
+                        <h2>Patient Information</h2>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="patientName">Patient Name</label>
+                                <input type="text" id="patientName" placeholder="Last, First">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="patientID">Patient ID</label>
+                                <input type="text" id="patientID" placeholder="12345678">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="birthDate">Birth Date</label>
+                                <input type="date" id="birthDate">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="gender">Gender</label>
+                                <select id="gender">
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                    <option value="O">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h2>Study Information</h2>
+                        
+                        <div class="form-group">
+                            <label for="studyDescription">Study Description</label>
+                            <input type="text" id="studyDescription" placeholder="Endoscopy">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="accessionNumber">Accession Number</label>
+                            <input type="text" id="accessionNumber">
+                        </div>
+                    </div>
+                    
+                    <!-- Emergency Templates -->
+                    <div class="emergency-section" id="emergencySection" style="display: none;">
+                        <h3>Emergency Templates</h3>
+                        <div class="emergency-buttons">
+                            <button class="emergency-button" data-template="male">
+                                <i class="ms-Icon ms-Icon--Contact"></i>
+                                <span>Emergency Male</span>
+                            </button>
+                            <button class="emergency-button" data-template="female">
+                                <i class="ms-Icon ms-Icon--ContactCard"></i>
+                                <span>Emergency Female</span>
+                            </button>
+                            <button class="emergency-button" data-template="child">
+                                <i class="ms-Icon ms-Icon--ChildrenFolderFill"></i>
+                                <span>Emergency Child</span>
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- Right Panel: MWL Section (75% width) -->
+            <div class="mwl-panel">
+                <div class="info-section" id="mwlSection">
+                    <h2>Modality Worklist</h2>
+                    
+                    <div class="mwl-controls">
+                        <div class="mwl-control-row">
+                            <select id="dateRangeSelect" class="mwl-date-select">
+                                <option value="yesterday">Gestern</option>
+                                <option value="today" selected>Heute</option>
+                                <option value="tomorrow">Morgen</option>
+                                <option value="range">Gestern/Heute/Morgen</option>
+                            </select>
+                            <button class="btn btn-icon" id="refreshMwlBtn" title="Aktualisieren">
+                                <i class="ms-Icon ms-Icon--Refresh"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="mwl-filter-row">
+                            <input type="text" 
+                                   id="mwlFilterInput" 
+                                   class="mwl-filter-input" 
+                                   placeholder="Filter (z.B. Name oder Untersuchung)..."
+                                   autocomplete="off">
+                            <span class="mwl-filter-clear" id="mwlFilterClear" style="display: none;">
+                                <i class="ms-Icon ms-Icon--Clear"></i>
+                            </span>
+                        </div>
+                        
+                        <div class="mwl-status" id="mwlStatus">
+                            <span class="status-text">Lade...</span>
+                            <span class="status-count" id="mwlStatusCount"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="mwl-list-container">
+                        <div class="mwl-list-header">
+                            <div class="mwl-col mwl-col-name">Patient</div>
+                            <div class="mwl-col mwl-col-birth">Geburtsdatum</div>
+                            <div class="mwl-col mwl-col-procedure">Untersuchung</div>
+                            <div class="mwl-col mwl-col-date">Termin</div>
+                        </div>
+                        <div class="mwl-list" id="mwlList">
+                            <!-- Worklist items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="mwl-cache-info" id="mwlCacheInfo">
+                        <small>Cache: <span id="cacheAge">--</span> | <span id="cacheCount">0</span> Einträge</small>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Action Buttons -->
+        <footer class="action-bar">
+            <div class="button-group">
+                <!-- Webcam auto-initializes now -->
+                
+                <button id="captureButton" class="action-button accent">
+                    <i class="ms-Icon ms-Icon--Photo2"></i>
+                    <span>Capture Photo</span>
+                </button>
+                
+                <button id="recordButton" class="action-button">
+                    <i class="ms-Icon ms-Icon--CircleRing record-icon"></i>
+                    <span id="recordText">Start Recording</span>
+                </button>
+                
+                <button id="exportDicomButton" class="action-button">
+                    <i class="ms-Icon ms-Icon--Export"></i>
+                    <span>Export DICOM</span>
+                </button>
+                
+                <button id="settingsButton" class="action-button">
+                    <i class="ms-Icon ms-Icon--Settings"></i>
+                    <span>Settings</span>
+                </button>
+                
+                <button id="exitButton" class="action-button danger">
+                    <i class="ms-Icon ms-Icon--ChromeClose"></i>
+                    <span>Exit</span>
+                </button>
+                
+                <button id="openLogsButton" class="action-button">
+                    <i class="ms-Icon ms-Icon--TextDocument"></i>
+                    <span>Open Logs</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Exit Confirmation Modal -->
+    <div id="exitModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Exit Application</h2>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to exit SmartBox Next?</p>
+                <p class="warning-text">Make sure all captures have been exported before exiting.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelExitBtn">
+                    <i class="ms-Icon ms-Icon--Cancel"></i>
+                    <span>Cancel</span>
+                </button>
+                <button class="btn btn-danger" id="confirmExitBtn">
+                    <i class="ms-Icon ms-Icon--ChromeClose"></i>
+                    <span>Exit</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="keyboard.js"></script>
+    <script src="js/layout-manager.js"></script>
+    <script src="app.js"></script>
+    <script src="app-debug.js"></script>
+</body>
+</html>

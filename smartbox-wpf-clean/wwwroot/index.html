@@ -1,220 +1,242 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartBox Next - Medical Imaging</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>SmartBox Next - Touch Medical Imaging</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="keyboard.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/segoe-fluent-icons/font/SegoeFluentIcons.css">
-    <!-- Layout and theme CSS will be loaded dynamically -->
-    <link id="theme-css" rel="stylesheet" href="styles/theme-default.css">
-    <link id="layout-css" rel="stylesheet" href="styles/layout-standard.css">
 </head>
 <body>
     <div class="app-container">
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Left Panel: Preview + Patient Info -->
-            <div class="left-panel">
-                <!-- Webcam Preview -->
-                <section class="webcam-section">
-                    <div class="webcam-container">
-                        <video id="webcamPreview" autoplay playsinline></video>
-                        <canvas id="captureCanvas" style="display: none;"></canvas>
-                        <div id="webcamPlaceholder" class="placeholder">
-                            <span>Webcam Preview</span>
-                        </div>
-                    </div>
-                </section>
+        <!-- Fixed Header - 80px -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1 class="app-title">SmartBox Next</h1>
+                <div class="patient-status" id="patientStatus">
+                    <i class="ms-Icon ms-Icon--Contact"></i>
+                    <span id="patientStatusText">Kein Patient</span>
+                </div>
+                <button class="exit-button" id="exitButton" aria-label="Beenden">
+                    <i class="ms-Icon ms-Icon--ChromeClose"></i>
+                </button>
+            </div>
+        </header>
 
-                <!-- Patient Info - Compact -->
-                <aside class="patient-info">
-                    <div class="info-section">
-                        <h2>Patient Information</h2>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="patientName">Patient Name</label>
-                                <input type="text" id="patientName" placeholder="Last, First">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="patientID">Patient ID</label>
-                                <input type="text" id="patientID" placeholder="12345678">
-                            </div>
-                        </div>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="birthDate">Birth Date</label>
-                                <input type="date" id="birthDate">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="gender">Gender</label>
-                                <select id="gender">
-                                    <option value="M">Male</option>
-                                    <option value="F">Female</option>
-                                    <option value="O">Other</option>
-                                </select>
-                            </div>
+        <!-- Main Content Area -->
+        <main class="main-content" id="mainContent">
+            
+            <!-- Mode: Patient Selection -->
+            <div class="mode-container" id="patientMode">
+                <!-- Pull to Refresh Indicator -->
+                <div class="pull-to-refresh" id="pullToRefresh">
+                    <div class="pull-arrow">
+                        <i class="ms-Icon ms-Icon--ChevronDown"></i>
+                    </div>
+                    <span class="pull-text">Ziehen zum Aktualisieren</span>
+                </div>
+
+                <!-- MWL Cards Container -->
+                <div class="mwl-container" id="mwlContainer">
+                    <div class="mwl-header">
+                        <h2>Patienten auswählen</h2>
+                        <div class="mwl-filter">
+                            <input type="text" 
+                                   id="mwlFilter" 
+                                   placeholder="Suchen..." 
+                                   class="filter-input">
                         </div>
                     </div>
 
-                    <div class="info-section">
-                        <h2>Study Information</h2>
-                        
-                        <div class="form-group">
-                            <label for="studyDescription">Study Description</label>
-                            <input type="text" id="studyDescription" placeholder="Endoscopy">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="accessionNumber">Accession Number</label>
-                            <input type="text" id="accessionNumber">
+                    <div class="mwl-scroll-container" id="mwlScrollContainer">
+                        <div class="mwl-cards" id="mwlCards">
+                            <!-- Patient cards will be dynamically inserted here -->
+                            <!-- Example structure:
+                            <div class="patient-card" data-patient-id="12345">
+                                <div class="patient-info">
+                                    <div class="patient-name">
+                                        <i class="ms-Icon ms-Icon--Contact"></i>
+                                        <span>Müller, Hans</span>
+                                    </div>
+                                    <div class="patient-details">
+                                        <span class="patient-birth">
+                                            <i class="ms-Icon ms-Icon--Cake"></i>
+                                            12.05.1965
+                                        </span>
+                                        <span class="patient-study">
+                                            <i class="ms-Icon ms-Icon--Medical"></i>
+                                            Endoskopie
+                                        </span>
+                                        <span class="patient-time">
+                                            <i class="ms-Icon ms-Icon--Clock"></i>
+                                            14:00 Uhr
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="card-action">
+                                    <span>Antippen zum Auswählen</span>
+                                </div>
+                            </div>
+                            -->
                         </div>
                     </div>
-                    
-                    <!-- Emergency Templates -->
-                    <div class="emergency-section" id="emergencySection" style="display: none;">
-                        <h3>Emergency Templates</h3>
-                        <div class="emergency-buttons">
-                            <button class="emergency-button" data-template="male">
+                </div>
+
+                <!-- Small Preview Section -->
+                <div class="preview-small">
+                    <div class="preview-container">
+                        <video id="webcamPreviewSmall" autoplay playsinline muted></video>
+                        <div class="preview-overlay">
+                            <i class="ms-Icon ms-Icon--Camera"></i>
+                            <span>Kamera bereit</span>
+                        </div>
+                    </div>
+                    <p class="preview-hint">Wählen Sie einen Patienten aus der Liste</p>
+                </div>
+
+                <!-- Emergency Patient Swipe Area -->
+                <div class="emergency-swipe-container">
+                    <div class="emergency-hint">
+                        <i class="ms-Icon ms-Icon--Warning"></i>
+                        <span>Wischen für Notfall-Patient</span>
+                        <i class="ms-Icon ms-Icon--DoubleChevronRight"></i>
+                    </div>
+                    <div class="emergency-swipe-area" id="emergencySwipe">
+                        <div class="emergency-options">
+                            <div class="emergency-option" data-type="male">
                                 <i class="ms-Icon ms-Icon--Contact"></i>
-                                <span>Emergency Male</span>
-                            </button>
-                            <button class="emergency-button" data-template="female">
+                                <span>Notfall Mann</span>
+                            </div>
+                            <div class="emergency-option" data-type="female">
                                 <i class="ms-Icon ms-Icon--ContactCard"></i>
-                                <span>Emergency Female</span>
-                            </button>
-                            <button class="emergency-button" data-template="child">
+                                <span>Notfall Frau</span>
+                            </div>
+                            <div class="emergency-option" data-type="child">
                                 <i class="ms-Icon ms-Icon--ChildrenFolderFill"></i>
-                                <span>Emergency Child</span>
-                            </button>
+                                <span>Notfall Kind</span>
+                            </div>
                         </div>
                     </div>
-                </aside>
+                </div>
             </div>
 
-            <!-- Right Panel: MWL Section (75% width) -->
-            <div class="mwl-panel">
-                <div class="info-section" id="mwlSection">
-                    <h2>Modality Worklist</h2>
-                    
-                    <div class="mwl-controls">
-                        <div class="mwl-control-row">
-                            <select id="dateRangeSelect" class="mwl-date-select">
-                                <option value="yesterday">Gestern</option>
-                                <option value="today" selected>Heute</option>
-                                <option value="tomorrow">Morgen</option>
-                                <option value="range">Gestern/Heute/Morgen</option>
-                            </select>
-                            <button class="btn btn-icon" id="refreshMwlBtn" title="Aktualisieren">
-                                <i class="ms-Icon ms-Icon--Refresh"></i>
-                            </button>
-                        </div>
+            <!-- Mode: Recording -->
+            <div class="mode-container hidden" id="recordingMode">
+                <!-- Patient Info Bar -->
+                <div class="patient-info-bar">
+                    <div class="patient-data">
+                        <i class="ms-Icon ms-Icon--Contact"></i>
+                        <span id="recordingPatientName">-</span>
+                        <span class="separator">|</span>
+                        <i class="ms-Icon ms-Icon--NumberField"></i>
+                        <span id="recordingPatientId">-</span>
+                        <span class="separator">|</span>
+                        <i class="ms-Icon ms-Icon--Medical"></i>
+                        <span id="recordingStudyType">-</span>
+                    </div>
+                </div>
+
+                <!-- Large Preview Area -->
+                <div class="preview-large">
+                    <div class="preview-container" id="captureArea">
+                        <video id="webcamPreviewLarge" autoplay playsinline muted></video>
+                        <canvas id="captureCanvas" style="display: none;"></canvas>
                         
-                        <div class="mwl-filter-row">
-                            <input type="text" 
-                                   id="mwlFilterInput" 
-                                   class="mwl-filter-input" 
-                                   placeholder="Filter (z.B. Name oder Untersuchung)..."
-                                   autocomplete="off">
-                            <span class="mwl-filter-clear" id="mwlFilterClear" style="display: none;">
-                                <i class="ms-Icon ms-Icon--Clear"></i>
-                            </span>
+                        <!-- Capture Overlay -->
+                        <div class="capture-overlay">
+                            <div class="capture-hint" id="captureHint">
+                                <i class="ms-Icon ms-Icon--Camera"></i>
+                                <span>Antippen zum Fotografieren</span>
+                                <br>
+                                <small>Gedrückt halten für Video</small>
+                            </div>
+                            
+                            <!-- Recording Indicator -->
+                            <div class="recording-indicator hidden" id="recordingIndicator">
+                                <div class="rec-dot"></div>
+                                <span id="recordingTime">00:00</span>
+                            </div>
                         </div>
-                        
-                        <div class="mwl-status" id="mwlStatus">
-                            <span class="status-text">Lade...</span>
-                            <span class="status-count" id="mwlStatusCount"></span>
+
+                        <!-- Touch Feedback -->
+                        <div class="touch-feedback" id="touchFeedback"></div>
+                    </div>
+                </div>
+
+                <!-- Thumbnail Strip -->
+                <div class="thumbnail-strip-container">
+                    <div class="strip-header">
+                        <span>Aufnahmen</span>
+                        <span class="swipe-hint">← Wischen zum Durchblättern →</span>
+                    </div>
+                    <div class="thumbnail-strip" id="thumbnailStrip">
+                        <div class="thumbnail-scroll" id="thumbnailScroll">
+                            <!-- Thumbnails will be inserted here -->
+                            <!-- Example:
+                            <div class="thumbnail" data-index="0">
+                                <img src="..." alt="Aufnahme 1">
+                                <div class="thumbnail-type">
+                                    <i class="ms-Icon ms-Icon--Camera"></i>
+                                </div>
+                                <div class="thumbnail-number">#1</div>
+                            </div>
+                            -->
+                            <div class="thumbnail add-new" id="addNewThumbnail">
+                                <i class="ms-Icon ms-Icon--Add"></i>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="mwl-list-container">
-                        <div class="mwl-list-header">
-                            <div class="mwl-col mwl-col-name">Patient</div>
-                            <div class="mwl-col mwl-col-birth">Geburtsdatum</div>
-                            <div class="mwl-col mwl-col-procedure">Untersuchung</div>
-                            <div class="mwl-col mwl-col-date">Termin</div>
-                        </div>
-                        <div class="mwl-list" id="mwlList">
-                            <!-- Worklist items will be populated here -->
-                        </div>
-                    </div>
-                    
-                    <div class="mwl-cache-info" id="mwlCacheInfo">
-                        <small>Cache: <span id="cacheAge">--</span> | <span id="cacheCount">0</span> Einträge</small>
-                    </div>
+                </div>
+
+                <!-- Export Button -->
+                <div class="export-section">
+                    <button class="export-button" id="exportButton">
+                        <i class="ms-Icon ms-Icon--Export"></i>
+                        <span>Alle an PACS senden</span>
+                        <small id="exportCount">(0 Aufnahmen)</small>
+                    </button>
                 </div>
             </div>
         </main>
 
-        <!-- Action Buttons -->
-        <footer class="action-bar">
-            <div class="button-group">
-                <!-- Webcam auto-initializes now -->
-                
-                <button id="captureButton" class="action-button accent">
-                    <i class="ms-Icon ms-Icon--Photo2"></i>
-                    <span>Capture Photo</span>
-                </button>
-                
-                <button id="recordButton" class="action-button">
-                    <i class="ms-Icon ms-Icon--CircleRing record-icon"></i>
-                    <span id="recordText">Start Recording</span>
-                </button>
-                
-                <button id="exportDicomButton" class="action-button">
-                    <i class="ms-Icon ms-Icon--Export"></i>
-                    <span>Export DICOM</span>
-                </button>
-                
-                <button id="settingsButton" class="action-button">
-                    <i class="ms-Icon ms-Icon--Settings"></i>
-                    <span>Settings</span>
-                </button>
-                
-                <button id="exitButton" class="action-button danger">
-                    <i class="ms-Icon ms-Icon--ChromeClose"></i>
-                    <span>Exit</span>
-                </button>
-                
-                <button id="openLogsButton" class="action-button">
-                    <i class="ms-Icon ms-Icon--TextDocument"></i>
-                    <span>Open Logs</span>
-                </button>
+        <!-- Dialog Container -->
+        <div class="dialog-backdrop hidden" id="dialogBackdrop">
+            <div class="dialog" id="dialogBox">
+                <div class="dialog-header">
+                    <h3 id="dialogTitle">Titel</h3>
+                </div>
+                <div class="dialog-body">
+                    <p id="dialogMessage">Nachricht</p>
+                </div>
+                <div class="dialog-buttons">
+                    <button class="dialog-button cancel" id="dialogCancel">
+                        <i class="ms-Icon ms-Icon--Cancel"></i>
+                        <span>Abbrechen</span>
+                    </button>
+                    <button class="dialog-button confirm" id="dialogConfirm">
+                        <i class="ms-Icon ms-Icon--CheckMark"></i>
+                        <span>OK</span>
+                    </button>
+                </div>
             </div>
-        </footer>
-    </div>
+        </div>
 
-    <!-- Exit Confirmation Modal -->
-    <div id="exitModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Exit Application</h2>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to exit SmartBox Next?</p>
-                <p class="warning-text">Make sure all captures have been exported before exiting.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancelExitBtn">
-                    <i class="ms-Icon ms-Icon--Cancel"></i>
-                    <span>Cancel</span>
-                </button>
-                <button class="btn btn-danger" id="confirmExitBtn">
-                    <i class="ms-Icon ms-Icon--ChromeClose"></i>
-                    <span>Exit</span>
-                </button>
+        <!-- Loading Overlay -->
+        <div class="loading-overlay hidden" id="loadingOverlay">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p id="loadingText">Wird geladen...</p>
             </div>
         </div>
     </div>
 
-    <script src="keyboard.js"></script>
-    <script src="js/layout-manager.js"></script>
+    <!-- Scripts -->
+    <script src="js/touch_gestures_fixed.js"></script>
+    <script src="js/touch_dialogs.js"></script>
+    <script src="js/mode_manager.js"></script>
     <script src="app.js"></script>
-    <script src="app-debug.js"></script>
+    <script src="debug_overlay.js"></script>
 </body>
 </html>
