@@ -102,6 +102,8 @@ namespace SmartBoxNext
                 // Start queue processor
                 _queueProcessor.Start();
                 _logger.LogInformation("Queue processor started");
+                _logger.LogInformation("PACS configuration: {Host}:{Port}, AE Title: {AETitle}", 
+                    _config.Pacs.ServerHost, _config.Pacs.ServerPort, _config.Pacs.CalledAeTitle);
                 
                 UpdateStatus("Initializing WebView2...");
                 
@@ -605,6 +607,17 @@ namespace SmartBoxNext
                     // Use integrated queue manager for DICOM conversion and queueing
                     if (_config.Application.AutoExportDicom)
                     {
+                        _logger.LogInformation("AutoExportDicom is enabled, converting to DICOM...");
+                        await SendMessageToWebView(new
+                        {
+                            action = "log",
+                            data = new
+                            {
+                                message = "Starting DICOM conversion...",
+                                level = "info"
+                            }
+                        });
+                        
                         var result = await _integratedQueueManager.ConvertAndQueueAsync(
                             imageBytes, 
                             FrameFormat.JPEG, 
@@ -619,20 +632,26 @@ namespace SmartBoxNext
                         
                         if (result.Success)
                         {
+                            _logger.LogInformation("DICOM conversion successful, file queued: {FilePath}", result.DicomPath);
                             await SendMessageToWebView(new
                             {
                                 action = "log",
                                 data = new
                                 {
-                                    message = $"Photo converted to DICOM and queued for PACS",
+                                    message = $"Photo converted to DICOM and queued for PACS: {Path.GetFileName(result.DicomPath)}",
                                     level = "info"
                                 }
                             });
                         }
                         else
                         {
+                            _logger.LogError("DICOM conversion failed: {Error}", result.ErrorMessage);
                             await SendErrorToWebView($"DICOM conversion failed: {result.ErrorMessage}");
                         }
+                    }
+                    else
+                    {
+                        _logger.LogInformation("AutoExportDicom is disabled, skipping DICOM conversion");
                     }
                 }
                 

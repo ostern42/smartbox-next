@@ -13,28 +13,93 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Header -->
-        <header class="app-header">
-            <h1>SmartBox Next - Medical Imaging</h1>
-        </header>
-
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Webcam Preview -->
-            <section class="webcam-section">
-                <div class="webcam-container">
-                    <video id="webcamPreview" autoplay playsinline></video>
-                    <canvas id="captureCanvas" style="display: none;"></canvas>
-                    <div id="webcamPlaceholder" class="placeholder">
-                        <span>Webcam Preview</span>
+            <!-- Left Panel: Preview + Patient Info -->
+            <div class="left-panel">
+                <!-- Webcam Preview -->
+                <section class="webcam-section">
+                    <div class="webcam-container">
+                        <video id="webcamPreview" autoplay playsinline></video>
+                        <canvas id="captureCanvas" style="display: none;"></canvas>
+                        <div id="webcamPlaceholder" class="placeholder">
+                            <span>Webcam Preview</span>
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- Patient Info -->
-            <aside class="patient-info">
-                <!-- MWL Section -->
-                <div class="info-section" id="mwlSection" style="display: none;">
+                <!-- Patient Info - Compact -->
+                <aside class="patient-info">
+                    <div class="info-section">
+                        <h2>Patient Information</h2>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="patientName">Patient Name</label>
+                                <input type="text" id="patientName" placeholder="Last, First">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="patientID">Patient ID</label>
+                                <input type="text" id="patientID" placeholder="12345678">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="birthDate">Birth Date</label>
+                                <input type="date" id="birthDate">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="gender">Gender</label>
+                                <select id="gender">
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                    <option value="O">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-section">
+                        <h2>Study Information</h2>
+                        
+                        <div class="form-group">
+                            <label for="studyDescription">Study Description</label>
+                            <input type="text" id="studyDescription" placeholder="Endoscopy">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="accessionNumber">Accession Number</label>
+                            <input type="text" id="accessionNumber">
+                        </div>
+                    </div>
+                    
+                    <!-- Emergency Templates -->
+                    <div class="emergency-section" id="emergencySection" style="display: none;">
+                        <h3>Emergency Templates</h3>
+                        <div class="emergency-buttons">
+                            <button class="emergency-button" data-template="male">
+                                <i class="ms-Icon ms-Icon--Contact"></i>
+                                <span>Emergency Male</span>
+                            </button>
+                            <button class="emergency-button" data-template="female">
+                                <i class="ms-Icon ms-Icon--ContactCard"></i>
+                                <span>Emergency Female</span>
+                            </button>
+                            <button class="emergency-button" data-template="child">
+                                <i class="ms-Icon ms-Icon--ChildrenFolderFill"></i>
+                                <span>Emergency Child</span>
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- Right Panel: MWL Section (75% width) -->
+            <div class="mwl-panel">
+                <div class="info-section" id="mwlSection">
                     <h2>Modality Worklist</h2>
                     
                     <div class="mwl-controls">
@@ -45,9 +110,8 @@
                                 <option value="tomorrow">Morgen</option>
                                 <option value="range">Gestern/Heute/Morgen</option>
                             </select>
-                            <button class="btn btn-primary" id="refreshMwlBtn">
+                            <button class="btn btn-icon" id="refreshMwlBtn" title="Aktualisieren">
                                 <i class="ms-Icon ms-Icon--Refresh"></i>
-                                <span>Aktualisieren</span>
                             </button>
                         </div>
                         
@@ -84,70 +148,7 @@
                         <small>Cache: <span id="cacheAge">--</span> | <span id="cacheCount">0</span> Einträge</small>
                     </div>
                 </div>
-                
-                <div class="info-section">
-                    <h2>Patient Information</h2>
-                    
-                    <div class="form-group">
-                        <label for="patientName">Patient Name</label>
-                        <input type="text" id="patientName" placeholder="Last, First">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="patientID">Patient ID</label>
-                        <input type="text" id="patientID" placeholder="12345678">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="birthDate">Birth Date</label>
-                        <input type="date" id="birthDate">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="gender">Gender</label>
-                        <select id="gender">
-                            <option value="M">Male</option>
-                            <option value="F">Female</option>
-                            <option value="O">Other</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="info-section">
-                    <h2>Study Information</h2>
-                    
-                    <div class="form-group">
-                        <label for="studyDescription">Study Description</label>
-                        <input type="text" id="studyDescription" placeholder="Endoscopy">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="accessionNumber">Accession Number</label>
-                        <input type="text" id="accessionNumber">
-                    </div>
-                </div>
-
-
-                
-                <!-- Emergency Templates -->
-                <div class="emergency-section" id="emergencySection" style="display: none;">
-                    <h3>Emergency Templates</h3>
-                    <div class="emergency-buttons">
-                        <button class="emergency-button" data-template="male">
-                            <i class="ms-Icon ms-Icon--Contact"></i>
-                            <span>Emergency Male</span>
-                        </button>
-                        <button class="emergency-button" data-template="female">
-                            <i class="ms-Icon ms-Icon--ContactCard"></i>
-                            <span>Emergency Female</span>
-                        </button>
-                        <button class="emergency-button" data-template="child">
-                            <i class="ms-Icon ms-Icon--ChildrenFolderFill"></i>
-                            <span>Emergency Child</span>
-                        </button>
-                    </div>
-                </div>
-            </aside>
+            </div>
         </main>
 
         <!-- Action Buttons -->
@@ -178,11 +179,6 @@
                 <button id="exitButton" class="action-button danger">
                     <i class="ms-Icon ms-Icon--ChromeClose"></i>
                     <span>Exit</span>
-                </button>
-                
-                <button id="analyzeButton" class="action-button">
-                    <i class="ms-Icon ms-Icon--Processing"></i>
-                    <span>Analyze Camera</span>
                 </button>
                 
                 <button id="openLogsButton" class="action-button">

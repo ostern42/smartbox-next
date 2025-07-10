@@ -1,21 +1,20 @@
-# Handover Document - July 10, 2025
+# Handover Document - July 10, 2025, 14:25
 
-## Session Summary
-Continued Yuan SC550N1 integration, fixed multiple UI/UX issues, implemented diagnostic windows, and enabled DICOM auto-export.
+## Session SMARTBOXNEXT-2025-07-10-01 Summary
+Layout improvements attempted, build errors fixed, PACS debugging added. Major layout issue discovered.
 
 ## Critical Issues Requiring Immediate Attention
 
-### 1. Patient Info Form - Not Multi-Column
-**Problem**: CSS is ready but HTML needs updating
-**Solution**: Update index.html to wrap form groups in `<div class="form-row">` elements
-```html
-<div class="form-row">
-    <div class="form-group">...</div>
-    <div class="form-group">...</div>
-</div>
-```
+### 1. CRITICAL LAYOUT BUG - Massive Left Margin
+**Problem**: The main content has a ~1000px left margin, pushing everything to the right
+**Status**: Multiple attempts to fix via CSS failed
+**Oliver's suggestion**: Make button bar completely independent from bottom frame
+**Next steps**: 
+- Investigate if there's conflicting CSS or inline styles
+- Check if WebView2 is adding its own styles
+- Consider complete layout restructure
 
-### 2. PACS Upload Not Triggering
+### 2. PACS Upload - Debug Logging Added
 **Problem**: Images may not be auto-uploading to PACS on capture
 **Debug Steps**:
 1. Check if QueueProcessor is running: `_queueProcessor.Start()` is called in MainWindow.xaml.cs:103
@@ -24,10 +23,12 @@ Continued Yuan SC550N1 integration, fixed multiple UI/UX issues, implemented dia
 4. Check Queue directory for pending DICOM files
 5. Verify PACS connection (use Test Connection button)
 
-**Possible Causes**:
-- IntegratedQueueManager might not be initialized properly
-- PACS sender might have connection issues
-- Queue directory permissions
+**Debug logging added to**:
+- MainWindow.HandlePhotoCaptured: Logs AutoExportDicom status
+- IntegratedQueueManager.ConvertAndQueueAsync: Logs queue status
+- QueueProcessor: Logs queue stats and success/failure
+
+**Found**: Photos are saved but DICOM folder empty, queue empty
 
 ### 3. Worklist File Format
 **Problem**: Orthanc expects DICOM .wl files, not JSON

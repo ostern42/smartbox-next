@@ -1,7 +1,15 @@
-# SmartBox Current State - July 10, 2025, 13:20
+# SmartBox Current State - July 10, 2025, 14:25
 
 ## Project Status
 Medical imaging capture system with Yuan SC550N1 integration, DICOM export, and PACS connectivity.
+
+## Session SMARTBOXNEXT-2025-07-10-01 Update
+- Implemented new grid layout (left panel 25%, MWL 75%)
+- Fixed multi-column patient form
+- Made refresh button icon-only
+- Fixed all build errors (property names)
+- Added debug logging for PACS upload flow
+- ISSUE: Layout still has massive left margin (~1000px) - needs investigation
 
 ## Working Features
 ✅ Yuan SC550N1 capture card integration (Phase 0-5 complete)

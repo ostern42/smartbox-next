@@ -103,6 +103,9 @@ namespace SmartBoxNext
                     if (item == null)
                     {
                         // No work, wait a bit
+                        var stats = _queueManager.GetStats();
+                        _logger.LogDebug("No pending items. Queue stats - Total: {Total}, Pending: {Pending}, Processing: {Processing}, Sent: {Sent}, Failed: {Failed}", 
+                            stats.TotalItems, stats.Pending, stats.Processing, stats.Sent, stats.Failed);
                         await Task.Delay(5000, cancellationToken);
                         continue;
                     }
@@ -152,12 +155,15 @@ namespace SmartBoxNext
                 if (result.Success)
                 {
                     _queueManager.MarkSuccess(item.Id);
+                    _logger.LogInformation("Successfully sent DICOM file to PACS: {File}", System.IO.Path.GetFileName(item.DicomFilePath));
                     
                     // Optionally delete the file after successful upload
                     // (based on configuration - not implemented yet)
                 }
                 else
                 {
+                    _logger.LogError("Failed to send DICOM file to PACS: {File}, Error: {Error}", 
+                        System.IO.Path.GetFileName(item.DicomFilePath), result.Message);
                     _queueManager.MarkFailed(item.Id, result.Message);
                 }
             }

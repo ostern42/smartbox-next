@@ -229,8 +229,14 @@ namespace SmartBoxNext.Services
                 // Queue for PACS
                 if (queueForPacs && _autoQueueEnabled)
                 {
+                    _logger.LogInformation("Queueing DICOM file for PACS: {Path}", dicomPath);
                     _queueManager.Enqueue(dicomPath, patientInfo);
-                    _logger.LogInformation("Converted image queued for PACS upload");
+                    _logger.LogInformation("Converted image queued for PACS upload. Queue size: {Size}", _queueManager.GetStats().TotalItems);
+                }
+                else
+                {
+                    _logger.LogInformation("Not queueing for PACS - queueForPacs: {Queue}, autoQueueEnabled: {Auto}", 
+                        queueForPacs, _autoQueueEnabled);
                 }
 
                 return new CaptureResult

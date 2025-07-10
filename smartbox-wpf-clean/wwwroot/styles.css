@@ -168,26 +168,26 @@ body {
     overflow: hidden;
 }
 
-/* Webcam Section - 1/3 of width */
-.webcam-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0; /* Allow shrinking */
-}
-
-/* Sidebar/Aside - MWL takes 2/3 of width */
-aside {
-    flex: 2;
-    max-width: 800px;
-    min-width: 400px;
+/* Left Panel - 25% width */
+.left-panel {
+    width: 25%;
+    min-width: 300px;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-medium);
 }
 
-.webcam-container {
+/* Right Panel - MWL takes remaining space */
+.mwl-panel {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.webcam-container {
+    width: 100%;
+    aspect-ratio: 16/9;
     background-color: var(--background-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-medium);
@@ -218,12 +218,10 @@ aside {
 
 /* Patient Info - Compact Multi-Column Layout */
 .patient-info {
-    flex: 0 0 auto;
     background-color: var(--background-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-medium);
     padding: var(--spacing-medium);
-    overflow-y: auto;
 }
 
 .info-section {
@@ -242,9 +240,9 @@ aside {
 }
 
 /* Multi-column form layout */
-.info-section .form-row {
+.form-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: 1fr 1fr;
     gap: var(--spacing-small);
     margin-bottom: var(--spacing-small);
 }
@@ -354,6 +352,49 @@ aside {
     border-color: var(--accent-pressed);
 }
 
+/* Icon-only button */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    background-color: var(--background-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 36px;
+}
+
+.btn:hover {
+    background-color: var(--background-primary);
+    border-color: var(--text-secondary);
+}
+
+.btn.btn-icon {
+    padding: 8px;
+    min-width: 36px;
+}
+
+.btn.btn-icon i {
+    font-size: 16px;
+}
+
+.btn.btn-primary {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.btn.btn-primary:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
 .action-button i {
     font-size: 16px;
 }
@@ -375,15 +416,25 @@ aside {
 /* Responsive Design */
 @media (max-width: 768px) {
     .main-content {
-        flex-direction: column;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+    }
+    
+    .left-panel {
+        flex-direction: row;
+        gap: var(--spacing-small);
     }
     
     .webcam-section {
-        min-height: 300px;
+        flex: 0 0 auto;
     }
     
     .patient-info {
-        max-height: 400px;
+        flex: 1;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
     }
     
     .button-group {
