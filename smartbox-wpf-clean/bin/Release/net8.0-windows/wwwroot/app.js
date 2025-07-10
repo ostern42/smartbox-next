@@ -547,9 +547,11 @@ class SmartBoxTouchApp {
             console.log('SmartBoxTouchApp: Exporting', captures.length, 'captures...');
             
             // Show loading dialog
-            this.dialogManager.showLoading({
-                message: `${captures.length} Aufnahme(n) werden exportiert...`
-            });
+            const message = captures.length === 1 
+                ? 'Aufnahme wird exportiert...' 
+                : `${captures.length} Aufnahmen werden exportiert...`;
+            
+            this.dialogManager.showLoading({ message });
             
             // Send export request to WebView2 host
             if (window.chrome && window.chrome.webview) {
@@ -578,9 +580,11 @@ class SmartBoxTouchApp {
         this.dialogManager.dismiss();
         this.modeManager.markCapturesExported(captureIds);
         
-        this.dialogManager.showSuccess({
-            message: `${captureIds.length} Aufnahme(n) erfolgreich exportiert.`
-        });
+        const message = captureIds.length === 1 
+            ? 'Aufnahme erfolgreich exportiert.'
+            : `${captureIds.length} Aufnahmen erfolgreich exportiert.`;
+        
+        this.dialogManager.showSuccess({ message });
         
         console.log('SmartBoxTouchApp: Export completed for', captureIds.length, 'captures');
     }

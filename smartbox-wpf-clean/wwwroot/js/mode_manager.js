@@ -245,7 +245,9 @@ class ModeManager {
             if (unsavedCaptures > 0) {
                 dialogManager.showConfirmation({
                     title: 'Anwendung beenden?',
-                    message: `${unsavedCaptures} Aufnahme(n) wurden noch nicht exportiert!`,
+                    message: unsavedCaptures === 1
+                        ? 'Eine Aufnahme wurde noch nicht exportiert!'
+                        : `${unsavedCaptures} Aufnahmen wurden noch nicht exportiert!`,
                     cancelText: 'Abbrechen',
                     confirmText: 'Trotzdem beenden',
                     confirmStyle: 'danger',

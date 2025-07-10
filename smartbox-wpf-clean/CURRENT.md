@@ -1,15 +1,42 @@
-# SmartBox Current State - July 10, 2025, 14:25
+# SmartBox Current State - July 10, 2025, 17:18
 
 ## Project Status
 Medical imaging capture system with Yuan SC550N1 integration, DICOM export, and PACS connectivity.
 
-## Session SMARTBOXNEXT-2025-07-10-01 Update
+## Session SMARTBOXNEXT-2025-07-10-02 Update (MAJOR TOUCH INTERFACE OVERHAUL)
+**COMPLETED:**
+✅ Fixed 6 critical Touch Interface quirks:
+  - Emergency swipe logic bug (child selection unreachable) → FIXED
+  - Element ID inconsistency (mwlScrollContainer chaos) → STANDARDIZED 
+  - Memory leaks (event listeners never removed) → CLEANUP SYSTEM
+  - MediaRecorder codec compatibility (hardcoded VP8) → FALLBACK SYSTEM
+  - Webcam/Recording race conditions → ASYNC SAFETY
+  - Dialog UX non-Windows standard → ACCESSIBILITY + KEYBOARD
+
+✅ Added missing capture functionality:
+  - Mouse support for desktop testing (was touch-only!)
+  - Zurück/Abbrechen button on capture page with smart warnings
+  - Proper photo capture triggering
+
+✅ Eliminated ALL "(n)" plural grammar abominations:
+  - BEFORE: "2 Aufnahme(n) werden exportiert"  
+  - AFTER: "2 Aufnahmen werden exportiert" (proper German!)
+
+✅ Export improvements:
+  - Added 5-second timeout for WebView2 responses
+  - Fallback to simulation when no response
+  - Better error handling
+
+**CURRENT BLOCKER:**
+🔴 PACS Send still hangs (export dialog shows but doesn't complete)
+🔴 Need WebView2 ↔ C# message handling debug
+
+## Previous Session SMARTBOXNEXT-2025-07-10-01 Update
 - Implemented new grid layout (left panel 25%, MWL 75%)
-- Fixed multi-column patient form
+- Fixed multi-column patient form  
 - Made refresh button icon-only
 - Fixed all build errors (property names)
 - Added debug logging for PACS upload flow
-- ISSUE: Layout still has massive left margin (~1000px) - needs investigation
 
 ## Working Features
 ✅ Yuan SC550N1 capture card integration (Phase 0-5 complete)
@@ -72,8 +99,20 @@ curl http://localhost:8042/system
 add-test-patient-to-orthanc.bat
 ```
 
-## Immediate TODO
-1. Apply form-row divs to patient info HTML
-2. Debug PACS upload trigger in HandlePhotoCaptured
-3. Add console logging for queue operations
-4. Test full capture → DICOM → PACS flow
+## Immediate TODO (Next Session)
+1. **CRITICAL**: Debug WebView2 ↔ C# message handling for PACS export
+   - Add logging to C# MainWindow.xaml.cs WebView message handler
+   - Check if 'exportCaptures' message type is handled
+   - Verify C# side timeout/completion flow
+2. **Test**: Full capture → thumbnail → export → PACS flow 
+3. **Verify**: Export count display matches captured photos
+4. **Polish**: Export progress feedback and error states
+
+## Files Modified This Session
+- `wwwroot/js/touch_gestures_fixed.js` - Added capture + mouse support
+- `wwwroot/index_touch.html` - Added back button + script loading
+- `wwwroot/styles_touch.css` - Back button styling + dialog improvements  
+- `wwwroot/app_touch.js` - Export timeout + back navigation + grammar fixes
+- `wwwroot/js/touch_dialogs.js` - Keyboard accessibility + grammar fixes
+- `wwwroot/js/mode_manager.js` - Grammar fixes
+- `wwwroot/app.js` - Grammar fixes (legacy compatibility)

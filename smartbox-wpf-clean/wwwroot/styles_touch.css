@@ -418,6 +418,37 @@ body {
     align-items: center;
     padding: 0 var(--space-lg);
     box-shadow: 0 2px 8px var(--shadow-medium);
+    gap: var(--space-lg);
+}
+
+.back-button {
+    height: var(--touch-target-min);
+    padding: 0 var(--space-md);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 14px;
+    font-weight: 600;
+    transition: all var(--transition-fast);
+}
+
+.back-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.back-button:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.back-button i {
+    font-size: 16px;
 }
 
 .patient-data {
@@ -748,12 +779,24 @@ body {
 .dialog-button.cancel {
     background: var(--background-card);
     color: var(--text-primary);
+    /* Ensure cancel is less prominent (Windows standard) */
+    border-color: var(--border-light);
+}
+
+.dialog-button.cancel:hover {
+    background: var(--background-light);
 }
 
 .dialog-button.confirm {
     background: var(--primary-blue);
     color: white;
     border-color: var(--primary-blue);
+    /* Primary action gets accent color (Windows standard) */
+}
+
+.dialog-button.confirm:hover {
+    background: var(--primary-blue-hover);
+    border-color: var(--primary-blue-hover);
 }
 
 .dialog-button.danger {

@@ -50,6 +50,9 @@ class TouchGestureManagerFixed {
         // Emergency swipe area
         this.initEmergencySwipeFixed();
         
+        // Capture area tap/hold
+        this.initCaptureGestures();
+        
         // Patient card selection (fallback)
         this.initPatientCardSelection();
         
@@ -64,11 +67,7 @@ class TouchGestureManagerFixed {
         const pullIndicator = document.getElementById('pullToRefresh');
         
         if (!mwlContainer) {
-            this.log('TouchGestureManagerFixed: mwlScrollContainer not found, trying mwlContainer...');
-            const altContainer = document.getElementById('mwlContainer');
-            if (altContainer) {
-                this.setupPullToRefresh(altContainer, pullIndicator);
-            }
+            this.log('TouchGestureManagerFixed: mwlScrollContainer not found - cannot setup pull-to-refresh');
             return;
         }
         
@@ -233,10 +232,13 @@ class TouchGestureManagerFixed {
             if (absDelta > this.swipeThreshold) {
                 let selectedType = 'male'; // default
                 
-                if (deltaX < -this.swipeThreshold) {
-                    selectedType = 'female';
-                } else if (deltaX < -this.swipeThreshold * 2) {
-                    selectedType = 'child';
+                // Fix: Check longer swipes first!
+                if (deltaX < -this.swipeThreshold * 2) {
+                    selectedType = 'child';        // Long left swipe: child
+                } else if (deltaX < -this.swipeThreshold) {
+                    selectedType = 'female';       // Medium left swipe: female
+                } else if (deltaX > this.swipeThreshold) {
+                    selectedType = 'male';         // Right swipe: male (explicit)
                 }
                 
                 this.log(`Emergency patient selected: ${selectedType}`);
@@ -249,6 +251,117 @@ class TouchGestureManagerFixed {
         emergencyArea.addEventListener('click', (e) => {
             this.log('Emergency area clicked - selecting default male patient');
             this.selectEmergencyPatient('male');
+        });
+    }
+
+    /**
+     * Capture area tap and hold gestures with mouse support
+     */
+    initCaptureGestures() {
+        const captureArea = document.getElementById('captureArea');
+        const touchFeedback = document.getElementById('touchFeedback');
+        
+        if (!captureArea) {
+            this.log('TouchGestureManagerFixed: Capture area not found');
+            return;
+        }
+
+        this.log('TouchGestureManagerFixed: Setting up capture gestures');
+
+        // Touch events
+        captureArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.log('Touch start on capture area');
+            
+            const touch = e.touches[0];
+            const rect = captureArea.getBoundingClientRect();
+            
+            // Show visual feedback at touch point
+            if (touchFeedback) {
+                touchFeedback.style.left = (touch.clientX - rect.left - 50) + 'px';
+                touchFeedback.style.top = (touch.clientY - rect.top - 50) + 'px';
+                touchFeedback.classList.add('active');
+            }
+            
+            // Start tap/hold timer
+            this.tapHoldTimer = setTimeout(() => {
+                this.log('Hold completed - starting video recording');
+                this.startVideoRecording();
+                this.hapticFeedback('heavy');
+            }, this.tapHoldThreshold);
+            
+            this.hapticFeedback('light');
+        });
+
+        captureArea.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.log('Touch end on capture area');
+            
+            // Remove visual feedback
+            if (touchFeedback) {
+                touchFeedback.classList.remove('active');
+            }
+            
+            if (this.tapHoldTimer) {
+                clearTimeout(this.tapHoldTimer);
+                this.tapHoldTimer = null;
+                
+                this.log('Quick tap - taking photo');
+                // It was a tap - take photo
+                this.capturePhoto();
+                this.hapticFeedback('medium');
+            } else {
+                this.log('Hold was completed - stopping video');
+                // Hold was completed - stop video
+                this.stopVideoRecording();
+            }
+        });
+
+        // CRITICAL: Mouse support for desktop testing
+        captureArea.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            this.log('MOUSE DOWN detected on capture area!');
+            
+            // Show visual feedback at mouse point
+            if (touchFeedback) {
+                const rect = captureArea.getBoundingClientRect();
+                touchFeedback.style.left = (e.clientX - rect.left - 50) + 'px';
+                touchFeedback.style.top = (e.clientY - rect.top - 50) + 'px';
+                touchFeedback.classList.add('active');
+            }
+            
+            // Start tap/hold timer
+            this.tapHoldTimer = setTimeout(() => {
+                this.log('Mouse hold completed - starting video recording');
+                this.startVideoRecording();
+                this.hapticFeedback('heavy');
+            }, this.tapHoldThreshold);
+            
+            this.hapticFeedback('light');
+        });
+
+        captureArea.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            this.log('MOUSE UP detected!');
+            
+            // Remove visual feedback
+            if (touchFeedback) {
+                touchFeedback.classList.remove('active');
+            }
+            
+            if (this.tapHoldTimer) {
+                clearTimeout(this.tapHoldTimer);
+                this.tapHoldTimer = null;
+                
+                this.log('Quick MOUSE CLICK - taking photo');
+                // It was a click - take photo
+                this.capturePhoto();
+                this.hapticFeedback('medium');
+            } else {
+                this.log('Mouse hold was completed - stopping video');
+                // Hold was completed - stop video
+                this.stopVideoRecording();
+            }
         });
     }
 
@@ -357,6 +470,30 @@ class TouchGestureManagerFixed {
             bubbles: true 
         });
         document.dispatchEvent(event);
+    }
+
+    /**
+     * Capture photo
+     */
+    capturePhoto() {
+        this.log('TouchGestureManagerFixed: Capturing photo...');
+        this.emitEvent('capturePhoto');
+    }
+
+    /**
+     * Start video recording
+     */
+    startVideoRecording() {
+        this.log('TouchGestureManagerFixed: Starting video recording...');
+        this.emitEvent('startVideoRecording');
+    }
+
+    /**
+     * Stop video recording
+     */
+    stopVideoRecording() {
+        this.log('TouchGestureManagerFixed: Stopping video recording...');
+        this.emitEvent('stopVideoRecording');
     }
 
     /**

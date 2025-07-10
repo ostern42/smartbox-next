@@ -49,63 +49,83 @@ class TouchGestureManager {
         let startY = 0;
         let pullDistance = 0;
 
-        if (!mwlContainer || !pullIndicator) {
-            console.warn('TouchGestureManager: Pull-to-refresh elements not found');
+        if (!mwlContainer) {
+            console.warn('TouchGestureManager: mwlScrollContainer not found - cannot setup pull-to-refresh');
             return;
+        }
+        
+        if (!pullIndicator) {
+            console.warn('TouchGestureManager: pullToRefresh indicator not found - continuing without visual feedback');
         }
         
         console.log('TouchGestureManager: Initializing pull-to-refresh');
 
         // Support both touch and mouse events
-        const addEventListeners = (startEvent, moveEvent, endEvent) => {
+        this.setupPullToRefreshEvents(mwlContainer, pullIndicator);
+    }
 
-        mwlContainer.addEventListener('touchstart', (e) => {
-            if (mwlContainer.scrollTop === 0) {
-                startY = e.touches[0].clientY;
-                isPulling = true;
-                pullIndicator.classList.remove('loading');
-            }
-        });
+    setupPullToRefreshEvents(mwlContainer, pullIndicator) {
+        let isPulling = false;
+        let startY = 0;
+        let pullDistance = 0;
 
-        mwlContainer.addEventListener('touchmove', (e) => {
-            if (!isPulling) return;
-            
-            const currentY = e.touches[0].clientY;
-            pullDistance = Math.max(0, currentY - startY);
-            
-            if (pullDistance > 0) {
-                e.preventDefault(); // Prevent scroll
+        // Store event handlers for cleanup
+        this.pullEventHandlers = {
+            container: mwlContainer,
+            touchstart: (e) => {
+                if (mwlContainer.scrollTop === 0) {
+                    startY = e.touches[0].clientY;
+                    isPulling = true;
+                    if (pullIndicator) pullIndicator.classList.remove('loading');
+                }
+            },
+            touchmove: (e) => {
+                if (!isPulling) return;
                 
-                // Update pull indicator
-                const progress = Math.min(pullDistance / this.pullThreshold, 1);
-                pullIndicator.style.transform = `translateY(${pullDistance}px)`;
+                const currentY = e.touches[0].clientY;
+                pullDistance = Math.max(0, currentY - startY);
+                
+                if (pullDistance > 0) {
+                    e.preventDefault(); // Prevent scroll
+                    
+                    if (pullIndicator) {
+                        // Update pull indicator
+                        pullIndicator.style.transform = `translateY(${pullDistance}px)`;
+                        
+                        if (pullDistance >= this.pullThreshold) {
+                            pullIndicator.classList.add('pulling');
+                            this.hapticFeedback('light');
+                        } else {
+                            pullIndicator.classList.remove('pulling');
+                        }
+                    }
+                }
+            },
+            touchend: (e) => {
+                if (!isPulling) return;
+                
+                isPulling = false;
                 
                 if (pullDistance >= this.pullThreshold) {
-                    pullIndicator.classList.add('pulling');
-                    this.hapticFeedback('light');
-                } else {
+                    // Trigger refresh
+                    this.triggerMWLRefresh();
+                    if (pullIndicator) pullIndicator.classList.add('loading');
+                    this.hapticFeedback('medium');
+                }
+                
+                // Reset pull indicator
+                if (pullIndicator) {
+                    pullIndicator.style.transform = '';
                     pullIndicator.classList.remove('pulling');
                 }
+                pullDistance = 0;
             }
-        });
+        };
 
-        mwlContainer.addEventListener('touchend', (e) => {
-            if (!isPulling) return;
-            
-            isPulling = false;
-            
-            if (pullDistance >= this.pullThreshold) {
-                // Trigger refresh
-                this.triggerMWLRefresh();
-                pullIndicator.classList.add('loading');
-                this.hapticFeedback('medium');
-            }
-            
-            // Reset pull indicator
-            pullIndicator.style.transform = '';
-            pullIndicator.classList.remove('pulling');
-            pullDistance = 0;
-        });
+        // Add event listeners
+        mwlContainer.addEventListener('touchstart', this.pullEventHandlers.touchstart);
+        mwlContainer.addEventListener('touchmove', this.pullEventHandlers.touchmove);
+        mwlContainer.addEventListener('touchend', this.pullEventHandlers.touchend);
     }
 
     /**
@@ -230,6 +250,53 @@ class TouchGestureManager {
                 this.tapHoldTimer = null;
             }
         });
+
+        // Add mouse support for desktop testing
+        captureArea.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            console.log('TouchGestureManager: Mouse down detected on capture area');
+            
+            // Show visual feedback at mouse point
+            if (touchFeedback) {
+                const rect = captureArea.getBoundingClientRect();
+                touchFeedback.style.left = (e.clientX - rect.left - 50) + 'px';
+                touchFeedback.style.top = (e.clientY - rect.top - 50) + 'px';
+                touchFeedback.classList.add('active');
+            }
+            
+            // Start tap/hold timer
+            this.tapHoldTimer = setTimeout(() => {
+                console.log('TouchGestureManager: Hold completed - starting video recording');
+                this.startVideoRecording();
+                this.hapticFeedback('heavy');
+            }, this.tapHoldThreshold);
+            
+            this.hapticFeedback('light');
+        });
+
+        captureArea.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            console.log('TouchGestureManager: Mouse up detected');
+            
+            // Remove visual feedback
+            if (touchFeedback) {
+                touchFeedback.classList.remove('active');
+            }
+            
+            if (this.tapHoldTimer) {
+                clearTimeout(this.tapHoldTimer);
+                this.tapHoldTimer = null;
+                
+                console.log('TouchGestureManager: Quick click - taking photo');
+                // It was a click - take photo
+                this.capturePhoto();
+                this.hapticFeedback('medium');
+            } else {
+                console.log('TouchGestureManager: Hold was completed - stopping video');
+                // Hold was completed - stop video
+                this.stopVideoRecording();
+            }
+        });
     }
 
     /**
@@ -257,6 +324,11 @@ class TouchGestureManager {
      * Vertical swipe up on thumbnail to delete
      */
     initThumbnailDeleteGesture() {
+        // Initialize delete gesture handlers array for cleanup
+        if (!this.deleteGestureHandlers) {
+            this.deleteGestureHandlers = [];
+        }
+        
         document.addEventListener('touchstart', (e) => {
             const thumbnail = e.target.closest('.thumbnail');
             if (!thumbnail || thumbnail.classList.contains('add-new')) return;
@@ -277,8 +349,15 @@ class TouchGestureManager {
             };
 
             const handleEnd = (endEvent) => {
+                // Remove this specific handler
                 document.removeEventListener('touchmove', handleMove);
                 document.removeEventListener('touchend', handleEnd);
+                
+                // Remove from tracking array
+                const handlerIndex = this.deleteGestureHandlers.findIndex(h => h.move === handleMove);
+                if (handlerIndex > -1) {
+                    this.deleteGestureHandlers.splice(handlerIndex, 1);
+                }
                 
                 const deltaY = endEvent.changedTouches[0].clientY - startY;
                 const duration = Date.now() - startTime;
@@ -295,6 +374,9 @@ class TouchGestureManager {
                 }
             };
 
+            // Track handlers for cleanup
+            this.deleteGestureHandlers.push({ move: handleMove, end: handleEnd });
+            
             document.addEventListener('touchmove', handleMove);
             document.addEventListener('touchend', handleEnd);
         });
@@ -416,14 +498,33 @@ class TouchGestureManager {
     }
 
     /**
-     * Cleanup method
+     * Cleanup method - removes all event listeners
      */
     destroy() {
         if (this.tapHoldTimer) {
             clearTimeout(this.tapHoldTimer);
+            this.tapHoldTimer = null;
         }
         
-        console.log('TouchGestureManager: Destroyed');
+        // Clean up pull-to-refresh listeners
+        if (this.pullEventHandlers && this.pullEventHandlers.container) {
+            const container = this.pullEventHandlers.container;
+            container.removeEventListener('touchstart', this.pullEventHandlers.touchstart);
+            container.removeEventListener('touchmove', this.pullEventHandlers.touchmove);
+            container.removeEventListener('touchend', this.pullEventHandlers.touchend);
+            this.pullEventHandlers = null;
+        }
+        
+        // Clean up document-level delete gesture listeners
+        if (this.deleteGestureHandlers) {
+            this.deleteGestureHandlers.forEach(handler => {
+                document.removeEventListener('touchmove', handler.move);
+                document.removeEventListener('touchend', handler.end);
+            });
+            this.deleteGestureHandlers = [];
+        }
+        
+        console.log('TouchGestureManager: Destroyed and cleaned up all event listeners');
     }
 }
 

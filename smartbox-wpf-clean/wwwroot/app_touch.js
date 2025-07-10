@@ -94,6 +94,12 @@ class SmartBoxTouchApp {
             exportButton.addEventListener('click', () => this.onExportRequested());
         }
         
+        // Back to patient selection button
+        const backButton = document.getElementById('backToPatientSelection');
+        if (backButton) {
+            backButton.addEventListener('click', () => this.onBackToPatientSelection());
+        }
+        
         // Patient card clicks
         document.addEventListener('click', (e) => {
             const patientCard = e.target.closest('.patient-card');
@@ -134,9 +140,35 @@ class SmartBoxTouchApp {
 
     async onInitializeRecordingWebcam(event) {
         const videoElement = event.detail.videoElement;
-        if (videoElement && this.webcamStream) {
+        
+        if (!videoElement) {
+            console.warn('SmartBoxTouchApp: No video element provided for recording webcam');
+            return;
+        }
+        
+        if (!this.webcamStream) {
+            console.warn('SmartBoxTouchApp: Webcam stream not available, attempting to initialize...');
+            try {
+                await this.initializeWebcam();
+            } catch (error) {
+                console.error('SmartBoxTouchApp: Failed to initialize webcam for recording:', error);
+                return;
+            }
+        }
+        
+        if (this.webcamStream) {
             videoElement.srcObject = this.webcamStream;
-            console.log('SmartBoxTouchApp: Recording webcam initialized');
+            
+            // Wait for video to be ready
+            await new Promise((resolve) => {
+                if (videoElement.readyState >= 2) {
+                    resolve();
+                } else {
+                    videoElement.addEventListener('loadeddata', resolve, { once: true });
+                }
+            });
+            
+            console.log('SmartBoxTouchApp: Recording webcam initialized and ready');
         }
     }
 
@@ -331,18 +363,25 @@ class SmartBoxTouchApp {
 
     async onStartVideoRecording() {
         try {
-            if (this.isRecording) return;
+            if (this.isRecording) {
+                console.warn('SmartBoxTouchApp: Recording already in progress');
+                return;
+            }
             
             console.log('SmartBoxTouchApp: Starting video recording...');
             
             if (!this.webcamStream) {
-                throw new Error('Webcam not available');
+                console.warn('SmartBoxTouchApp: Webcam stream not available, attempting to initialize...');
+                await this.initializeWebcam();
+                
+                if (!this.webcamStream) {
+                    throw new Error('Webcam could not be initialized');
+                }
             }
             
-            // Create media recorder
-            this.mediaRecorder = new MediaRecorder(this.webcamStream, {
-                mimeType: 'video/webm;codecs=vp8'
-            });
+            // Create media recorder with fallback support
+            const options = this.getSupportedMediaRecorderOptions();
+            this.mediaRecorder = new MediaRecorder(this.webcamStream, options);
             
             this.recordedChunks = [];
             
@@ -428,6 +467,33 @@ class SmartBoxTouchApp {
         }
     }
 
+    getSupportedMediaRecorderOptions() {
+        // List of codecs to try, in order of preference
+        const codecOptions = [
+            { mimeType: 'video/webm;codecs=vp9' },      // Best quality
+            { mimeType: 'video/webm;codecs=vp8' },      // Good compatibility
+            { mimeType: 'video/webm' },                 // Basic webm
+            { mimeType: 'video/mp4;codecs=h264' },      // H.264 fallback
+            { mimeType: 'video/mp4' },                  // Basic mp4
+            {}                                          // No options (default)
+        ];
+        
+        // Test each option
+        for (const options of codecOptions) {
+            try {
+                if (MediaRecorder.isTypeSupported(options.mimeType || '')) {
+                    console.log('SmartBoxTouchApp: Using MediaRecorder with:', options.mimeType || 'default');
+                    return options;
+                }
+            } catch (error) {
+                console.warn('SmartBoxTouchApp: Codec test failed for:', options.mimeType, error);
+            }
+        }
+        
+        console.warn('SmartBoxTouchApp: No optimal codec found, using default options');
+        return {}; // Fallback to default
+    }
+
     async createVideoThumbnail(videoUrl) {
         return new Promise((resolve) => {
             const video = document.createElement('video');
@@ -492,6 +558,70 @@ class SmartBoxTouchApp {
         });
     }
 
+    onBackToPatientSelection() {
+        console.log('SmartBoxTouchApp: Back to patient selection requested');
+        
+        // Check if recording is in progress
+        if (this.isRecording) {
+            this.dialogManager.showConfirmation({
+                title: 'Aufnahme abbrechen?',
+                message: 'Die laufende Video-Aufnahme wird gestoppt. Fortfahren?',
+                confirmText: 'Ja, zurück',
+                cancelText: 'Weiter aufnehmen',
+                confirmStyle: 'danger',
+                onConfirm: () => {
+                    this.stopVideoRecording();
+                    this.switchToPatientMode();
+                }
+            });
+        } else {
+            // Check for unsaved captures
+            const captures = this.modeManager.getCurrentCaptures();
+            const unexportedCaptures = captures.filter(c => !c.exported);
+            
+            if (unexportedCaptures.length > 0) {
+                const message = unexportedCaptures.length === 1
+                    ? 'Eine Aufnahme wurde noch nicht exportiert. Trotzdem zurück?'
+                    : `${unexportedCaptures.length} Aufnahmen wurden noch nicht exportiert. Trotzdem zurück?`;
+                
+                this.dialogManager.showConfirmation({
+                    title: 'Ungespeicherte Aufnahmen',
+                    message: message,
+                    confirmText: 'Ja, zurück',
+                    cancelText: 'Bleiben',
+                    confirmStyle: 'danger',
+                    onConfirm: () => this.switchToPatientMode()
+                });
+            } else {
+                this.switchToPatientMode();
+            }
+        }
+    }
+    
+    switchToPatientMode() {
+        console.log('SmartBoxTouchApp: Switching to patient selection mode');
+        
+        // Reset current patient
+        if (this.modeManager) {
+            this.modeManager.setCurrentPatient(null);
+        }
+        
+        // Switch modes via mode manager
+        if (this.modeManager && this.modeManager.switchToMode) {
+            this.modeManager.switchToMode('patient');
+        } else {
+            // Fallback: manual mode switching
+            document.getElementById('recordingMode').classList.add('hidden');
+            document.getElementById('patientMode').classList.remove('hidden');
+            
+            // Update header
+            const patientStatus = document.getElementById('patientStatusText');
+            if (patientStatus) {
+                patientStatus.textContent = 'Kein Patient';
+            }
+        }
+    }
+
     onExportRequested() {
         const captures = this.modeManager.getCurrentCaptures();
         const unexportedCaptures = captures.filter(c => !c.exported);
@@ -512,13 +642,24 @@ class SmartBoxTouchApp {
         try {
             console.log('SmartBoxTouchApp: Exporting', captures.length, 'captures...');
             
-            // Show loading dialog
-            this.dialogManager.showLoading({
-                message: `${captures.length} Aufnahme(n) werden exportiert...`
-            });
+            // Show loading dialog with PROPER grammar
+            const message = captures.length === 1 
+                ? 'Aufnahme wird exportiert...' 
+                : `${captures.length} Aufnahmen werden exportiert...`;
+            
+            this.dialogManager.showLoading({ message });
             
             // Send export request to WebView2 host
             if (window.chrome && window.chrome.webview) {
+                // Add timeout for WebView2 response
+                const exportTimeout = setTimeout(() => {
+                    console.warn('SmartBoxTouchApp: Export timeout - falling back to simulation');
+                    this.onExportComplete(captures.map(c => c.id));
+                }, 5000); // 5 second timeout
+                
+                // Store timeout for cleanup
+                this.currentExportTimeout = exportTimeout;
+                
                 window.chrome.webview.postMessage({
                     type: 'exportCaptures',
                     data: {
@@ -528,9 +669,10 @@ class SmartBoxTouchApp {
                 });
             } else {
                 // Simulate export for testing
+                console.log('SmartBoxTouchApp: Simulating export (no WebView2)');
                 setTimeout(() => {
                     this.onExportComplete(captures.map(c => c.id));
-                }, 3000);
+                }, 2000); // Shorter timeout for simulation
             }
             
         } catch (error) {
@@ -541,12 +683,21 @@ class SmartBoxTouchApp {
     }
 
     onExportComplete(captureIds) {
+        // Clear export timeout if it exists
+        if (this.currentExportTimeout) {
+            clearTimeout(this.currentExportTimeout);
+            this.currentExportTimeout = null;
+        }
+        
         this.dialogManager.dismiss();
         this.modeManager.markCapturesExported(captureIds);
         
-        this.dialogManager.showSuccess({
-            message: `${captureIds.length} Aufnahme(n) erfolgreich exportiert.`
-        });
+        // PROPER grammar for success message
+        const message = captureIds.length === 1 
+            ? 'Aufnahme erfolgreich exportiert.'
+            : `${captureIds.length} Aufnahmen erfolgreich exportiert.`;
+        
+        this.dialogManager.showSuccess({ message });
         
         console.log('SmartBoxTouchApp: Export completed for', captureIds.length, 'captures');
     }

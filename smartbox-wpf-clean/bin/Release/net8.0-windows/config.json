@@ -1,6 +1,6 @@
 {
   "Storage": {
-    "PhotosPath": "C:\\Users\\oliver.stern\\Desktop",
+    "PhotosPath": "./Data/Photos",
     "VideosPath": "./Data/Videos",
     "DicomPath": "./Data/DICOM",
     "QueuePath": "./Data/Queue",
@@ -20,7 +20,7 @@
   },
   "Video": {
     "DefaultResolution": "1280x720",
-    "DefaultFrameRate": 60,
+    "DefaultFrameRate": 30,
     "DefaultQuality": 85,
     "EnableHardwareAcceleration": true,
     "PreferredCamera": ""
@@ -34,8 +34,7 @@
     "WebServerPort": 5112,
     "EnableRemoteAccess": false,
     "HideExitButton": false,
-    "EnableEmergencyTemplates": true,
-    "AutoExportDicom": false
+    "EnableEmergencyTemplates": true
   },
   "MwlSettings": {
     "EnableWorklist": true,
@@ -45,10 +44,5 @@
     "AutoRefreshSeconds": 300,
     "ShowEmergencyFirst": true,
     "CacheExpiryHours": 24
-  },
-  "MultiTarget": {
-    "Targets": []
-  },
-  "LocalAET": "SMARTBOX",
-  "StoragePath": "C:\\Users\\oliver.stern\\Desktop"
+  }
 }

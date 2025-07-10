@@ -36,6 +36,9 @@ class TouchDialogManager {
         // Button event listeners
         this.cancelButton?.addEventListener('click', () => this.onCancel());
         this.confirmButton?.addEventListener('click', () => this.onConfirm());
+        
+        // Keyboard navigation (Accessibility)
+        document.addEventListener('keydown', (e) => this.onKeyDown(e));
 
         console.log('TouchDialogManager: Initialized');
     }
@@ -106,10 +109,14 @@ class TouchDialogManager {
         const captureCount = options.captureCount || 0;
         const hasUnsaved = captureCount > 0;
         
+        const unsavedMessage = captureCount === 1
+            ? 'Eine Aufnahme wurde noch nicht exportiert!'
+            : `${captureCount} Aufnahmen wurden noch nicht exportiert!`;
+        
         const config = {
             title: 'Sitzung beenden?',
             message: hasUnsaved 
-                ? `${captureCount} Aufnahme(n) wurden noch nicht exportiert!`
+                ? unsavedMessage
                 : 'Möchten Sie die Sitzung wirklich beenden?',
             cancelText: 'Zurück',
             confirmText: 'Beenden',
@@ -342,6 +349,55 @@ class TouchDialogManager {
     dismissAll() {
         this.dialogQueue = [];
         this.dismiss();
+    }
+
+    /**
+     * Handle keyboard shortcuts (Accessibility)
+     */
+    onKeyDown(event) {
+        if (!this.currentDialog || this.backdrop.classList.contains('hidden')) {
+            return;
+        }
+        
+        switch (event.key) {
+            case 'Escape':
+                if (this.currentDialog.allowBackdropDismiss !== false) {
+                    event.preventDefault();
+                    this.onCancel();
+                }
+                break;
+            case 'Enter':
+                event.preventDefault();
+                this.onConfirm();
+                break;
+            case 'Tab':
+                // Focus management for dialog
+                this.handleTabNavigation(event);
+                break;
+        }
+    }
+    
+    handleTabNavigation(event) {
+        const focusableElements = this.dialogBox.querySelectorAll(
+            'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        
+        if (focusableElements.length === 0) return;
+        
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+        
+        if (event.shiftKey) {
+            if (document.activeElement === firstElement) {
+                event.preventDefault();
+                lastElement.focus();
+            }
+        } else {
+            if (document.activeElement === lastElement) {
+                event.preventDefault();
+                firstElement.focus();
+            }
+        }
     }
 
     /**
