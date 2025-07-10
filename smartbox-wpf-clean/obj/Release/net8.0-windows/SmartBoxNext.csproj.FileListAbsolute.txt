@@ -41,6 +41,7 @@ C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\Microsoft.Extensions.Options.ConfigurationExtensions.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\Microsoft.Extensions.Primitives.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\Newtonsoft.Json.dll
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\SharedMemory.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\SixLabors.ImageSharp.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\System.Management.dll
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\runtimes\win\lib\net8.0\System.Management.dll
@@ -68,3 +69,10 @@ C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Release\
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Release\net8.0-windows\SmartBoxNext.pdb
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Release\net8.0-windows\SmartBoxNext.genruntimeconfig.cache
 C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Release\net8.0-windows\ref\SmartBoxNext.dll
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Release\net8.0-windows\DiagnosticWindow.baml
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\obj\Release\net8.0-windows\DiagnosticWindow.g.cs
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\wwwroot\js\layout-manager.js
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\wwwroot\styles\layout-compact.css
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\wwwroot\styles\layout-standard.css
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\wwwroot\styles\theme-default.css
+C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\wwwroot\styles\theme-night.css

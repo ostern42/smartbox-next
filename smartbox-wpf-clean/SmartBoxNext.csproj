@@ -17,6 +17,7 @@
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <Copyright>Copyright © 2025 CIRSS Medical Systems</Copyright>
     <Description>Medical Image Capture System - WPF Edition</Description>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,6 +28,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
     <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="SharedMemory" Version="2.2.3" />
   </ItemGroup>
 
   <ItemGroup>

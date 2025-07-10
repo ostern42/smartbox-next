@@ -9,9 +9,9 @@
     "EnableAutoCleanup": false
   },
   "Pacs": {
-    "ServerHost": "",
+    "ServerHost": "localhost",
     "ServerPort": 104,
-    "CalledAeTitle": "PACS",
+    "CalledAeTitle": "ORTHANC",
     "CallingAeTitle": "SMARTBOX",
     "Timeout": 30,
     "EnableTls": false,
@@ -37,7 +37,7 @@
     "EnableEmergencyTemplates": true
   },
   "MwlSettings": {
-    "EnableWorklist": false,
+    "EnableWorklist": true,
     "MwlServerHost": "localhost",
     "MwlServerPort": 105,
     "MwlServerAET": "ORTHANC",

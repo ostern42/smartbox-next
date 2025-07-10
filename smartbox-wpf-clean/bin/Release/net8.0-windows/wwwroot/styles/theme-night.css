@@ -1,0 +1,76 @@
+/* Night Theme - Optimized for low light environments */
+body.theme-night {
+    /* Primary colors - muted for night use */
+    --primary: #4a90e2;
+    --primary-hover: #5ba0f2;
+    --primary-light: #1a3a5a;
+    --primary-dark: #2a5a8a;
+    
+    /* Status colors - reduced intensity */
+    --success: #4a7c4a;
+    --success-light: #1a2a1a;
+    --error: #cc5555;
+    --error-light: #2a1a1a;
+    --warning: #cc8844;
+    --warning-light: #2a2a1a;
+    --info: #4a90e2;
+    --info-light: #1a3a5a;
+    
+    /* Dark backgrounds with blue tint */
+    --background: #0a0a0f;
+    --surface: #12121a;
+    --header-bg: #181825;
+    --footer-bg: #12121a;
+    --sidebar-bg: #1a1a2a;
+    --control-bg: #1a1a2a;
+    --card-bg: #1e1e2e;
+    --card-hover-bg: #25253a;
+    --thumbnail-bg: #12121a;
+    --info-bg: #1a2a3a;
+    
+    /* Text colors - reduced brightness */
+    --text-primary: #c0c0d0;
+    --text-secondary: #a0a0b0;
+    --text-muted: #606070;
+    --text-disabled: #404050;
+    --text-inverse: #0a0a0f;
+    
+    /* Border colors */
+    --border-color: #2a2a3a;
+    --border-light: #202030;
+    --border-dark: #3a3a4a;
+    
+    /* Softer shadows */
+    --shadow-small: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-medium: 0 2px 8px rgba(0,0,0,0.4);
+    --shadow-large: 0 4px 16px rgba(0,0,0,0.5);
+    
+    /* Red light filter for night vision */
+    filter: hue-rotate(10deg) brightness(0.9);
+}
+
+/* Additional night mode adjustments */
+body.theme-night .video-container {
+    background: #000;
+    filter: brightness(0.8);
+}
+
+body.theme-night .capture-button.primary {
+    background: var(--error);
+    filter: brightness(0.7);
+}
+
+body.theme-night .capture-button.primary:hover {
+    background: #dd6666;
+}
+
+/* Reduce brightness of images */
+body.theme-night img,
+body.theme-night .thumbnail {
+    filter: brightness(0.8);
+}
+
+/* Special night mode for medical imagery */
+body.theme-night .medical-image {
+    filter: none; /* Preserve medical image accuracy */
+}

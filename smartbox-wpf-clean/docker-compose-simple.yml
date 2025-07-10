@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  orthanc:
+    image: jodogne/orthanc-plugins:latest
+    container_name: orthanc-test
+    ports:
+      - "104:4242"     # PACS C-STORE port
+      - "105:4242"     # MWL port
+      - "8042:8042"    # Web interface
+    environment:
+      - ORTHANC__DICOM_AET=ORTHANC
+      - ORTHANC__DICOM_ALWAYS_ALLOW_ECHO=true
+      - ORTHANC__DICOM_ALWAYS_ALLOW_STORE=true
+      - ORTHANC__DICOM_CHECK_CALLED_AET=false
+      - ORTHANC__PLUGINS=["libModalityWorklist.so"]
+      - ORTHANC__WORKLISTS__ENABLE=true
+      - ORTHANC__WORKLISTS__DATABASE=/worklists
+    volumes:
+      - ./worklists:/worklists

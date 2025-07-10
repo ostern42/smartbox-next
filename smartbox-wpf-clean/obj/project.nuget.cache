@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "1xUSDwtXElw=",
+  "dgSpecHash": "V4AkRxGEV/Y=",
   "success": true,
   "projectFilePath": "C:\\Users\\oliver.stern\\source\\repos\\smartbox-next\\smartbox-wpf-clean\\SmartBoxNext.csproj",
   "expectedPackageFiles": [
@@ -22,10 +22,12 @@
     "C:\\Users\\oliver.stern\\.nuget\\packages\\microsoft.extensions.primitives\\8.0.0\\microsoft.extensions.primitives.8.0.0.nupkg.sha512",
     "C:\\Users\\oliver.stern\\.nuget\\packages\\microsoft.web.webview2\\1.0.2739.15\\microsoft.web.webview2.1.0.2739.15.nupkg.sha512",
     "C:\\Users\\oliver.stern\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512",
+    "C:\\Users\\oliver.stern\\.nuget\\packages\\sharedmemory\\2.2.3\\sharedmemory.2.2.3.nupkg.sha512",
     "C:\\Users\\oliver.stern\\.nuget\\packages\\sixlabors.imagesharp\\3.1.7\\sixlabors.imagesharp.3.1.7.nupkg.sha512",
     "C:\\Users\\oliver.stern\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
     "C:\\Users\\oliver.stern\\.nuget\\packages\\system.codedom\\8.0.0\\system.codedom.8.0.0.nupkg.sha512",
     "C:\\Users\\oliver.stern\\.nuget\\packages\\system.management\\8.0.0\\system.management.8.0.0.nupkg.sha512",
+    "C:\\Users\\oliver.stern\\.nuget\\packages\\system.reflection.emit.lightweight\\4.7.0\\system.reflection.emit.lightweight.4.7.0.nupkg.sha512",
     "C:\\Users\\oliver.stern\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
     "C:\\Users\\oliver.stern\\.nuget\\packages\\system.text.encoding.codepages\\6.0.0\\system.text.encoding.codepages.6.0.0.nupkg.sha512",
     "C:\\Users\\oliver.stern\\.nuget\\packages\\system.text.encodings.web\\8.0.0\\system.text.encodings.web.8.0.0.nupkg.sha512",

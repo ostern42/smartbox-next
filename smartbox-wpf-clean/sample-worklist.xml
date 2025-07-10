@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NativeDicomModel>
+  <DicomAttribute tag="0008,0050" vr="SH">
+    <Value>ACC001</Value>
+  </DicomAttribute>
+  
+  <!-- Scheduled Procedure Step Sequence -->
+  <DicomAttribute tag="0040,0100" vr="SQ">
+    <Item>
+      <!-- Scheduled Station AE Title -->
+      <DicomAttribute tag="0040,0001" vr="AE">
+        <Value>SMARTBOX</Value>
+      </DicomAttribute>
+      
+      <!-- Scheduled Procedure Step Start Date -->
+      <DicomAttribute tag="0040,0002" vr="DA">
+        <Value>20250110</Value>
+      </DicomAttribute>
+      
+      <!-- Scheduled Procedure Step Start Time -->
+      <DicomAttribute tag="0040,0003" vr="TM">
+        <Value>140000</Value>
+      </DicomAttribute>
+      
+      <!-- Modality -->
+      <DicomAttribute tag="0008,0060" vr="CS">
+        <Value>ES</Value>
+      </DicomAttribute>
+      
+      <!-- Scheduled Performing Physician Name -->
+      <DicomAttribute tag="0040,0006" vr="PN">
+        <Value>Dr. Smith</Value>
+      </DicomAttribute>
+      
+      <!-- Scheduled Procedure Step Description -->
+      <DicomAttribute tag="0040,0007" vr="LO">
+        <Value>Upper GI Endoscopy</Value>
+      </DicomAttribute>
+      
+      <!-- Scheduled Station Name -->
+      <DicomAttribute tag="0040,0010" vr="SH">
+        <Value>ENDO_ROOM_1</Value>
+      </DicomAttribute>
+      
+      <!-- Scheduled Procedure Step ID -->
+      <DicomAttribute tag="0040,0009" vr="SH">
+        <Value>SPS001</Value>
+      </DicomAttribute>
+    </Item>
+  </DicomAttribute>
+  
+  <!-- Patient Name -->
+  <DicomAttribute tag="0010,0010" vr="PN">
+    <Value>TEST^PATIENT^ONE</Value>
+  </DicomAttribute>
+  
+  <!-- Patient ID -->
+  <DicomAttribute tag="0010,0020" vr="LO">
+    <Value>12345678</Value>
+  </DicomAttribute>
+  
+  <!-- Patient Birth Date -->
+  <DicomAttribute tag="0010,0030" vr="DA">
+    <Value>19850315</Value>
+  </DicomAttribute>
+  
+  <!-- Patient Sex -->
+  <DicomAttribute tag="0010,0040" vr="CS">
+    <Value>M</Value>
+  </DicomAttribute>
+  
+  <!-- Study Instance UID -->
+  <DicomAttribute tag="0020,000D" vr="UI">
+    <Value>1.2.826.0.1.3680043.8.1055.1.20250110140000.123456</Value>
+  </DicomAttribute>
+  
+  <!-- Requested Procedure Description -->
+  <DicomAttribute tag="0032,1060" vr="LO">
+    <Value>Endoscopy Examination</Value>
+  </DicomAttribute>
+  
+  <!-- Requested Procedure ID -->
+  <DicomAttribute tag="0040,1001" vr="SH">
+    <Value>RP001</Value>
+  </DicomAttribute>
+</NativeDicomModel>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebView2 Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        button {
+            margin: 10px;
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #106ebe;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 300px;
+            white-space: pre-wrap;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>WebView2 Communication Debug</h1>
+    
+    <div>
+        <button onclick="checkWebView()">1. Check WebView2</button>
+        <button onclick="sendSimpleMessage()">2. Send Simple Message</button>
+        <button onclick="sendOpenLogs()">3. Send OpenLogs</button>
+        <button onclick="sendBrowseFolder()">4. Send BrowseFolder</button>
+        <button onclick="testDirectMessage()">5. Test Direct String</button>
+    </div>
+    
+    <h2>Output:</h2>
+    <div id="output"></div>
+    
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            console.log(`[${type}] ${message}`);
+        }
+        
+        function checkWebView() {
+            log('Checking WebView2 availability...', 'info');
+            
+            if (window.chrome) {
+                log('window.chrome exists', 'success');
+                
+                if (window.chrome.webview) {
+                    log('window.chrome.webview exists', 'success');
+                    log('postMessage type: ' + typeof window.chrome.webview.postMessage, 'info');
+                    
+                    // Try to list all properties
+                    try {
+                        const props = Object.getOwnPropertyNames(window.chrome.webview);
+                        log('WebView2 properties: ' + props.join(', '), 'info');
+                    } catch (e) {
+                        log('Could not list properties: ' + e.message, 'error');
+                    }
+                } else {
+                    log('window.chrome.webview does NOT exist', 'error');
+                }
+            } else {
+                log('window.chrome does NOT exist', 'error');
+                log('Running in regular browser, not WebView2', 'error');
+            }
+        }
+        
+        function sendSimpleMessage() {
+            log('Sending simple test message...', 'info');
+            
+            if (window.chrome && window.chrome.webview) {
+                try {
+                    // Try different formats
+                    const message = {
+                        action: 'test',
+                        data: {},
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    log('Message object: ' + JSON.stringify(message), 'info');
+                    
+                    // Always use JSON string (C# expects this)
+                    try {
+                        const jsonMessage = JSON.stringify(message);
+                        window.chrome.webview.postMessage(jsonMessage);
+                        log('Message sent as JSON: ' + jsonMessage, 'success');
+                    } catch (e) {
+                        log('Failed to send message: ' + e.message, 'error');
+                    }
+                    
+                } catch (error) {
+                    log('Error sending message: ' + error.message, 'error');
+                    log('Stack: ' + error.stack, 'error');
+                }
+            } else {
+                log('WebView2 not available', 'error');
+            }
+        }
+        
+        function sendOpenLogs() {
+            log('Sending openLogs message...', 'info');
+            
+            if (window.chrome && window.chrome.webview) {
+                try {
+                    const message = {
+                        action: 'openLogs',
+                        data: {},
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    window.chrome.webview.postMessage(JSON.stringify(message));
+                    log('openLogs message sent as JSON', 'success');
+                } catch (error) {
+                    log('Error: ' + error.message, 'error');
+                }
+            } else {
+                log('WebView2 not available', 'error');
+            }
+        }
+        
+        function sendBrowseFolder() {
+            log('Sending browseFolder message...', 'info');
+            
+            if (window.chrome && window.chrome.webview) {
+                try {
+                    const message = {
+                        action: 'browseFolder',
+                        data: {
+                            inputId: 'test-input',
+                            currentPath: 'C:\\'
+                        },
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    window.chrome.webview.postMessage(JSON.stringify(message));
+                    log('browseFolder message sent as JSON', 'success');
+                } catch (error) {
+                    log('Error: ' + error.message, 'error');
+                }
+            } else {
+                log('WebView2 not available', 'error');
+            }
+        }
+        
+        function testDirectMessage() {
+            log('Testing direct string message...', 'info');
+            
+            if (window.chrome && window.chrome.webview) {
+                try {
+                    // Test 1: Simple string
+                    window.chrome.webview.postMessage('ping');
+                    log('Sent simple string: ping', 'success');
+                    
+                    // Test 2: JSON string with minimal content
+                    window.chrome.webview.postMessage('{"action":"test"}');
+                    log('Sent minimal JSON string', 'success');
+                    
+                } catch (error) {
+                    log('Error: ' + error.message, 'error');
+                }
+            } else {
+                log('WebView2 not available', 'error');
+            }
+        }
+        
+        // Listen for messages from C#
+        window.addEventListener('message', (event) => {
+            log('Received message: ' + JSON.stringify(event.data), 'success');
+        });
+        
+        // Override console.log to also show in output
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            log('Console: ' + args.join(' '), 'info');
+        };
+        
+        // Auto-check on load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(checkWebView, 100);
+            log('Debug page ready, WebView2 bridge test active', 'info');
+        });
+    </script>
+</body>
+</html>

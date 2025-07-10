@@ -1,0 +1,54 @@
+{
+  "Storage": {
+    "PhotosPath": "C:\\Users\\oliver.stern\\Desktop",
+    "VideosPath": "./Data/Videos",
+    "DicomPath": "./Data/DICOM",
+    "QueuePath": "./Data/Queue",
+    "TempPath": "./Data/Temp",
+    "MaxStorageDays": 30,
+    "EnableAutoCleanup": false
+  },
+  "Pacs": {
+    "ServerHost": "localhost",
+    "ServerPort": 104,
+    "CalledAeTitle": "ORTHANC",
+    "CallingAeTitle": "SMARTBOX",
+    "Timeout": 30,
+    "EnableTls": false,
+    "MaxRetries": 3,
+    "RetryDelay": 5
+  },
+  "Video": {
+    "DefaultResolution": "1280x720",
+    "DefaultFrameRate": 60,
+    "DefaultQuality": 85,
+    "EnableHardwareAcceleration": true,
+    "PreferredCamera": ""
+  },
+  "Application": {
+    "Language": "de-DE",
+    "Theme": "Light",
+    "EnableTouchKeyboard": true,
+    "EnableDebugMode": true,
+    "AutoStartCapture": true,
+    "WebServerPort": 5112,
+    "EnableRemoteAccess": false,
+    "HideExitButton": false,
+    "EnableEmergencyTemplates": true,
+    "AutoExportDicom": false
+  },
+  "MwlSettings": {
+    "EnableWorklist": true,
+    "MwlServerHost": "localhost",
+    "MwlServerPort": 105,
+    "MwlServerAET": "ORTHANC",
+    "AutoRefreshSeconds": 300,
+    "ShowEmergencyFirst": true,
+    "CacheExpiryHours": 24
+  },
+  "MultiTarget": {
+    "Targets": []
+  },
+  "LocalAET": "SMARTBOX",
+  "StoragePath": "C:\\Users\\oliver.stern\\Desktop"
+}

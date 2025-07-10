@@ -1,0 +1,1 @@
+This would be a binary DICOM file - cannot create directly without pydicom
