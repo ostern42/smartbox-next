@@ -115,12 +115,17 @@ body {
     color: var(--text-secondary);
 }
 
+.header-buttons {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.header-button,
 .exit-button {
     width: var(--touch-target-min);
     height: var(--touch-target-min);
     border: none;
     border-radius: var(--radius-md);
-    background: var(--danger-red);
     color: white;
     cursor: pointer;
     display: flex;
@@ -129,10 +134,24 @@ body {
     transition: transform var(--transition-fast), background var(--transition-fast);
 }
 
+.header-button {
+    background: var(--primary-blue);
+}
+
+.exit-button {
+    background: var(--danger-red);
+}
+
+.header-button:hover {
+    background: var(--primary-dark);
+}
+
+.header-button:active,
 .exit-button:active {
     transform: scale(0.95);
 }
 
+.header-button i,
 .exit-button i {
     font-size: 20px;
 }

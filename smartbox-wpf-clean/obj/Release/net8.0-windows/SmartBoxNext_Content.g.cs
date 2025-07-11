@@ -44,6 +44,7 @@
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/test-buttons.html")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/test-fixed.html")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/test.html")]
+[assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("wwwroot/test_icons.html")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("webview2loader.dll")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("webview2loader.dll")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("webview2loader.dll")]

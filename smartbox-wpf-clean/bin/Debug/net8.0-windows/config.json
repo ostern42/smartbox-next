@@ -34,8 +34,7 @@
     "WebServerPort": 5112,
     "EnableRemoteAccess": false,
     "HideExitButton": false,
-    "EnableEmergencyTemplates": true,
-    "AutoExportDicom": true
+    "EnableEmergencyTemplates": true
   },
   "MwlSettings": {
     "EnableWorklist": true,

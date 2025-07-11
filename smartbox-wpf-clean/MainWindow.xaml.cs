@@ -271,9 +271,13 @@ namespace SmartBoxNext
         {
             try
             {
+                // Also use file logger for debugging
+                Logger.LogDebug("=== WebView_WebMessageReceived START ===");
+                
                 var message = e.TryGetWebMessageAsString();
                 _logger.LogInformation("=== WebView Message Received ===");
                 _logger.LogInformation("Raw message: {Message}", message);
+                Logger.LogDebug($"Raw message received: {message}");
                 
                 // Send immediate feedback to debug page
                 await webView.CoreWebView2.ExecuteScriptAsync($"console.log('C# received: {message.Replace("'", "\\'")}');");
@@ -293,9 +297,10 @@ namespace SmartBoxNext
                     return;
                 }
                 
-                // Handle JSON message
-                var action = messageObj["action"]?.ToString();
+                // Handle JSON message - support both "action" and "type" fields for robustness
+                var action = messageObj["action"]?.ToString() ?? messageObj["type"]?.ToString();
                 _logger.LogInformation("Action extracted: {Action}", action);
+                Logger.LogDebug($"Action/Type extracted: {action}");
                 
                 if (string.IsNullOrEmpty(action))
                 {
@@ -309,7 +314,12 @@ namespace SmartBoxNext
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling web message");
+                Logger.LogError(ex, "WebView_WebMessageReceived failed");
                 await SendErrorToWebView($"Error: {ex.Message}");
+            }
+            finally
+            {
+                Logger.LogDebug("=== WebView_WebMessageReceived END ===");
             }
         }
         
@@ -355,6 +365,10 @@ namespace SmartBoxNext
                     
                 case "openSettings":
                     await OpenSettings();
+                    break;
+                    
+                case "exitApp":
+                    System.Windows.Application.Current.Shutdown();
                     break;
                     
                 case "photoCaptured":
@@ -471,9 +485,24 @@ namespace SmartBoxNext
                     await HandleGetUnifiedStatus();
                     break;
                     
+                case "exportCaptures":
+                case "exportcaptures":
+                    Logger.LogDebug("=== Calling HandleExportCaptures ===");
+                    await HandleExportCaptures(message);
+                    break;
+                    
+                case "opensettings":
+                    await HandleOpenSettings();
+                    break;
+                    
+                case "exitapp":
+                    await HandleExitApp();
+                    break;
+                    
                 default:
                     _logger.LogWarning("Unknown action: {Action}", action);
-                    await SendErrorToWebView($"Unknown action: {action}");
+                    Logger.LogDebug($"Unknown action received: {action}, full message: {message}");
+                    // Don't send error for unknown actions - just log them
                     break;
             }
         }
@@ -1510,32 +1539,71 @@ namespace SmartBoxNext
                     return;
                 }
                 
-                // Open diagnostic window
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    var diagnosticWindow = new DiagnosticWindow(
-                        _logger,
-                        serverHost,
-                        serverPort,
-                        callingAeTitle,
-                        calledAeTitle,
-                        isMwl: false
-                    );
-                    diagnosticWindow.Owner = this;
-                    diagnosticWindow.ShowDialog();
-                });
+                // Test connection using our PacsService
+                var pacsService = new PacsService(
+                    _logger,
+                    serverHost,
+                    serverPort,
+                    callingAeTitle,
+                    calledAeTitle,
+                    30 // timeout
+                );
                 
-                // Return simple success message
-                await SendMessageToWebView(new
+                var success = await pacsService.TestConnectionAsync();
+                
+                if (success)
                 {
-                    action = "testConnectionResult",
-                    data = new 
-                    { 
-                        success = true,
-                        message = "Diagnostic test completed",
-                        type = "pacs"
-                    }
-                });
+                    _logger.LogInformation("PACS connection test successful");
+                    await SendMessageToWebView(new
+                    {
+                        action = "testConnectionResult",
+                        data = new 
+                        { 
+                            success = true,
+                            message = "PACS Verbindung erfolgreich",
+                            type = "pacs",
+                            details = new
+                            {
+                                host = serverHost,
+                                port = serverPort,
+                                calledAE = calledAeTitle,
+                                callingAE = callingAeTitle
+                            }
+                        }
+                    });
+                }
+                else
+                {
+                    _logger.LogWarning("PACS connection test failed");
+                    await SendMessageToWebView(new
+                    {
+                        action = "testConnectionResult",
+                        data = new 
+                        { 
+                            success = false,
+                            message = "PACS Verbindung fehlgeschlagen - Prüfen Sie Host/Port/AE Titles",
+                            type = "pacs"
+                        }
+                    });
+                }
+                
+                // Optionally still open diagnostic window for detailed info
+                if (!success)
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        var diagnosticWindow = new DiagnosticWindow(
+                            _logger,
+                            serverHost,
+                            serverPort,
+                            callingAeTitle,
+                            calledAeTitle,
+                            isMwl: false
+                        );
+                        diagnosticWindow.Owner = this;
+                        diagnosticWindow.ShowDialog();
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -2112,6 +2180,298 @@ namespace SmartBoxNext
             {
                 _logger.LogError(ex, "Failed to get unified status");
                 await SendErrorToWebView($"Failed to get unified status: {ex.Message}");
+            }
+        }
+        
+        private async Task HandleExportCaptures(JObject message)
+        {
+            try
+            {
+                _logger.LogInformation("=== HandleExportCaptures called ===");
+                Logger.LogDebug("HandleExportCaptures START - processing export request");
+                
+                var data = message["data"];
+                Logger.LogDebug($"Data extracted: {data}");
+                
+                var captures = data?["captures"];
+                var patient = data?["patient"];
+                Logger.LogDebug($"Captures: {captures}, Patient: {patient}");
+                
+                if (captures == null)
+                {
+                    _logger.LogWarning("No captures provided for export");
+                    Logger.LogDebug("No captures found - returning error");
+                    await SendErrorToWebView("No captures provided for export");
+                    return;
+                }
+                
+                _logger.LogInformation("Processing {Count} captures for export", captures.Count());
+                Logger.LogDebug($"Found {captures.Count()} captures to process");
+                
+                var exportedIds = new List<string>();
+                var failedExports = new List<string>();
+                
+                // Create PatientInfo once
+                PatientInfo? patientInfo = null;
+                if (patient != null)
+                {
+                    patientInfo = new PatientInfo
+                    {
+                        PatientId = patient["id"]?.ToString(),
+                        FirstName = ExtractFirstName(patient["name"]?.ToString()),
+                        LastName = ExtractLastName(patient["name"]?.ToString()),
+                        BirthDate = ParseBirthDate(patient["birthDate"]?.ToString()),
+                        Gender = patient["gender"]?.ToString(),
+                        StudyDescription = patient["studyDescription"]?.ToString(),
+                        StudyInstanceUID = _selectedWorklistItem?.StudyInstanceUID,
+                        AccessionNumber = _selectedWorklistItem?.AccessionNumber
+                    };
+                    
+                    _logger.LogInformation("Patient info created for export: {PatientId}", patientInfo.PatientId);
+                }
+                
+                // Initialize services if needed
+                var dicomService = new DicomService(_logger);
+                PacsService? pacsService = null;
+                
+                if (_config?.Pacs?.Enabled == true)
+                {
+                    pacsService = new PacsService(
+                        _logger,
+                        _config.Pacs.ServerHost,
+                        _config.Pacs.ServerPort,
+                        _config.Pacs.CallingAeTitle,
+                        _config.Pacs.CalledAeTitle,
+                        _config.Pacs.Timeout
+                    );
+                }
+                
+                foreach (var capture in captures)
+                {
+                    try
+                    {
+                        var captureId = capture["id"]?.ToString();
+                        var captureType = capture["type"]?.ToString();
+                        
+                        _logger.LogInformation("Processing capture {Id} of type {Type}", captureId, captureType);
+                        
+                        if (string.IsNullOrEmpty(captureId))
+                        {
+                            _logger.LogWarning("Capture has no ID, skipping");
+                            continue;
+                        }
+                        
+                        _logger.LogInformation("Capture type: {Type}, PatientInfo null: {IsNull}", captureType, patientInfo == null);
+                        
+                        if (captureType == "photo" && patientInfo != null)
+                        {
+                            // Find the photo file
+                            var searchPath = _config?.Storage?.PhotosPath ?? "./Data/Photos";
+                            _logger.LogInformation("Searching for photos in: {Path}", searchPath);
+                            
+                            var photoFiles = Directory.GetFiles(searchPath, "IMG_*.jpg")
+                                .OrderByDescending(f => File.GetCreationTime(f))
+                                .ToList();
+                            
+                            _logger.LogInformation("Found {Count} photo files", photoFiles.Count);
+                            
+                            if (photoFiles.Any())
+                            {
+                                var photoPath = photoFiles.First();
+                                _logger.LogInformation("Using photo file: {Path}", photoPath);
+                                
+                                try
+                                {
+                                    // Convert to DICOM
+                                    _logger.LogInformation("Converting to DICOM...");
+                                    var dicomFile = await dicomService.CreateDicomFromImageAsync(photoPath, patientInfo, "XC");
+                                    
+                                    // Save DICOM locally
+                                    var dicomPath = await dicomService.SaveDicomFileAsync(dicomFile, photoPath);
+                                    _logger.LogInformation("DICOM file created: {Path}", dicomPath);
+                                    
+                                    // Send progress update to UI
+                                    await SendMessageToWebView(new
+                                    {
+                                        action = "exportProgress",
+                                        data = new
+                                        {
+                                            captureId = captureId,
+                                            status = "dicom_created",
+                                            message = $"DICOM erstellt: {Path.GetFileName(dicomPath)}"
+                                        }
+                                    });
+                                    
+                                    // Send to PACS if enabled
+                                    if (pacsService != null)
+                                    {
+                                        try
+                                        {
+                                            _logger.LogInformation("Sending to PACS: {Host}:{Port}", 
+                                                _config.Pacs.ServerHost, _config.Pacs.ServerPort);
+                                            
+                                            var sendResult = await pacsService.SendDicomFileAsync(dicomPath);
+                                            
+                                            if (sendResult.Success)
+                                            {
+                                                _logger.LogInformation("Successfully sent to PACS");
+                                                exportedIds.Add(captureId);
+                                                
+                                                await SendMessageToWebView(new
+                                                {
+                                                    action = "exportProgress",
+                                                    data = new
+                                                    {
+                                                        captureId = captureId,
+                                                        status = "pacs_sent",
+                                                        message = "An PACS gesendet"
+                                                    }
+                                                });
+                                            }
+                                            else
+                                            {
+                                                _logger.LogWarning("PACS send failed: {Message}", sendResult.Message);
+                                                failedExports.Add(captureId);
+                                                
+                                                await SendMessageToWebView(new
+                                                {
+                                                    action = "exportProgress",
+                                                    data = new
+                                                    {
+                                                        captureId = captureId,
+                                                        status = "pacs_failed",
+                                                        message = $"PACS Fehler: {sendResult.Message}",
+                                                        error = sendResult.Message
+                                                    }
+                                                });
+                                            }
+                                        }
+                                        catch (Exception pacsEx)
+                                        {
+                                            _logger.LogError(pacsEx, "PACS send exception");
+                                            failedExports.Add(captureId);
+                                            
+                                            // But DICOM was created successfully
+                                            exportedIds.Add(captureId);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // No PACS configured, but DICOM was created
+                                        _logger.LogInformation("PACS disabled, DICOM saved locally only");
+                                        exportedIds.Add(captureId);
+                                    }
+                                }
+                                catch (Exception dicomEx)
+                                {
+                                    _logger.LogError(dicomEx, "Failed to create DICOM for capture {Id}", captureId);
+                                    failedExports.Add(captureId);
+                                    
+                                    await SendMessageToWebView(new
+                                    {
+                                        action = "exportProgress",
+                                        data = new
+                                        {
+                                            captureId = captureId,
+                                            status = "dicom_failed",
+                                            message = $"DICOM Fehler: {dicomEx.Message}",
+                                            error = dicomEx.Message
+                                        }
+                                    });
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning("No photo files found");
+                                failedExports.Add(captureId);
+                            }
+                        }
+                        else if (captureType == "video")
+                        {
+                            // TODO: Video export implementation
+                            _logger.LogWarning("Video export not yet implemented");
+                            failedExports.Add(captureId);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Skipping capture {Id}: Type={Type}, PatientInfo={HasPatient}", 
+                                captureId, captureType ?? "null", patientInfo != null);
+                            failedExports.Add(captureId);
+                        }
+                    }
+                    catch (Exception captureEx)
+                    {
+                        var captureId = capture["id"]?.ToString() ?? "unknown";
+                        _logger.LogError(captureEx, "Failed to export capture {Id}", captureId);
+                        failedExports.Add(captureId);
+                    }
+                }
+                
+                // Send response back to JavaScript
+                Logger.LogDebug($"Sending response - Exported: {exportedIds.Count}, Failed: {failedExports.Count}");
+                await SendMessageToWebView(new
+                {
+                    action = "exportComplete",
+                    data = new
+                    {
+                        captureIds = exportedIds,
+                        failedIds = failedExports,
+                        successCount = exportedIds.Count,
+                        failureCount = failedExports.Count,
+                        message = exportedIds.Count > 0 
+                            ? $"{exportedIds.Count} Aufnahmen exportiert" 
+                            : "Export fehlgeschlagen"
+                    }
+                });
+                Logger.LogDebug("Response sent to JavaScript");
+                
+                _logger.LogInformation("Export completed: {Success} successful, {Failed} failed", 
+                    exportedIds.Count, failedExports.Count);
+                
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "HandleExportCaptures failed");
+                await SendErrorToWebView($"Export failed: {ex.Message}");
+            }
+        }
+        
+        private async Task HandleOpenSettings()
+        {
+            try
+            {
+                _logger.LogInformation("Opening settings window");
+                
+                // Navigate to settings page
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    webView.CoreWebView2.Navigate("http://localhost:5111/settings.html");
+                });
+                
+                _logger.LogInformation("Navigated to settings page");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to open settings window");
+                await SendErrorToWebView($"Failed to open settings: {ex.Message}");
+            }
+        }
+        
+        private async Task HandleExitApp()
+        {
+            try
+            {
+                _logger.LogInformation("Exit requested from UI");
+                
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    // Close the application
+                    this.Close();
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to exit application");
             }
         }
     }

@@ -97,6 +97,7 @@ namespace SmartBoxNext
     
     public class PacsConfig
     {
+        public bool Enabled { get; set; } = false;
         public string ServerHost { get; set; } = "";
         public int ServerPort { get; set; } = 104;
         public string CalledAeTitle { get; set; } = "PACS";

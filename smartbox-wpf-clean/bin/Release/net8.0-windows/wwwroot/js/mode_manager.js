@@ -45,13 +45,7 @@ class ModeManager {
             this.onEndSession();
         });
         
-        // Listen for exit button
-        const exitButton = document.getElementById('exitButton');
-        if (exitButton) {
-            exitButton.addEventListener('click', () => {
-                this.onExitRequested();
-            });
-        }
+        // Exit button is now handled in app.js to avoid duplicate handlers
         
         console.log('ModeManager: Initialized in', this.currentMode, 'mode');
     }
@@ -243,30 +237,46 @@ class ModeManager {
             const unsavedCaptures = this.captures.filter(c => !c.exported).length;
             
             if (unsavedCaptures > 0) {
-                dialogManager.showConfirmation({
-                    title: 'Anwendung beenden?',
-                    message: unsavedCaptures === 1
-                        ? 'Eine Aufnahme wurde noch nicht exportiert!'
-                        : `${unsavedCaptures} Aufnahmen wurden noch nicht exportiert!`,
-                    cancelText: 'Abbrechen',
-                    confirmText: 'Trotzdem beenden',
-                    confirmStyle: 'danger',
-                    onConfirm: () => this.exitApp(),
-                    onCancel: () => {} // Do nothing
-                });
+                if (dialogManager.showExitConfirmation) {
+                    dialogManager.showExitConfirmation({
+                        message: unsavedCaptures === 1
+                            ? 'Eine Aufnahme wurde noch nicht exportiert!'
+                            : `${unsavedCaptures} Aufnahmen wurden noch nicht exportiert!`,
+                        cancelText: 'Trotzdem beenden',
+                        onConfirm: () => this.exitApp()
+                    });
+                } else {
+                    dialogManager.showConfirmation({
+                        title: 'Anwendung beenden?',
+                        message: unsavedCaptures === 1
+                            ? 'Eine Aufnahme wurde noch nicht exportiert!'
+                            : `${unsavedCaptures} Aufnahmen wurden noch nicht exportiert!`,
+                        cancelText: 'Abbrechen',
+                        confirmText: 'Trotzdem beenden',
+                        confirmStyle: 'danger',
+                        onConfirm: () => this.exitApp(),
+                        onCancel: () => {} // Do nothing
+                    });
+                }
                 return;
             }
         }
         
         // Standard exit confirmation
-        dialogManager.showConfirmation({
-            title: 'Beenden',
-            message: 'SmartBox Next wirklich beenden?',
-            cancelText: 'Abbrechen',
-            confirmText: 'Beenden',
-            onConfirm: () => this.exitApp(),
-            onCancel: () => {} // Do nothing
-        });
+        if (dialogManager.showExitConfirmation) {
+            dialogManager.showExitConfirmation({
+                onConfirm: () => this.exitApp()
+            });
+        } else {
+            dialogManager.showConfirmation({
+                title: 'Beenden',
+                message: 'SmartBox Next wirklich beenden?',
+                cancelText: 'Abbrechen',
+                confirmText: 'Beenden',
+                onConfirm: () => this.exitApp(),
+                onCancel: () => {} // Do nothing
+            });
+        }
     }
 
     /**
@@ -478,10 +488,10 @@ class ModeManager {
         
         // Send exit message to WebView2 host
         if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage({
-                type: 'exit',
+            window.chrome.webview.postMessage(JSON.stringify({
+                type: 'exitApp',
                 data: {}
-            });
+            }));
         } else {
             // Fallback for testing
             window.close();

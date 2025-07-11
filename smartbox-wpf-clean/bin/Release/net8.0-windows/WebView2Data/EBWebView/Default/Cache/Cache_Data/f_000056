@@ -1,509 +1,876 @@
 /**
- * Touch Gestures Manager for SmartBox Next - FIXED VERSION
- * Robust touch/mouse support for WebView2 environment
+ * SmartBox Next Touch Application
+ * Main application controller for touch-optimized medical imaging
  */
 
-class TouchGestureManagerFixed {
+class SmartBoxTouchApp {
     constructor() {
-        this.isEnabled = true;
-        this.pullThreshold = 80;
-        this.swipeThreshold = 50;
-        this.tapHoldThreshold = 500;
-        this.activeGesture = null;
-        this.tapHoldTimer = null;
+        this.isInitialized = false;
+        this.webcamStream = null;
+        this.isRecording = false;
+        this.mediaRecorder = null;
+        this.recordingStart = null;
+        this.recordingTimer = null;
         
-        // Haptic feedback support
-        this.hasHaptics = 'vibrate' in navigator;
+        // Initialize managers
+        this.gestureManager = null;
+        this.dialogManager = null;
+        this.modeManager = null;
         
-        // Debug mode
-        this.debug = true;
+        // MWL data
+        this.mwlData = [];
+        this.filteredMwlData = [];
         
-        this.log('TouchGestureManagerFixed: Starting...');
-        this.initializeGestures();
+        console.log('SmartBoxTouchApp: Starting initialization...');
+        this.initialize();
     }
 
-    log(message) {
-        if (this.debug) {
-            console.log(message);
+    async initialize() {
+        try {
+            // Initialize managers
+            this.gestureManager = new TouchGestureManager();
+            this.dialogManager = new TouchDialogManager();
+            this.modeManager = new ModeManager();
+            
+            // Make dialog manager globally available
+            window.touchDialogManager = this.dialogManager;
+            
+            // Set up event listeners
+            this.setupEventListeners();
+            
+            // Initialize webcam
+            await this.initializeWebcam();
+            
+            // Load initial MWL data
+            await this.loadMWLData();
+            
+            // Set up periodic refresh
+            this.setupPeriodicRefresh();
+            
+            this.isInitialized = true;
+            console.log('SmartBoxTouchApp: Initialization complete');
+            
+            // Hide loading overlay if it exists
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
+            }
+            
+        } catch (error) {
+            console.error('SmartBoxTouchApp: Initialization failed:', error);
+            this.showError('Fehler beim Starten der Anwendung: ' + error.message);
         }
     }
 
-    initializeGestures() {
-        this.log('TouchGestureManagerFixed: Initializing all gestures...');
+    setupEventListeners() {
+        // Gesture events
+        document.addEventListener('mwlRefresh', () => this.onMWLRefresh());
+        document.addEventListener('emergencyPatientSelected', (e) => this.onEmergencyPatientSelected(e));
+        document.addEventListener('capturePhoto', () => this.onCapturePhoto());
+        document.addEventListener('startVideoRecording', () => this.onStartVideoRecording());
+        document.addEventListener('stopVideoRecording', () => this.onStopVideoRecording());
+        document.addEventListener('confirmDeleteThumbnail', (e) => this.onConfirmDeleteThumbnail(e));
         
-        // Wait for DOM to be ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                this.setupGestures();
+        // Mode change events
+        document.addEventListener('modeChanged', (e) => this.onModeChanged(e));
+        document.addEventListener('initializeRecordingWebcam', (e) => this.onInitializeRecordingWebcam(e));
+        
+        // UI events
+        this.setupUIEventListeners();
+        
+        console.log('SmartBoxTouchApp: Event listeners set up');
+    }
+
+    setupUIEventListeners() {
+        // MWL filter
+        const mwlFilter = document.getElementById('mwlFilter');
+        if (mwlFilter) {
+            mwlFilter.addEventListener('input', (e) => this.onMWLFilterChange(e));
+        }
+        
+        // Export button
+        const exportButton = document.getElementById('exportButton');
+        if (exportButton) {
+            exportButton.addEventListener('click', () => this.onExportRequested());
+        }
+        
+        // Settings button
+        const settingsButton = document.getElementById('settingsButton');
+        if (settingsButton) {
+            console.log('Settings button found, adding event listener');
+            settingsButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Settings button clicked');
+                this.openSettings();
             });
         } else {
-            this.setupGestures();
-        }
-    }
-
-    setupGestures() {
-        this.log('TouchGestureManagerFixed: Setting up gestures...');
-        
-        // Pull-to-refresh on MWL
-        this.initPullToRefreshFixed();
-        
-        // Emergency swipe area
-        this.initEmergencySwipeFixed();
-        
-        // Capture area tap/hold
-        this.initCaptureGestures();
-        
-        // Patient card selection (fallback)
-        this.initPatientCardSelection();
-        
-        this.log('TouchGestureManagerFixed: All gestures initialized');
-    }
-
-    /**
-     * Fixed Pull-to-refresh with both touch and mouse support
-     */
-    initPullToRefreshFixed() {
-        const mwlContainer = document.getElementById('mwlScrollContainer');
-        const pullIndicator = document.getElementById('pullToRefresh');
-        
-        if (!mwlContainer) {
-            this.log('TouchGestureManagerFixed: mwlScrollContainer not found - cannot setup pull-to-refresh');
-            return;
+            console.error('Settings button not found!');
         }
         
-        this.setupPullToRefresh(mwlContainer, pullIndicator);
-    }
-
-    setupPullToRefresh(container, indicator) {
-        this.log('TouchGestureManagerFixed: Setting up pull-to-refresh on container');
-        
-        let isPulling = false;
-        let startY = 0;
-        let pullDistance = 0;
-
-        // Touch events
-        container.addEventListener('touchstart', (e) => {
-            this.log('Touch start detected');
-            if (container.scrollTop === 0) {
-                startY = e.touches[0].clientY;
-                isPulling = true;
-                if (indicator) indicator.classList.remove('loading');
-            }
-        });
-
-        container.addEventListener('touchmove', (e) => {
-            if (!isPulling) return;
-            
-            const currentY = e.touches[0].clientY;
-            pullDistance = Math.max(0, currentY - startY);
-            
-            if (pullDistance > 20) { // Start effect earlier
+        // Exit button
+        const exitButton = document.getElementById('exitButton');
+        if (exitButton) {
+            console.log('Exit button found, adding event listener');
+            exitButton.addEventListener('click', (e) => {
                 e.preventDefault();
-                
-                if (indicator) {
-                    indicator.style.transform = `translateY(${pullDistance}px)`;
-                    indicator.classList.add('active');
-                    
-                    if (pullDistance >= this.pullThreshold) {
-                        indicator.classList.add('pulling');
-                        this.hapticFeedback('light');
-                    } else {
-                        indicator.classList.remove('pulling');
-                    }
-                }
-                
-                this.log(`Pull distance: ${pullDistance}px`);
-            }
-        });
-
-        container.addEventListener('touchend', (e) => {
-            if (!isPulling) return;
-            
-            isPulling = false;
-            
-            if (pullDistance >= this.pullThreshold) {
-                this.log('Pull-to-refresh triggered!');
-                this.triggerMWLRefresh();
-                if (indicator) indicator.classList.add('loading');
-                this.hapticFeedback('medium');
-            }
-            
-            // Reset
-            if (indicator) {
-                indicator.style.transform = '';
-                indicator.classList.remove('pulling', 'active');
-            }
-            pullDistance = 0;
-        });
-
-        // Mouse events as fallback
-        container.addEventListener('mousedown', (e) => {
-            if (container.scrollTop === 0) {
-                startY = e.clientY;
-                isPulling = true;
-                this.log('Mouse pull started');
-            }
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isPulling) return;
-            
-            pullDistance = Math.max(0, e.clientY - startY);
-            
-            if (pullDistance > 20) {
-                if (indicator) {
-                    indicator.style.transform = `translateY(${pullDistance}px)`;
-                    indicator.classList.add('active');
-                }
-            }
-        });
-
-        document.addEventListener('mouseup', (e) => {
-            if (!isPulling) return;
-            
-            isPulling = false;
-            
-            if (pullDistance >= this.pullThreshold) {
-                this.log('Mouse pull-to-refresh triggered!');
-                this.triggerMWLRefresh();
-            }
-            
-            if (indicator) {
-                indicator.style.transform = '';
-                indicator.classList.remove('pulling', 'active');
-            }
-            pullDistance = 0;
-        });
-    }
-
-    /**
-     * Fixed Emergency swipe with better element detection
-     */
-    initEmergencySwipeFixed() {
-        const emergencyArea = document.getElementById('emergencySwipe');
-        
-        if (!emergencyArea) {
-            this.log('TouchGestureManagerFixed: Emergency swipe area not found');
-            return;
+                e.stopPropagation();
+                console.log('Exit button clicked');
+                this.onExitRequested();
+            });
+        } else {
+            console.error('Exit button not found!');
         }
         
-        this.log('TouchGestureManagerFixed: Setting up emergency swipe');
-        
-        let startX = 0;
-        let currentX = 0;
-        let isSwipeActive = false;
-
-        // Add visual debug
-        emergencyArea.style.border = '2px dashed orange';
-        emergencyArea.style.minHeight = '60px';
-
-        emergencyArea.addEventListener('touchstart', (e) => {
-            this.log('Emergency touch start');
-            startX = e.touches[0].clientX;
-            currentX = startX;
-            isSwipeActive = true;
-            e.preventDefault();
-        });
-
-        emergencyArea.addEventListener('touchmove', (e) => {
-            if (!isSwipeActive) return;
-            
-            currentX = e.touches[0].clientX;
-            const deltaX = currentX - startX;
-            
-            this.log(`Emergency swipe delta: ${deltaX}px`);
-            
-            // Visual feedback
-            emergencyArea.style.transform = `translateX(${deltaX * 0.3}px)`;
-            e.preventDefault();
-        });
-
-        emergencyArea.addEventListener('touchend', (e) => {
-            if (!isSwipeActive) return;
-            
-            isSwipeActive = false;
-            emergencyArea.style.transform = '';
-            
-            const deltaX = currentX - startX;
-            const absDelta = Math.abs(deltaX);
-            
-            this.log(`Emergency swipe ended, delta: ${deltaX}px`);
-            
-            if (absDelta > this.swipeThreshold) {
-                let selectedType = 'male'; // default
-                
-                // Fix: Check longer swipes first!
-                if (deltaX < -this.swipeThreshold * 2) {
-                    selectedType = 'child';        // Long left swipe: child
-                } else if (deltaX < -this.swipeThreshold) {
-                    selectedType = 'female';       // Medium left swipe: female
-                } else if (deltaX > this.swipeThreshold) {
-                    selectedType = 'male';         // Right swipe: male (explicit)
-                }
-                
-                this.log(`Emergency patient selected: ${selectedType}`);
-                this.selectEmergencyPatient(selectedType);
-                this.hapticFeedback('medium');
-            }
-        });
-
-        // Mouse support
-        emergencyArea.addEventListener('click', (e) => {
-            this.log('Emergency area clicked - selecting default male patient');
-            this.selectEmergencyPatient('male');
-        });
-    }
-
-    /**
-     * Capture area tap and hold gestures with mouse support
-     */
-    initCaptureGestures() {
-        const captureArea = document.getElementById('captureArea');
-        const touchFeedback = document.getElementById('touchFeedback');
-        
-        if (!captureArea) {
-            this.log('TouchGestureManagerFixed: Capture area not found');
-            return;
+        // Back to patient selection button
+        const backButton = document.getElementById('backToPatientSelection');
+        if (backButton) {
+            backButton.addEventListener('click', () => this.onBackToPatientSelection());
         }
-
-        this.log('TouchGestureManagerFixed: Setting up capture gestures');
-
-        // Touch events
-        captureArea.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.log('Touch start on capture area');
-            
-            const touch = e.touches[0];
-            const rect = captureArea.getBoundingClientRect();
-            
-            // Show visual feedback at touch point
-            if (touchFeedback) {
-                touchFeedback.style.left = (touch.clientX - rect.left - 50) + 'px';
-                touchFeedback.style.top = (touch.clientY - rect.top - 50) + 'px';
-                touchFeedback.classList.add('active');
-            }
-            
-            // Start tap/hold timer
-            this.tapHoldTimer = setTimeout(() => {
-                this.log('Hold completed - starting video recording');
-                this.startVideoRecording();
-                this.hapticFeedback('heavy');
-            }, this.tapHoldThreshold);
-            
-            this.hapticFeedback('light');
-        });
-
-        captureArea.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            this.log('Touch end on capture area');
-            
-            // Remove visual feedback
-            if (touchFeedback) {
-                touchFeedback.classList.remove('active');
-            }
-            
-            if (this.tapHoldTimer) {
-                clearTimeout(this.tapHoldTimer);
-                this.tapHoldTimer = null;
-                
-                this.log('Quick tap - taking photo');
-                // It was a tap - take photo
-                this.capturePhoto();
-                this.hapticFeedback('medium');
-            } else {
-                this.log('Hold was completed - stopping video');
-                // Hold was completed - stop video
-                this.stopVideoRecording();
-            }
-        });
-
-        // CRITICAL: Mouse support for desktop testing
-        captureArea.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            this.log('MOUSE DOWN detected on capture area!');
-            
-            // Show visual feedback at mouse point
-            if (touchFeedback) {
-                const rect = captureArea.getBoundingClientRect();
-                touchFeedback.style.left = (e.clientX - rect.left - 50) + 'px';
-                touchFeedback.style.top = (e.clientY - rect.top - 50) + 'px';
-                touchFeedback.classList.add('active');
-            }
-            
-            // Start tap/hold timer
-            this.tapHoldTimer = setTimeout(() => {
-                this.log('Mouse hold completed - starting video recording');
-                this.startVideoRecording();
-                this.hapticFeedback('heavy');
-            }, this.tapHoldThreshold);
-            
-            this.hapticFeedback('light');
-        });
-
-        captureArea.addEventListener('mouseup', (e) => {
-            e.preventDefault();
-            this.log('MOUSE UP detected!');
-            
-            // Remove visual feedback
-            if (touchFeedback) {
-                touchFeedback.classList.remove('active');
-            }
-            
-            if (this.tapHoldTimer) {
-                clearTimeout(this.tapHoldTimer);
-                this.tapHoldTimer = null;
-                
-                this.log('Quick MOUSE CLICK - taking photo');
-                // It was a click - take photo
-                this.capturePhoto();
-                this.hapticFeedback('medium');
-            } else {
-                this.log('Mouse hold was completed - stopping video');
-                // Hold was completed - stop video
-                this.stopVideoRecording();
-            }
-        });
-    }
-
-    /**
-     * Simple patient card selection as fallback
-     */
-    initPatientCardSelection() {
+        
+        // Patient card clicks
         document.addEventListener('click', (e) => {
             const patientCard = e.target.closest('.patient-card');
             if (patientCard) {
-                this.log('Patient card clicked:', patientCard.dataset.patientId);
-                
-                // Visual feedback
-                patientCard.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    patientCard.style.transform = '';
-                }, 150);
-                
-                this.hapticFeedback('light');
+                this.onPatientCardClick(patientCard);
             }
         });
     }
 
-    /**
-     * Trigger MWL refresh
-     */
-    triggerMWLRefresh() {
-        this.log('TouchGestureManagerFixed: Triggering MWL refresh...');
-        
-        const pullIndicator = document.getElementById('pullToRefresh');
-        if (pullIndicator) {
-            pullIndicator.classList.add('active', 'loading');
+    async initializeWebcam() {
+        try {
+            console.log('SmartBoxTouchApp: Initializing webcam...');
             
-            // Show visual feedback
-            setTimeout(() => {
-                pullIndicator.classList.remove('active', 'loading');
-                this.log('MWL refresh animation complete');
-            }, 2000);
-        }
-        
-        // Emit event for app to handle
-        this.emitEvent('mwlRefresh');
-        
-        // Also try to reload the demo data directly
-        if (window.smartBoxApp && window.smartBoxApp.loadMWLData) {
-            setTimeout(() => {
-                window.smartBoxApp.loadMWLData();
-            }, 500);
+            const constraints = {
+                video: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 960 },
+                    facingMode: 'user'
+                },
+                audio: false // Disable audio for now to avoid permission issues
+            };
+            
+            this.webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            // Initialize small preview
+            const smallPreview = document.getElementById('webcamPreviewSmall');
+            if (smallPreview) {
+                smallPreview.srcObject = this.webcamStream;
+                
+                // Hide overlay when webcam starts
+                smallPreview.addEventListener('loadedmetadata', () => {
+                    const overlay = smallPreview.parentElement.querySelector('.preview-overlay');
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                    }
+                    console.log('SmartBoxTouchApp: Webcam preview started');
+                });
+                
+                // Show overlay if webcam fails
+                smallPreview.addEventListener('error', () => {
+                    const overlay = smallPreview.parentElement.querySelector('.preview-overlay');
+                    if (overlay) {
+                        overlay.style.display = 'flex';
+                        overlay.innerHTML = '<i class="ms-Icon ms-Icon--Warning"></i><span>Kamera-Fehler</span>';
+                    }
+                });
+            }
+            
+            console.log('SmartBoxTouchApp: Webcam initialized');
+            
+        } catch (error) {
+            console.error('SmartBoxTouchApp: Webcam initialization failed:', error);
+            
+            // Show error in overlay instead of alert
+            const smallPreview = document.getElementById('webcamPreviewSmall');
+            if (smallPreview) {
+                const overlay = smallPreview.parentElement.querySelector('.preview-overlay');
+                if (overlay) {
+                    overlay.innerHTML = '<i class="ms-Icon ms-Icon--Warning"></i><span>Kamera nicht verfügbar</span>';
+                }
+            }
         }
     }
 
-    /**
-     * Select emergency patient
-     */
-    selectEmergencyPatient(type) {
-        this.log(`TouchGestureManagerFixed: Emergency patient selected: ${type}`);
-        
-        // Show visual confirmation
-        const emergencyArea = document.getElementById('emergencySwipe');
-        if (emergencyArea) {
-            emergencyArea.style.backgroundColor = '#28a745';
-            emergencyArea.innerHTML = `<div style="padding: 20px; color: white; text-align: center; font-weight: bold;">Notfall ${type} ausgewählt!</div>`;
-            
-            setTimeout(() => {
-                emergencyArea.style.backgroundColor = '';
-                emergencyArea.innerHTML = `
-                    <div class="emergency-options">
-                        <div class="emergency-option" data-type="male">Mann</div>
-                        <div class="emergency-option" data-type="female">Frau</div>
-                        <div class="emergency-option" data-type="child">Kind</div>
-                    </div>
-                `;
-            }, 2000);
+    async onInitializeRecordingWebcam(event) {
+        const videoElement = event.detail.videoElement;
+        if (videoElement && this.webcamStream) {
+            videoElement.srcObject = this.webcamStream;
+            console.log('SmartBoxTouchApp: Recording webcam initialized');
         }
-        
-        this.emitEvent('emergencyPatientSelected', { type: type });
     }
 
-    /**
-     * Haptic feedback
-     */
-    hapticFeedback(intensity = 'light') {
-        if (!this.hasHaptics) {
-            this.log(`Haptic feedback: ${intensity} (not supported)`);
+    async loadMWLData() {
+        try {
+            console.log('SmartBoxTouchApp: Loading MWL data...');
+            
+            // Always show demo data first for immediate UI feedback
+            this.onMWLDataReceived(this.getDemoMWLData());
+            
+            // Send request to WebView2 host for real data
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage(JSON.stringify({
+                    type: 'loadMWL',
+                    data: {}
+                }));
+                
+                // Set timeout to ensure demo data shows if no response
+                setTimeout(() => {
+                    if (this.mwlData.length <= 3) {
+                        console.log('SmartBoxTouchApp: No MWL response, keeping demo data');
+                    }
+                }, 2000);
+            }
+            
+        } catch (error) {
+            console.error('SmartBoxTouchApp: MWL loading failed:', error);
+            // Still show demo data on error
+            this.onMWLDataReceived(this.getDemoMWLData());
+        }
+    }
+
+    onMWLDataReceived(mwlData) {
+        console.log('SmartBoxTouchApp: MWL data received:', mwlData.length, 'entries');
+        
+        this.mwlData = mwlData;
+        this.filteredMwlData = [...mwlData];
+        this.renderMWLCards();
+    }
+
+    renderMWLCards() {
+        const mwlCards = document.getElementById('mwlCards');
+        if (!mwlCards) return;
+        
+        // Clear existing cards
+        mwlCards.innerHTML = '';
+        
+        // Render filtered cards
+        this.filteredMwlData.forEach(patient => {
+            const card = this.createPatientCard(patient);
+            mwlCards.appendChild(card);
+        });
+        
+        console.log('SmartBoxTouchApp: Rendered', this.filteredMwlData.length, 'patient cards');
+    }
+
+    createPatientCard(patient) {
+        const card = document.createElement('div');
+        card.className = 'patient-card';
+        card.dataset.patientId = patient.id;
+        
+        card.innerHTML = `
+            <div class="patient-info">
+                <div class="patient-name">
+                    <i class="ms-Icon ms-Icon--Contact"></i>
+                    <span>${patient.name}</span>
+                </div>
+                <div class="patient-details">
+                    <span class="patient-birth">
+                        <i class="ms-Icon ms-Icon--Cake"></i>
+                        ${patient.birthDate}
+                    </span>
+                    <span class="patient-study">
+                        <i class="ms-Icon ms-Icon--Medical"></i>
+                        ${patient.studyType}
+                    </span>
+                    <span class="patient-time">
+                        <i class="ms-Icon ms-Icon--Clock"></i>
+                        ${patient.scheduledTime}
+                    </span>
+                </div>
+            </div>
+            <div class="card-action">
+                <span>Antippen zum Auswählen</span>
+            </div>
+        `;
+        
+        return card;
+    }
+
+    onPatientCardClick(card) {
+        const patientId = card.dataset.patientId;
+        const patient = this.mwlData.find(p => p.id === patientId);
+        
+        if (patient) {
+            console.log('SmartBoxTouchApp: Patient selected:', patient.name);
+            
+            // Add visual feedback
+            card.classList.add('selected');
+            
+            // Emit patient selection event
+            document.dispatchEvent(new CustomEvent('patientSelected', {
+                detail: patient
+            }));
+        }
+    }
+
+    onEmergencyPatientSelected(event) {
+        console.log('SmartBoxTouchApp: Emergency patient selected:', event.detail.type);
+        // The mode manager handles this
+    }
+
+    onMWLFilterChange(event) {
+        const filterText = event.target.value.toLowerCase().trim();
+        
+        if (filterText === '') {
+            this.filteredMwlData = [...this.mwlData];
+        } else {
+            this.filteredMwlData = this.mwlData.filter(patient => 
+                patient.name.toLowerCase().includes(filterText) ||
+                patient.studyType.toLowerCase().includes(filterText) ||
+                patient.id.toLowerCase().includes(filterText)
+            );
+        }
+        
+        this.renderMWLCards();
+    }
+
+    onMWLRefresh() {
+        console.log('SmartBoxTouchApp: MWL refresh requested');
+        this.loadMWLData();
+    }
+
+    onModeChanged(event) {
+        console.log('SmartBoxTouchApp: Mode changed to:', event.detail.currentMode);
+        
+        if (event.detail.currentMode === 'recording') {
+            // Reset recording state
+            this.isRecording = false;
+            this.updateRecordingUI();
+        }
+    }
+
+    async onCapturePhoto() {
+        try {
+            console.log('SmartBoxTouchApp: Capturing photo...');
+            
+            const video = document.getElementById('webcamPreviewLarge');
+            const canvas = document.getElementById('captureCanvas');
+            
+            if (!video || !canvas) {
+                throw new Error('Capture elements not found');
+            }
+            
+            // Set canvas size to video size
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            // Draw video frame to canvas
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            // Get image data
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Create thumbnail
+            const thumbnailCanvas = document.createElement('canvas');
+            thumbnailCanvas.width = 160;
+            thumbnailCanvas.height = 120;
+            const thumbCtx = thumbnailCanvas.getContext('2d');
+            thumbCtx.drawImage(video, 0, 0, 160, 120);
+            const thumbnail = thumbnailCanvas.toDataURL('image/jpeg', 0.6);
+            
+            // Add capture to mode manager
+            const captureId = this.modeManager.addCapture({
+                type: 'photo',
+                data: imageData,
+                thumbnail: thumbnail
+            });
+            
+            // Send to WebView2 host for processing
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage(JSON.stringify({
+                    type: 'capturePhoto',
+                    data: {
+                        captureId: captureId,
+                        imageData: imageData,
+                        patient: this.modeManager.getCurrentPatient()
+                    }
+                }));
+            }
+            
+            console.log('SmartBoxTouchApp: Photo captured successfully');
+            
+        } catch (error) {
+            console.error('SmartBoxTouchApp: Photo capture failed:', error);
+            this.showError('Foto konnte nicht aufgenommen werden: ' + error.message);
+        }
+    }
+
+    async onStartVideoRecording() {
+        try {
+            if (this.isRecording) return;
+            
+            console.log('SmartBoxTouchApp: Starting video recording...');
+            
+            if (!this.webcamStream) {
+                throw new Error('Webcam not available');
+            }
+            
+            // Create media recorder
+            this.mediaRecorder = new MediaRecorder(this.webcamStream, {
+                mimeType: 'video/webm;codecs=vp8'
+            });
+            
+            this.recordedChunks = [];
+            
+            this.mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    this.recordedChunks.push(event.data);
+                }
+            };
+            
+            this.mediaRecorder.onstop = () => {
+                this.onVideoRecordingComplete();
+            };
+            
+            // Start recording
+            this.mediaRecorder.start();
+            this.isRecording = true;
+            this.recordingStart = Date.now();
+            
+            // Update UI
+            this.updateRecordingUI();
+            this.startRecordingTimer();
+            
+            console.log('SmartBoxTouchApp: Video recording started');
+            
+        } catch (error) {
+            console.error('SmartBoxTouchApp: Video recording start failed:', error);
+            this.showError('Video-Aufnahme konnte nicht gestartet werden: ' + error.message);
+        }
+    }
+
+    onStopVideoRecording() {
+        if (!this.isRecording || !this.mediaRecorder) return;
+        
+        console.log('SmartBoxTouchApp: Stopping video recording...');
+        
+        this.mediaRecorder.stop();
+        this.isRecording = false;
+        this.stopRecordingTimer();
+        this.updateRecordingUI();
+    }
+
+    onVideoRecordingComplete() {
+        try {
+            const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+            const videoUrl = URL.createObjectURL(blob);
+            
+            // Create thumbnail from video
+            this.createVideoThumbnail(videoUrl).then(thumbnail => {
+                const duration = Math.round((Date.now() - this.recordingStart) / 1000);
+                
+                // Add capture to mode manager
+                const captureId = this.modeManager.addCapture({
+                    type: 'video',
+                    data: videoUrl,
+                    thumbnail: thumbnail,
+                    duration: duration
+                });
+                
+                // Send to WebView2 host for processing
+                if (window.chrome && window.chrome.webview) {
+                    // Convert blob to base64 for transmission
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        window.chrome.webview.postMessage(JSON.stringify({
+                            type: 'captureVideo',
+                            data: {
+                                captureId: captureId,
+                                videoData: reader.result,
+                                duration: duration,
+                                patient: this.modeManager.getCurrentPatient()
+                            }
+                        }));
+                    };
+                    reader.readAsDataURL(blob);
+                }
+                
+                console.log('SmartBoxTouchApp: Video recording completed, duration:', duration, 'seconds');
+            });
+            
+        } catch (error) {
+            console.error('SmartBoxTouchApp: Video processing failed:', error);
+            this.showError('Video konnte nicht verarbeitet werden: ' + error.message);
+        }
+    }
+
+    async createVideoThumbnail(videoUrl) {
+        return new Promise((resolve) => {
+            const video = document.createElement('video');
+            video.src = videoUrl;
+            video.currentTime = 1; // Get frame at 1 second
+            
+            video.onloadeddata = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 160;
+                canvas.height = 120;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, 160, 120);
+                resolve(canvas.toDataURL('image/jpeg', 0.6));
+            };
+        });
+    }
+
+    updateRecordingUI() {
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        const captureHint = document.getElementById('captureHint');
+        
+        if (this.isRecording) {
+            recordingIndicator?.classList.remove('hidden');
+            captureHint?.classList.add('hidden');
+        } else {
+            recordingIndicator?.classList.add('hidden');
+            captureHint?.classList.remove('hidden');
+        }
+    }
+
+    startRecordingTimer() {
+        this.recordingTimer = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - this.recordingStart) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            
+            const timeText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            const recordingTime = document.getElementById('recordingTime');
+            if (recordingTime) {
+                recordingTime.textContent = timeText;
+            }
+        }, 1000);
+    }
+
+    stopRecordingTimer() {
+        if (this.recordingTimer) {
+            clearInterval(this.recordingTimer);
+            this.recordingTimer = null;
+        }
+    }
+
+    onConfirmDeleteThumbnail(event) {
+        const { index, element } = event.detail;
+        
+        this.dialogManager.confirmDelete('Aufnahme').then((confirmed) => {
+            if (confirmed) {
+                const captureId = element.dataset.captureId;
+                this.modeManager.removeCapture(parseInt(captureId));
+                console.log('SmartBoxTouchApp: Thumbnail deleted:', index);
+            }
+        });
+    }
+
+    onExportRequested() {
+        const captures = this.modeManager.getCurrentCaptures();
+        const unexportedCaptures = captures.filter(c => !c.exported);
+        
+        if (unexportedCaptures.length === 0) {
+            this.showError('Keine Aufnahmen zum Exportieren vorhanden.');
             return;
         }
         
-        const patterns = {
-            light: 10,
-            medium: 50,
-            heavy: 100
-        };
-        
-        navigator.vibrate(patterns[intensity] || 10);
-        this.log(`Haptic feedback: ${intensity}`);
-    }
-
-    /**
-     * Emit custom events
-     */
-    emitEvent(eventName, data = {}) {
-        this.log(`Emitting event: ${eventName}`, data);
-        
-        const event = new CustomEvent(eventName, { 
-            detail: data,
-            bubbles: true 
+        this.dialogManager.confirmExport(unexportedCaptures.length).then((confirmed) => {
+            if (confirmed) {
+                this.exportCaptures(unexportedCaptures);
+            }
         });
-        document.dispatchEvent(event);
     }
 
-    /**
-     * Capture photo
-     */
-    capturePhoto() {
-        this.log('TouchGestureManagerFixed: Capturing photo...');
-        this.emitEvent('capturePhoto');
+    async exportCaptures(captures) {
+        try {
+            console.log('SmartBoxTouchApp: Exporting', captures.length, 'captures...');
+            
+            // Show loading dialog
+            const message = captures.length === 1 
+                ? 'Aufnahme wird exportiert...' 
+                : `${captures.length} Aufnahmen werden exportiert...`;
+            
+            try {
+                this.dialogManager.showLoading({ message });
+                console.log('SmartBoxTouchApp: Loading dialog shown successfully');
+            } catch (dialogError) {
+                console.error('SmartBoxTouchApp: Dialog error (continuing anyway):', dialogError);
+            }
+            
+            // Send export request to WebView2 host
+            if (window.chrome && window.chrome.webview) {
+                console.log('SmartBoxTouchApp: Sending exportCaptures message to C#...');
+                const messageData = {
+                    type: 'exportCaptures',
+                    data: {
+                        captures: captures.map(c => ({ id: c.id, type: c.type })),
+                        patient: this.modeManager.getCurrentPatient()
+                    }
+                };
+                console.log('SmartBoxTouchApp: Message data:', messageData);
+                console.log('SmartBoxTouchApp: JSON stringified:', JSON.stringify(messageData));
+                
+                try {
+                    // WebView2 expects a string, not an object!
+                    const messageString = JSON.stringify(messageData);
+                    window.chrome.webview.postMessage(messageString);
+                    console.log('SmartBoxTouchApp: Message sent successfully');
+                } catch (postError) {
+                    console.error('SmartBoxTouchApp: Failed to post message:', postError);
+                    console.error('SmartBoxTouchApp: Message type:', typeof messageData);
+                    console.error('SmartBoxTouchApp: Message keys:', Object.keys(messageData));
+                }
+            } else {
+                // Simulate export for testing
+                setTimeout(() => {
+                    this.onExportComplete(captures.map(c => c.id));
+                }, 3000);
+            }
+            
+        } catch (error) {
+            console.error('SmartBoxTouchApp: Export failed:', error);
+            this.dialogManager.dismiss();
+            this.showError('Export fehlgeschlagen: ' + error.message);
+        }
     }
 
-    /**
-     * Start video recording
-     */
-    startVideoRecording() {
-        this.log('TouchGestureManagerFixed: Starting video recording...');
-        this.emitEvent('startVideoRecording');
+    onExportComplete(captureIds) {
+        this.dialogManager.dismiss();
+        this.modeManager.markCapturesExported(captureIds);
+        
+        const message = captureIds.length === 1 
+            ? 'Aufnahme erfolgreich exportiert.'
+            : `${captureIds.length} Aufnahmen erfolgreich exportiert.`;
+        
+        this.dialogManager.showSuccess({ message });
+        
+        console.log('SmartBoxTouchApp: Export completed for', captureIds.length, 'captures');
     }
 
-    /**
-     * Stop video recording
-     */
-    stopVideoRecording() {
-        this.log('TouchGestureManagerFixed: Stopping video recording...');
-        this.emitEvent('stopVideoRecording');
+    setupPeriodicRefresh() {
+        // Refresh MWL every 5 minutes
+        setInterval(() => {
+            if (this.modeManager.getCurrentMode() === 'patient') {
+                this.loadMWLData();
+            }
+        }, 5 * 60 * 1000);
     }
 
-    /**
-     * Enable/disable gestures
-     */
-    setEnabled(enabled) {
-        this.isEnabled = enabled;
-        this.log('TouchGestureManagerFixed: Gestures', enabled ? 'enabled' : 'disabled');
+    showError(message) {
+        if (this.dialogManager) {
+            this.dialogManager.error(message);
+        } else {
+            alert(message);
+        }
+    }
+    
+    openSettings() {
+        console.log('Settings button clicked - openSettings called');
+        if (window.chrome && window.chrome.webview) {
+            console.log('Sending openSettings message to WebView2');
+            window.chrome.webview.postMessage(JSON.stringify({
+                type: 'openSettings',
+                data: {}
+            }));
+        } else {
+            console.warn('WebView2 not available - cannot open settings');
+            alert('Settings können nicht geöffnet werden - WebView2 nicht verfügbar');
+        }
+    }
+    
+    onExitRequested() {
+        console.log('Exit requested - app.js onExitRequested called');
+        
+        // Delegate to mode manager which handles the exit logic including
+        // checking for unsaved captures
+        if (this.modeManager && this.modeManager.onExitRequested) {
+            console.log('Delegating to mode manager exit handler');
+            this.modeManager.onExitRequested();
+        } else {
+            // Fallback if mode manager not available
+            console.log('Mode manager not available, using fallback exit');
+            if (!this.dialogManager) {
+                console.error('DialogManager not available!');
+                return;
+            }
+            
+            this.dialogManager.showConfirmation({
+                title: 'Anwendung beenden',
+                message: 'Möchten Sie SmartBox wirklich beenden?',
+                confirmText: 'Beenden',
+                cancelText: 'Abbrechen',
+                confirmStyle: 'danger',
+                onConfirm: () => {
+                    console.log('Exit confirmed - sending exitApp message');
+                    if (window.chrome && window.chrome.webview) {
+                        window.chrome.webview.postMessage(JSON.stringify({
+                            type: 'exitApp',
+                            data: {}
+                        }));
+                    }
+                }
+            });
+        }
+    }
+    
+    onBackToPatientSelection() {
+        console.log('SmartBoxTouchApp: Back to patient selection requested');
+        
+        // Check if recording is in progress
+        if (this.isRecording) {
+            this.dialogManager.showConfirmation({
+                title: 'Aufnahme abbrechen?',
+                message: 'Die laufende Video-Aufnahme wird gestoppt. Fortfahren?',
+                confirmText: 'Ja, zurück',
+                cancelText: 'Weiter aufnehmen',
+                confirmStyle: 'danger',
+                onConfirm: () => {
+                    this.stopVideoRecording();
+                    this.switchToPatientMode();
+                }
+            });
+        } else {
+            // Check for unsaved captures
+            const captures = this.modeManager.getCurrentCaptures();
+            const unexportedCaptures = captures.filter(c => !c.exported);
+            
+            if (unexportedCaptures.length > 0) {
+                const message = unexportedCaptures.length === 1
+                    ? 'Eine Aufnahme wurde noch nicht exportiert. Trotzdem zurück?'
+                    : `${unexportedCaptures.length} Aufnahmen wurden noch nicht exportiert. Trotzdem zurück?`;
+                
+                this.dialogManager.showConfirmation({
+                    title: 'Ungespeicherte Aufnahmen',
+                    message: message,
+                    confirmText: 'Ja, zurück',
+                    cancelText: 'Bleiben',
+                    confirmStyle: 'danger',
+                    onConfirm: () => this.switchToPatientMode()
+                });
+            } else {
+                this.switchToPatientMode();
+            }
+        }
+    }
+    
+    switchToPatientMode() {
+        console.log('SmartBoxTouchApp: Switching to patient selection mode');
+        
+        // Reset current patient
+        if (this.modeManager) {
+            this.modeManager.setCurrentPatient(null);
+        }
+        
+        // Switch modes via mode manager
+        if (this.modeManager && this.modeManager.switchToMode) {
+            this.modeManager.switchToMode('patient');
+        } else {
+            // Fallback: manual mode switching
+            document.getElementById('recordingMode').classList.add('hidden');
+            document.getElementById('patientMode').classList.remove('hidden');
+            
+            // Update header
+            const patientStatus = document.getElementById('patientStatusText');
+            if (patientStatus) {
+                patientStatus.textContent = 'Kein Patient';
+            }
+        }
+    }
+
+    getDemoMWLData() {
+        return [
+            {
+                id: '12345678',
+                name: 'Müller, Hans',
+                birthDate: '12.05.1965',
+                studyType: 'Endoskopie',
+                scheduledTime: '14:00 Uhr',
+                accessionNumber: 'ACC-001',
+                studyDescription: 'Gastroskopie'
+            },
+            {
+                id: '23456789',
+                name: 'Schmidt, Maria',
+                birthDate: '23.08.1978',
+                studyType: 'Radiographie',
+                scheduledTime: '14:30 Uhr',
+                accessionNumber: 'ACC-002',
+                studyDescription: 'Thorax-Röntgen'
+            },
+            {
+                id: '34567890',
+                name: 'Weber, Klaus',
+                birthDate: '01.01.1990',
+                studyType: 'Sonographie',
+                scheduledTime: '15:00 Uhr',
+                accessionNumber: 'ACC-003',
+                studyDescription: 'Abdomen-Ultraschall'
+            }
+        ];
     }
 }
 
-// Replace the old manager
-window.TouchGestureManager = TouchGestureManagerFixed;
+// WebView2 message handler
+if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.addEventListener('message', (event) => {
+        const { type, data } = event.data;
+        
+        switch (type) {
+            case 'mwlData':
+                if (window.smartBoxApp) {
+                    window.smartBoxApp.onMWLDataReceived(data);
+                }
+                break;
+                
+            case 'exportComplete':
+                if (window.smartBoxApp) {
+                    window.smartBoxApp.onExportComplete(data.captureIds);
+                }
+                break;
+                
+            default:
+                console.log('SmartBoxTouchApp: Unknown message type:', type);
+        }
+    });
+}
+
+// Global function to receive messages from C#
+window.receiveMessage = function(message) {
+    console.log('Received message from C#:', message);
+    
+    if (!window.smartBoxApp) {
+        console.warn('App not initialized yet, queuing message');
+        return;
+    }
+    
+    // Handle different message types
+    switch (message.action || message.type) {
+        case 'exportComplete':
+            if (window.smartBoxApp.onExportComplete && message.data && message.data.captureIds) {
+                window.smartBoxApp.onExportComplete(message.data.captureIds);
+            }
+            break;
+        case 'error':
+            console.error('Error from C#:', message.message);
+            if (window.smartBoxApp.dialogManager) {
+                window.smartBoxApp.dialogManager.dismiss();
+                window.smartBoxApp.dialogManager.error(message.message);
+            }
+            break;
+        case 'success':
+            console.log('Success from C#:', message.message);
+            break;
+        case 'showSettings':
+            console.log('Settings data received from C#');
+            // For now, just log the settings - you can implement a settings UI here
+            if (message.config) {
+                console.log('Current settings:', message.config);
+                alert('Settings-Seite wird noch implementiert.\n\nAktuelle Einstellungen wurden in der Konsole ausgegeben.');
+            }
+            break;
+        default:
+            console.log('Unknown message type:', message.action || message.type);
+    }
+};
+
+// Initialize app when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.smartBoxApp = new SmartBoxTouchApp();
+});
+
+console.log('SmartBoxTouchApp: Script loaded');

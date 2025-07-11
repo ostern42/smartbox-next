@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyboard Test - AltGr/Shift Fix</title>
+    <link rel="stylesheet" href="keyboard.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #0078d4;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .test-item {
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .key-combo {
+            font-weight: bold;
+            color: #0078d4;
+        }
+    </style>
+</head>
+<body>
+    <h1>Keyboard Test - AltGr/Shift Character Display</h1>
+    
+    <div class="test-section">
+        <h2>Test Input Fields</h2>
+        <input type="text" class="test-input use-keyboard" placeholder="Click here to test keyboard">
+        <input type="text" class="test-input use-keyboard" placeholder="Another test field">
+    </div>
+
+    <div class="test-section">
+        <h2>Expected Characters</h2>
+        
+        <h3>Shift Characters:</h3>
+        <div class="test-grid">
+            <div class="test-item"><span class="key-combo">Shift+1</span> → !</div>
+            <div class="test-item"><span class="key-combo">Shift+2</span> → "</div>
+            <div class="test-item"><span class="key-combo">Shift+3</span> → §</div>
+            <div class="test-item"><span class="key-combo">Shift+4</span> → $</div>
+            <div class="test-item"><span class="key-combo">Shift+5</span> → %</div>
+            <div class="test-item"><span class="key-combo">Shift+6</span> → &</div>
+            <div class="test-item"><span class="key-combo">Shift+7</span> → /</div>
+            <div class="test-item"><span class="key-combo">Shift+8</span> → (</div>
+            <div class="test-item"><span class="key-combo">Shift+9</span> → )</div>
+            <div class="test-item"><span class="key-combo">Shift+0</span> → =</div>
+        </div>
+
+        <h3>AltGr Characters:</h3>
+        <div class="test-grid">
+            <div class="test-item"><span class="key-combo">AltGr+q</span> → @</div>
+            <div class="test-item"><span class="key-combo">AltGr+e</span> → €</div>
+            <div class="test-item"><span class="key-combo">AltGr+7</span> → {</div>
+            <div class="test-item"><span class="key-combo">AltGr+8</span> → [</div>
+            <div class="test-item"><span class="key-combo">AltGr+9</span> → ]</div>
+            <div class="test-item"><span class="key-combo">AltGr+0</span> → }</div>
+            <div class="test-item"><span class="key-combo">AltGr+ß</span> → \</div>
+            <div class="test-item"><span class="key-combo">AltGr+<</span> → |</div>
+            <div class="test-item"><span class="key-combo">AltGr+m</span> → µ</div>
+            <div class="test-item"><span class="key-combo">AltGr+2</span> → ²</div>
+            <div class="test-item"><span class="key-combo">AltGr+3</span> → ³</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Instructions</h2>
+        <ol>
+            <li>Click on an input field to open the keyboard</li>
+            <li>Press <strong>Shift</strong> - all number keys should show !"§$%&/()</li>
+            <li>Press <strong>AltGr</strong> - keys should show @€{[]}\ etc.</li>
+            <li>Lock Shift/AltGr - characters should stay visible</li>
+            <li>Test typing special characters</li>
+        </ol>
+    </div>
+
+    <script src="keyboard.js"></script>
+    <script>
+        // Initialize keyboard
+        const keyboard = new TouchKeyboard();
+        
+        // Log keyboard state changes
+        const originalToggleShift = keyboard.toggleShift.bind(keyboard);
+        keyboard.toggleShift = function() {
+            originalToggleShift();
+            console.log('Shift active:', this.isShiftActive);
+        };
+        
+        const originalToggleAltGr = keyboard.toggleAltGr.bind(keyboard);
+        keyboard.toggleAltGr = function() {
+            originalToggleAltGr();
+            console.log('AltGr active:', this.isAltGrActive);
+        };
+    </script>
+</body>
+</html>

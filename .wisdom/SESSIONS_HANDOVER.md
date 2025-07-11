@@ -5,6 +5,7 @@
 
 ## 📋 Quick Navigation
 
+- [Session 25](#session-25) - 2025-07-11 - UI Mapping & Settings Debug
 - [Session 21](#session-21) - 2025-01-09 00:00 - SMARTBOXNEXT-2025-01-09-01
 - [Session 20](#session-20) - 2025-07-08 19:35 - SMARTBOXNEXT-2025-07-08-01
 - [Session 19](#session-19) - 2025-07-08 11:40 - SMARTBOXNEXT-2025-07-08-02
@@ -22,6 +23,78 @@
 - [Session 5](#session-5) - 2025-07-06 21:44 - DICOM Integration
 - [Session 4](#session-4) - 2025-07-06 21:11 - Basic Structure
 - [Session 3](#session-3) - 2025-07-06 18:28 - Project Setup
+
+---
+
+## Session 25
+**Date**: 2025-07-11
+**Session ID**: SMARTBOXNEXT-2025-07-11-01  
+**Focus**: UI Mapping Analysis & Settings Debug
+**Tokens**: ~35k/150k
+
+### 🔍 Analysis Completed
+- **Created UI_BUTTON_MAPPING.md** - Complete mapping of all UI elements
+- **Created UI_MAPPING_TABLE.md** in smartbox-wpf-fresh
+- **Identified Critical Issues**:
+  1. Settings button works BUT MWL section completely missing
+  2. Field naming convention chaos (kebab-case vs camelCase)
+  3. No debug logging in critical paths
+
+### 🚨 Critical Findings
+
+#### Settings Implementation Status
+- ✅ Settings button navigates to settings.html
+- ✅ Basic sections present (Storage, PACS, Video, Application)
+- ❌ MWL (Modality Worklist) section COMPLETELY MISSING
+- ❌ Field IDs don't match save/load pattern
+- ❌ Test MWL Connection handler not implemented in C#
+
+#### Field Naming Issues
+```html
+<!-- Current (WRONG) -->
+<input id="photos-path" name="photos-path">
+
+<!-- Should be -->
+<input id="storage-photosPath" name="storage-photosPath">
+```
+
+### 📝 Created Documentation
+1. **UI_MAPPING_TABLE.md** - Master reference for all UI/JS/C# mappings
+2. **UI_BUTTON_MAPPING.md** - Quick reference in .wisdom folder
+3. **app-debug-enhanced.js** - Comprehensive debug logging module
+
+### 🎯 Next Steps (Priority Order)
+1. **Add MWL Settings Section** to settings.html with all fields
+2. **Fix Field Naming Convention** - use `section-fieldName` pattern
+3. **Implement HandleTestMwlConnection** in MainWindow.xaml.cs
+4. **Test Complete Settings Cycle** - load, edit, save, verify
+5. **Test PACS Send** once settings are working
+
+### 💡 Quick Fixes Available
+```javascript
+// To debug button mappings in F12:
+debugButtonMappings();
+
+// To test any action:
+testAction('opensettings', {});
+```
+
+### 🔧 Oliver Action Items
+1. Check if you want direct navigation or C# handler for settings
+2. Confirm field naming pattern preference
+3. Test with enhanced debug logging enabled
+
+### 📐 UI Refactoring Plan Created
+- **Problem**: 3-Schritt-Verkabelung (HTML → JS → C#) ist zu komplex
+- **Lösung**: data-action System - nur noch HTML + C# pflegen!
+- **Plan**: `/smartbox-wpf-clean/UI_REFACTORING_PLAN.md`
+- **Benefit**: Neue Buttons nur noch `<button data-action="myaction">` statt 3 Stellen
+
+### 🐛 Keyboard Bug Documented
+- **Issue**: AltGr/Shift characters not visible on on-screen keyboard
+- **Impact**: Can't see @€$%& etc. when modifiers pressed
+- **Documented**: `/smartbox-wpf-clean/KEYBOARD_ALTGR_BUG.md`
+- **Fix**: updateKeyLabels() needs AltGr logic
 
 ---
 
@@ -297,3 +370,52 @@ Sometimes the indirect path (browser) is better than direct (Windows APIs)
 ---
 
 *Note: Sessions 1-2 and 11, 13 appear to be missing from documentation*
+
+## Session 25 - Complete Summary
+**Date**: 2025-07-11 01:45
+**Session ID**: SMARTBOXNEXT-2025-07-11-01
+**Duration**: ~2.5 hours
+**Tokens**: ~85k/150k
+
+### ✅ Major Achievements
+1. **Complete UI/JS/C# Mapping Analysis**
+   - Documented every button and action flow
+   - Created UI_COMPLETE_FLOW_ANALYSIS.md
+   - Created UI_MAINTENANCE_GUIDE.md
+   - Identified message type mismatches
+
+2. **UI Refactoring Plan**
+   - Created comprehensive 6-phase plan
+   - data-action pattern to eliminate JS event listeners
+   - Reduces 3-step to 2-step process
+
+3. **Keyboard Fix**
+   - Fixed AltGr/Shift character display
+   - updateKeyLabels() now handles all modifiers
+   - Created test-keyboard.html for testing
+
+4. **Project Cleanup**
+   - Moved old smartbox directories to _archive
+   - No more confusion with multiple versions!
+
+### 🔍 Key Discoveries
+- MWL/PACS settings ARE fully implemented (wrong dir analyzed!)
+- 3-step wiring is too complex even for Claude
+- Several message type mismatches (capturePhoto vs photocaptured)
+- Duplicate case handlers in C#
+
+### 📚 Documentation Created
+- UI_COMPLETE_FLOW_ANALYSIS.md
+- UI_MAINTENANCE_GUIDE.md  
+- UI_REFACTORING_PLAN.md
+- KEYBOARD_ALTGR_BUG.md
+- UI_MAPPING_COMPLETE.md
+- test-keyboard.html
+
+### 🎯 Ready for Next Session
+1. Implement Phase 1 of data-action refactoring
+2. Test PACS sending (settings work!)
+3. Continue UI simplification
+
+**Oliver Quote**: "dieses über drei schritte mapping ist anscheinend sogar dir nicht wirklich gelegen, oder?"
+**Claude**: Absolut richtig! 🎯

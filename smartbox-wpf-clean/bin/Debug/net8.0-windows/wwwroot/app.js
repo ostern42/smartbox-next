@@ -1,1013 +1,721 @@
-// SmartBox Next - Simplified Web UI Application
-class SmartBoxApp {
+/**
+ * SmartBox Next Touch Application
+ * Main application controller for touch-optimized medical imaging
+ */
+
+class SmartBoxTouchApp {
     constructor() {
-        console.log('SmartBoxApp constructor started');
-        this.stream = null;
-        this.mediaRecorder = null;
-        this.recordedChunks = [];
+        this.isInitialized = false;
+        this.webcamStream = null;
         this.isRecording = false;
-
-        this.config = null;
-        this.lastCapturedPhoto = null;
-        this.selectedWorklistItem = null;
-        this.worklistItems = [];
+        this.mediaRecorder = null;
+        this.recordingStart = null;
+        this.recordingTimer = null;
         
-        // Delay initialization to ensure DOM is ready
-        setTimeout(() => {
-            this.initializeElements();
-            this.attachEventListeners();
-            this.log('SmartBox Next Web UI initialized');
-            
-            // Check WebView2 availability
-            if (window.chrome && window.chrome.webview) {
-                console.log('✅ WebView2 is available!');
-                this.log('WebView2 bridge detected');
-            } else {
-                console.error('❌ WebView2 NOT available - running in browser mode');
-                this.log('WebView2 bridge NOT available', 'error');
-            }
-            
-            // Auto-initialize webcam after a short delay
-            setTimeout(() => {
-                this.log('Auto-initializing webcam...');
-                this.initWebcam();
-            }, 2000);
-        }, 100);
+        // Initialize managers
+        this.gestureManager = null;
+        this.dialogManager = null;
+        this.modeManager = null;
+        
+        // MWL data
+        this.mwlData = [];
+        this.filteredMwlData = [];
+        
+        console.log('SmartBoxTouchApp: Starting initialization...');
+        this.initialize();
     }
 
-    initializeElements() {
-        console.log('Initializing elements...');
-        
-        // Video elements
-        this.video = document.getElementById('webcamPreview');
-        this.canvas = document.getElementById('captureCanvas');
-        this.placeholder = document.getElementById('webcamPlaceholder');
-        
-        // Form elements
-        this.patientName = document.getElementById('patientName');
-        this.patientID = document.getElementById('patientID');
-        this.birthDate = document.getElementById('birthDate');
-        this.gender = document.getElementById('gender');
-        this.studyDescription = document.getElementById('studyDescription');
-        this.accessionNumber = document.getElementById('accessionNumber');
-
-        
-        // Buttons - with null checks
-        this.captureButton = document.getElementById('captureButton');
-        this.recordButton = document.getElementById('recordButton');
-        this.exportDicomButton = document.getElementById('exportDicomButton');
-        this.settingsButton = document.getElementById('settingsButton');
-
-        this.analyzeButton = document.getElementById('analyzeButton');
-        this.openLogsButton = document.getElementById('openLogsButton');
-
-        
-        // MWL elements
-        this.refreshMwlBtn = document.getElementById('refreshMwlBtn');
-        this.mwlList = document.getElementById('mwlList');
-        this.mwlStatus = document.getElementById('mwlStatus');
-        this.cacheAge = document.getElementById('cacheAge');
-        this.cacheCount = document.getElementById('cacheCount');
-        this.dateRangeSelect = document.getElementById('dateRangeSelect');
-        this.mwlFilterInput = document.getElementById('mwlFilterInput');
-        this.mwlFilterClear = document.getElementById('mwlFilterClear');
-        this.mwlStatusCount = document.getElementById('mwlStatusCount');
-        
-        // Recording elements - with null checks
-        if (this.recordButton) {
-            this.recordIcon = this.recordButton.querySelector('.record-icon');
-        }
-        this.recordText = document.getElementById('recordText');
-        
-        // Emergency section
-        this.emergencySection = document.getElementById('emergencySection');
-        
-        console.log('Elements initialized');
-    }
-
-    attachEventListeners() {
-        console.log('Attaching event listeners...');
-        
-        // Only attach if elements exist
-        if (this.captureButton) {
-            this.captureButton.addEventListener('click', () => this.capturePhoto());
-            console.log('Capture button listener attached');
-        } else {
-            console.error('Capture button not found!');
-        }
-        if (this.recordButton) {
-            this.recordButton.addEventListener('click', () => this.toggleRecording());
-            console.log('Record button listener attached');
-        } else {
-            console.error('Record button not found!');
-        }
-        if (this.exportDicomButton) {
-            this.exportDicomButton.addEventListener('click', () => this.exportDicom());
-            console.log('Export DICOM button listener attached');
-        } else {
-            console.error('Export DICOM button not found!');
-        }
-        if (this.settingsButton) {
-            this.settingsButton.addEventListener('click', () => this.openSettings());
-            console.log('Settings button listener attached');
-        } else {
-            console.error('Settings button not found!');
-        }
-
-        if (this.analyzeButton) {
-            this.analyzeButton.addEventListener('click', () => this.analyzeCamera());
-            console.log('Analyze button listener attached');
-        } else {
-            console.error('Analyze button not found!');
-        }
-        if (this.openLogsButton) {
-            this.openLogsButton.addEventListener('click', () => this.openLogs());
-            console.log('Open logs button listener attached');
-        } else {
-            console.error('Open logs button not found!');
-        }
-
-        
-        // Listen for messages from C# host
-        window.addEventListener('message', (e) => this.handleHostMessage(e));
-        
-        // Emergency template buttons
-        const emergencyButtons = document.querySelectorAll('.emergency-button');
-        emergencyButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => this.applyEmergencyTemplate(e.currentTarget.dataset.template));
-        });
-        
-        // Exit button and modal
-        const exitButton = document.getElementById('exitButton');
-        const exitModal = document.getElementById('exitModal');
-        const cancelExitBtn = document.getElementById('cancelExitBtn');
-        const confirmExitBtn = document.getElementById('confirmExitBtn');
-        
-        if (exitButton) {
-            exitButton.addEventListener('click', () => this.showExitConfirmation());
-        }
-        
-        if (cancelExitBtn) {
-            cancelExitBtn.addEventListener('click', () => this.hideExitConfirmation());
-        }
-        
-        if (confirmExitBtn) {
-            confirmExitBtn.addEventListener('click', () => this.confirmExit());
-        }
-        
-        // Handle Escape key for modal
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && exitModal && exitModal.style.display !== 'none') {
-                this.hideExitConfirmation();
-            }
-        });
-        
-        // MWL event listeners
-        if (this.refreshMwlBtn) {
-            this.refreshMwlBtn.addEventListener('click', () => this.refreshWorklist());
-        }
-        
-        if (this.dateRangeSelect) {
-            this.dateRangeSelect.addEventListener('change', () => this.queryWorklist());
-        }
-        
-        if (this.mwlFilterInput) {
-            this.mwlFilterInput.addEventListener('input', () => this.filterWorklistItems());
-            this.mwlFilterInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    this.clearFilter();
-                }
-            });
-        }
-        
-        if (this.mwlFilterClear) {
-            this.mwlFilterClear.addEventListener('click', () => this.clearFilter());
-        }
-        
-        // Request config to check if emergency templates are enabled
-        setTimeout(() => {
-            this.sendToHost('requestConfig', {});
-            // Also query worklist on startup
-            this.queryWorklist();
-        }, 1000);
-        
-        console.log('Event listeners attached');
-    }
-
-    log(message, level = 'info') {
-        const timestamp = new Date().toLocaleTimeString();
-        const logEntry = `[${timestamp}] ${level.toUpperCase()}: ${message}`;
-        
-        // Always log to browser console
-        console.log(logEntry);
-        
-        // Send to C# logger if WebView2 is available
-        if (window.chrome && window.chrome.webview) {
-            this.sendToHost('log', { 
-                message: message,
-                level: level,
-                timestamp: new Date().toISOString()
-            });
-        }
-    }
-
-    async initWebcam() {
+    async initialize() {
         try {
-            this.log('Initializing webcam...');
+            // Initialize managers
+            this.gestureManager = new TouchGestureManager();
+            this.dialogManager = new TouchDialogManager();
+            this.modeManager = new ModeManager();
             
-            // Request camera access with optimal settings
+            // Make dialog manager globally available
+            window.touchDialogManager = this.dialogManager;
+            
+            // Set up event listeners
+            this.setupEventListeners();
+            
+            // Initialize webcam
+            await this.initializeWebcam();
+            
+            // Load initial MWL data
+            await this.loadMWLData();
+            
+            // Set up periodic refresh
+            this.setupPeriodicRefresh();
+            
+            this.isInitialized = true;
+            console.log('SmartBoxTouchApp: Initialization complete');
+            
+            // Hide loading overlay if it exists
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
+            }
+            
+        } catch (error) {
+            console.error('SmartBoxTouchApp: Initialization failed:', error);
+            this.showError('Fehler beim Starten der Anwendung: ' + error.message);
+        }
+    }
+
+    setupEventListeners() {
+        // Gesture events
+        document.addEventListener('mwlRefresh', () => this.onMWLRefresh());
+        document.addEventListener('emergencyPatientSelected', (e) => this.onEmergencyPatientSelected(e));
+        document.addEventListener('capturePhoto', () => this.onCapturePhoto());
+        document.addEventListener('startVideoRecording', () => this.onStartVideoRecording());
+        document.addEventListener('stopVideoRecording', () => this.onStopVideoRecording());
+        document.addEventListener('confirmDeleteThumbnail', (e) => this.onConfirmDeleteThumbnail(e));
+        
+        // Mode change events
+        document.addEventListener('modeChanged', (e) => this.onModeChanged(e));
+        document.addEventListener('initializeRecordingWebcam', (e) => this.onInitializeRecordingWebcam(e));
+        
+        // UI events
+        this.setupUIEventListeners();
+        
+        console.log('SmartBoxTouchApp: Event listeners set up');
+    }
+
+    setupUIEventListeners() {
+        // MWL filter
+        const mwlFilter = document.getElementById('mwlFilter');
+        if (mwlFilter) {
+            mwlFilter.addEventListener('input', (e) => this.onMWLFilterChange(e));
+        }
+        
+        // Export button
+        const exportButton = document.getElementById('exportButton');
+        if (exportButton) {
+            exportButton.addEventListener('click', () => this.onExportRequested());
+        }
+        
+        // Patient card clicks
+        document.addEventListener('click', (e) => {
+            const patientCard = e.target.closest('.patient-card');
+            if (patientCard) {
+                this.onPatientCardClick(patientCard);
+            }
+        });
+    }
+
+    async initializeWebcam() {
+        try {
+            console.log('SmartBoxTouchApp: Initializing webcam...');
+            
             const constraints = {
                 video: {
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
-                    frameRate: { ideal: 60, min: 30 },
+                    width: { ideal: 1280 },
+                    height: { ideal: 960 },
                     facingMode: 'user'
                 },
-                audio: false
+                audio: false // Disable audio for now to avoid permission issues
             };
             
-            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-            this.video.srcObject = this.stream;
+            this.webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
             
-            // Get actual capabilities
-            const track = this.stream.getVideoTracks()[0];
-            const settings = track.getSettings();
-            const capabilities = track.getCapabilities();
-            
-            this.log(`Camera initialized: ${settings.width}x${settings.height} @ ${settings.frameRate}fps`);
-            this.log(`Device: ${track.label}`);
-            
-            // Hide placeholder
-            if (this.placeholder) {
-                this.placeholder.classList.add('hidden');
+            // Initialize small preview
+            const smallPreview = document.getElementById('webcamPreviewSmall');
+            if (smallPreview) {
+                smallPreview.srcObject = this.webcamStream;
+                
+                // Hide overlay when webcam starts
+                smallPreview.addEventListener('loadedmetadata', () => {
+                    const overlay = smallPreview.parentElement.querySelector('.preview-overlay');
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                    }
+                    console.log('SmartBoxTouchApp: Webcam preview started');
+                });
+                
+                // Show overlay if webcam fails
+                smallPreview.addEventListener('error', () => {
+                    const overlay = smallPreview.parentElement.querySelector('.preview-overlay');
+                    if (overlay) {
+                        overlay.style.display = 'flex';
+                        overlay.innerHTML = '<i class="ms-Icon ms-Icon--Warning"></i><span>Kamera-Fehler</span>';
+                    }
+                });
             }
             
-            // Enable capture buttons
-            if (this.captureButton) this.captureButton.disabled = false;
-            if (this.recordButton) this.recordButton.disabled = false;
-            if (this.analyzeButton) this.analyzeButton.disabled = false;
-            
-            // Notify C# host
-            this.sendToHost('webcamInitialized', {
-                width: settings.width,
-                height: settings.height,
-                frameRate: settings.frameRate,
-                deviceId: settings.deviceId,
-                capabilities: capabilities
-            });
+            console.log('SmartBoxTouchApp: Webcam initialized');
             
         } catch (error) {
-            this.log(`Failed to initialize webcam: ${error.message}`, 'error');
+            console.error('SmartBoxTouchApp: Webcam initialization failed:', error);
             
-            // Notify C# host of error
-            this.sendToHost('webcamError', { error: error.message });
-        }
-    }
-
-    sendToHost(action, data) {
-        if (window.chrome && window.chrome.webview) {
-            const message = JSON.stringify({ action, data });
-            window.chrome.webview.postMessage(message);
-            // Don't log 'log' actions to avoid infinite loop!
-            if (action !== 'log') {
-                this.log(`Sent to host: ${action}`);
-            }
-        } else {
-            // Don't use log here to avoid recursion when WebView2 is not available
-            console.warn('WebView2 bridge not available');
-        }
-    }
-
-    // Photo capture functionality
-    async capturePhoto() {
-        this.log('Capture photo clicked');
-        
-        if (!this.stream || !this.video) {
-            this.log('No active video stream', 'error');
-            return;
-        }
-        
-        try {
-            // Create a canvas to capture the current video frame
-            const canvas = document.createElement('canvas');
-            
-            canvas.width = this.video.videoWidth;
-            canvas.height = this.video.videoHeight;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(this.video, 0, 0, canvas.width, canvas.height);
-            
-            // Convert to blob
-            canvas.toBlob(async (blob) => {
-                if (!blob) {
-                    this.log('Failed to capture photo', 'error');
-                    return;
+            // Show error in overlay instead of alert
+            const smallPreview = document.getElementById('webcamPreviewSmall');
+            if (smallPreview) {
+                const overlay = smallPreview.parentElement.querySelector('.preview-overlay');
+                if (overlay) {
+                    overlay.innerHTML = '<i class="ms-Icon ms-Icon--Warning"></i><span>Kamera nicht verfügbar</span>';
                 }
-                
-                // Convert blob to base64
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const base64data = reader.result;
-                    
-                    // Remove data URL prefix for C#
-                    const base64Image = base64data.split(',')[1];
-                    
-                    // Store for DICOM export
-                    this.lastCapturedPhoto = base64Image;
-                    
-                    // Send to C# host with correct message format
-                    this.sendToHost('photoCaptured', {
-                        imageData: base64Image,
-                        width: canvas.width,
-                        height: canvas.height,
-                        timestamp: new Date().toISOString(),
-                        patient: this.getPatientInfo()
-                    });
-                    
-                    this.log(`Photo captured: ${canvas.width}x${canvas.height}`);
-                    
-                    // Show preview
-                    this.showPhotoPreview(base64data);
-                };
-                reader.readAsDataURL(blob);
-                
-            }, 'image/jpeg', 0.95);
-            
-        } catch (error) {
-            this.log(`Failed to capture photo: ${error.message}`, 'error');
+            }
         }
     }
-    
-    showPhotoPreview(imageData) {
-        // Create a simple preview modal
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-        `;
+
+    async onInitializeRecordingWebcam(event) {
+        const videoElement = event.detail.videoElement;
+        if (videoElement && this.webcamStream) {
+            videoElement.srcObject = this.webcamStream;
+            console.log('SmartBoxTouchApp: Recording webcam initialized');
+        }
+    }
+
+    async loadMWLData() {
+        try {
+            console.log('SmartBoxTouchApp: Loading MWL data...');
+            
+            // Always show demo data first for immediate UI feedback
+            this.onMWLDataReceived(this.getDemoMWLData());
+            
+            // Send request to WebView2 host for real data
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage(JSON.stringify({
+                    type: 'loadMWL',
+                    data: {}
+                }));
+                
+                // Set timeout to ensure demo data shows if no response
+                setTimeout(() => {
+                    if (this.mwlData.length <= 3) {
+                        console.log('SmartBoxTouchApp: No MWL response, keeping demo data');
+                    }
+                }, 2000);
+            }
+            
+        } catch (error) {
+            console.error('SmartBoxTouchApp: MWL loading failed:', error);
+            // Still show demo data on error
+            this.onMWLDataReceived(this.getDemoMWLData());
+        }
+    }
+
+    onMWLDataReceived(mwlData) {
+        console.log('SmartBoxTouchApp: MWL data received:', mwlData.length, 'entries');
         
-        const img = document.createElement('img');
-        img.src = imageData;
-        img.style.cssText = `
-            max-width: 90%;
-            max-height: 90%;
-            border: 2px solid white;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        `;
+        this.mwlData = mwlData;
+        this.filteredMwlData = [...mwlData];
+        this.renderMWLCards();
+    }
+
+    renderMWLCards() {
+        const mwlCards = document.getElementById('mwlCards');
+        if (!mwlCards) return;
         
-        modal.appendChild(img);
+        // Clear existing cards
+        mwlCards.innerHTML = '';
         
-        // Close on click
-        modal.addEventListener('click', () => {
-            document.body.removeChild(modal);
+        // Render filtered cards
+        this.filteredMwlData.forEach(patient => {
+            const card = this.createPatientCard(patient);
+            mwlCards.appendChild(card);
         });
         
-        document.body.appendChild(modal);
-        
-        // Auto-close after 3 seconds
-        setTimeout(() => {
-            if (document.body.contains(modal)) {
-                document.body.removeChild(modal);
-            }
-        }, 3000);
-    }
-    
-    getPatientInfo() {
-        // Collect patient information from form
-        const name = `${this.patientName?.value || 'Unknown'}, ${this.patientName?.value || 'Unknown'}`;
-        return {
-            id: this.patientID?.value || '',
-            name: name,
-            birthDate: this.birthDate?.value || '',
-            gender: this.gender?.value || '',
-            studyDescription: this.studyDescription?.value || '',
-            accessionNumber: this.accessionNumber?.value || ''
-        };
+        console.log('SmartBoxTouchApp: Rendered', this.filteredMwlData.length, 'patient cards');
     }
 
-    toggleRecording() {
-        if (!this.isRecording) {
-            this.startRecording();
-        } else {
-            this.stopRecording();
+    createPatientCard(patient) {
+        const card = document.createElement('div');
+        card.className = 'patient-card';
+        card.dataset.patientId = patient.id;
+        
+        card.innerHTML = `
+            <div class="patient-info">
+                <div class="patient-name">
+                    <i class="ms-Icon ms-Icon--Contact"></i>
+                    <span>${patient.name}</span>
+                </div>
+                <div class="patient-details">
+                    <span class="patient-birth">
+                        <i class="ms-Icon ms-Icon--Cake"></i>
+                        ${patient.birthDate}
+                    </span>
+                    <span class="patient-study">
+                        <i class="ms-Icon ms-Icon--Medical"></i>
+                        ${patient.studyType}
+                    </span>
+                    <span class="patient-time">
+                        <i class="ms-Icon ms-Icon--Clock"></i>
+                        ${patient.scheduledTime}
+                    </span>
+                </div>
+            </div>
+            <div class="card-action">
+                <span>Antippen zum Auswählen</span>
+            </div>
+        `;
+        
+        return card;
+    }
+
+    onPatientCardClick(card) {
+        const patientId = card.dataset.patientId;
+        const patient = this.mwlData.find(p => p.id === patientId);
+        
+        if (patient) {
+            console.log('SmartBoxTouchApp: Patient selected:', patient.name);
+            
+            // Add visual feedback
+            card.classList.add('selected');
+            
+            // Emit patient selection event
+            document.dispatchEvent(new CustomEvent('patientSelected', {
+                detail: patient
+            }));
         }
     }
-    
-    async startRecording() {
-        if (!this.stream || !this.video) {
-            this.log('No active video stream', 'error');
-            return;
+
+    onEmergencyPatientSelected(event) {
+        console.log('SmartBoxTouchApp: Emergency patient selected:', event.detail.type);
+        // The mode manager handles this
+    }
+
+    onMWLFilterChange(event) {
+        const filterText = event.target.value.toLowerCase().trim();
+        
+        if (filterText === '') {
+            this.filteredMwlData = [...this.mwlData];
+        } else {
+            this.filteredMwlData = this.mwlData.filter(patient => 
+                patient.name.toLowerCase().includes(filterText) ||
+                patient.studyType.toLowerCase().includes(filterText) ||
+                patient.id.toLowerCase().includes(filterText)
+            );
         }
         
+        this.renderMWLCards();
+    }
+
+    onMWLRefresh() {
+        console.log('SmartBoxTouchApp: MWL refresh requested');
+        this.loadMWLData();
+    }
+
+    onModeChanged(event) {
+        console.log('SmartBoxTouchApp: Mode changed to:', event.detail.currentMode);
+        
+        if (event.detail.currentMode === 'recording') {
+            // Reset recording state
+            this.isRecording = false;
+            this.updateRecordingUI();
+        }
+    }
+
+    async onCapturePhoto() {
         try {
-            this.log('Starting video recording...');
+            console.log('SmartBoxTouchApp: Capturing photo...');
             
-            // Clear previous chunks
-            this.recordedChunks = [];
+            const video = document.getElementById('webcamPreviewLarge');
+            const canvas = document.getElementById('captureCanvas');
             
-            // Create MediaRecorder with WebM format
-            const options = {
-                mimeType: 'video/webm;codecs=vp9',
-                videoBitsPerSecond: 2500000 // 2.5 Mbps
-            };
-            
-            // Fallback to other formats if VP9 not supported
-            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                options.mimeType = 'video/webm;codecs=vp8';
-                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    options.mimeType = 'video/webm';
-                }
+            if (!video || !canvas) {
+                throw new Error('Capture elements not found');
             }
             
-            this.mediaRecorder = new MediaRecorder(this.stream, options);
-            this.recordingStartTime = Date.now();
+            // Set canvas size to video size
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
             
-            // Handle data available
+            // Draw video frame to canvas
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            // Get image data
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Create thumbnail
+            const thumbnailCanvas = document.createElement('canvas');
+            thumbnailCanvas.width = 160;
+            thumbnailCanvas.height = 120;
+            const thumbCtx = thumbnailCanvas.getContext('2d');
+            thumbCtx.drawImage(video, 0, 0, 160, 120);
+            const thumbnail = thumbnailCanvas.toDataURL('image/jpeg', 0.6);
+            
+            // Add capture to mode manager
+            const captureId = this.modeManager.addCapture({
+                type: 'photo',
+                data: imageData,
+                thumbnail: thumbnail
+            });
+            
+            // Send to WebView2 host for processing
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage(JSON.stringify({
+                    type: 'capturePhoto',
+                    data: {
+                        captureId: captureId,
+                        imageData: imageData,
+                        patient: this.modeManager.getCurrentPatient()
+                    }
+                }));
+            }
+            
+            console.log('SmartBoxTouchApp: Photo captured successfully');
+            
+        } catch (error) {
+            console.error('SmartBoxTouchApp: Photo capture failed:', error);
+            this.showError('Foto konnte nicht aufgenommen werden: ' + error.message);
+        }
+    }
+
+    async onStartVideoRecording() {
+        try {
+            if (this.isRecording) return;
+            
+            console.log('SmartBoxTouchApp: Starting video recording...');
+            
+            if (!this.webcamStream) {
+                throw new Error('Webcam not available');
+            }
+            
+            // Create media recorder
+            this.mediaRecorder = new MediaRecorder(this.webcamStream, {
+                mimeType: 'video/webm;codecs=vp8'
+            });
+            
+            this.recordedChunks = [];
+            
             this.mediaRecorder.ondataavailable = (event) => {
-                if (event.data && event.data.size > 0) {
+                if (event.data.size > 0) {
                     this.recordedChunks.push(event.data);
                 }
             };
             
-            // Handle recording stop
             this.mediaRecorder.onstop = () => {
-                this.handleRecordingComplete();
+                this.onVideoRecordingComplete();
             };
             
             // Start recording
-            this.mediaRecorder.start(1000); // Collect data every second
+            this.mediaRecorder.start();
             this.isRecording = true;
+            this.recordingStart = Date.now();
             
             // Update UI
-            if (this.recordButton) {
-                this.recordButton.classList.add('recording');
-            }
-            if (this.recordIcon) {
-                this.recordIcon.classList.add('recording');
-            }
-            if (this.recordText) {
-                this.recordText.textContent = 'Stop Recording';
-            }
+            this.updateRecordingUI();
+            this.startRecordingTimer();
             
-            this.log('Recording started');
+            console.log('SmartBoxTouchApp: Video recording started');
             
         } catch (error) {
-            this.log(`Failed to start recording: ${error.message}`, 'error');
+            console.error('SmartBoxTouchApp: Video recording start failed:', error);
+            this.showError('Video-Aufnahme konnte nicht gestartet werden: ' + error.message);
         }
     }
-    
-    stopRecording() {
-        if (!this.mediaRecorder || this.mediaRecorder.state !== 'recording') {
-            this.log('No active recording', 'warn');
-            return;
-        }
+
+    onStopVideoRecording() {
+        if (!this.isRecording || !this.mediaRecorder) return;
         
-        try {
-            this.log('Stopping video recording...');
-            this.mediaRecorder.stop();
-            this.isRecording = false;
-            
-            // Update UI
-            if (this.recordButton) {
-                this.recordButton.classList.remove('recording');
-            }
-            if (this.recordIcon) {
-                this.recordIcon.classList.remove('recording');
-            }
-            if (this.recordText) {
-                this.recordText.textContent = 'Start Recording';
-            }
-            
-        } catch (error) {
-            this.log(`Failed to stop recording: ${error.message}`, 'error');
-        }
+        console.log('SmartBoxTouchApp: Stopping video recording...');
+        
+        this.mediaRecorder.stop();
+        this.isRecording = false;
+        this.stopRecordingTimer();
+        this.updateRecordingUI();
     }
-    
-    async handleRecordingComplete() {
+
+    onVideoRecordingComplete() {
         try {
-            const duration = (Date.now() - this.recordingStartTime) / 1000;
-            this.log(`Recording complete. Duration: ${duration.toFixed(1)}s`);
-            
-            // Create blob from chunks
             const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+            const videoUrl = URL.createObjectURL(blob);
             
-            // Convert to base64
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const base64data = reader.result;
-                const base64Video = base64data.split(',')[1];
+            // Create thumbnail from video
+            this.createVideoThumbnail(videoUrl).then(thumbnail => {
+                const duration = Math.round((Date.now() - this.recordingStart) / 1000);
                 
-                // Send to C# host
-                this.sendToHost('videoRecorded', {
-                    videoData: base64Video,
-                    duration: duration,
-                    timestamp: new Date().toISOString(),
-                    patient: this.getPatientInfo()
+                // Add capture to mode manager
+                const captureId = this.modeManager.addCapture({
+                    type: 'video',
+                    data: videoUrl,
+                    thumbnail: thumbnail,
+                    duration: duration
                 });
                 
-                this.log(`Video ready for upload: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
-            };
-            reader.readAsDataURL(blob);
+                // Send to WebView2 host for processing
+                if (window.chrome && window.chrome.webview) {
+                    // Convert blob to base64 for transmission
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        window.chrome.webview.postMessage(JSON.stringify({
+                            type: 'captureVideo',
+                            data: {
+                                captureId: captureId,
+                                videoData: reader.result,
+                                duration: duration,
+                                patient: this.modeManager.getCurrentPatient()
+                            }
+                        }));
+                    };
+                    reader.readAsDataURL(blob);
+                }
+                
+                console.log('SmartBoxTouchApp: Video recording completed, duration:', duration, 'seconds');
+            });
             
         } catch (error) {
-            this.log(`Failed to process recording: ${error.message}`, 'error');
+            console.error('SmartBoxTouchApp: Video processing failed:', error);
+            this.showError('Video konnte nicht verarbeitet werden: ' + error.message);
         }
     }
 
-    async exportDicom() {
-        this.log('Export DICOM clicked');
-        
-        // Check if we have a recent photo
-        if (!this.lastCapturedPhoto) {
-            this.log('No photo captured yet', 'warn');
-            alert('Please capture a photo first');
-            return;
-        }
-        
-        // Get patient info
-        const patientInfo = this.getPatientInfo();
-        
-        // Validate required fields
-        if (!patientInfo.id || !patientInfo.name) {
-            this.log('Missing patient information', 'warn');
-            alert('Please enter patient ID and name');
-            return;
-        }
-        
-        // Send to C# for DICOM export
-        this.sendToHost('exportDicom', {
-            imageData: this.lastCapturedPhoto,
-            patientInfo: patientInfo,
-            timestamp: new Date().toISOString()
+    async createVideoThumbnail(videoUrl) {
+        return new Promise((resolve) => {
+            const video = document.createElement('video');
+            video.src = videoUrl;
+            video.currentTime = 1; // Get frame at 1 second
+            
+            video.onloadeddata = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 160;
+                canvas.height = 120;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, 160, 120);
+                resolve(canvas.toDataURL('image/jpeg', 0.6));
+            };
         });
-        
-        this.log('DICOM export requested');
     }
 
-    openSettings() {
-        this.log('Open settings clicked');
-        window.location.href = 'settings.html';
+    updateRecordingUI() {
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        const captureHint = document.getElementById('captureHint');
+        
+        if (this.isRecording) {
+            recordingIndicator?.classList.remove('hidden');
+            captureHint?.classList.add('hidden');
+        } else {
+            recordingIndicator?.classList.add('hidden');
+            captureHint?.classList.remove('hidden');
+        }
     }
 
+    startRecordingTimer() {
+        this.recordingTimer = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - this.recordingStart) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            
+            const timeText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            const recordingTime = document.getElementById('recordingTime');
+            if (recordingTime) {
+                recordingTime.textContent = timeText;
+            }
+        }, 1000);
+    }
 
+    stopRecordingTimer() {
+        if (this.recordingTimer) {
+            clearInterval(this.recordingTimer);
+            this.recordingTimer = null;
+        }
+    }
 
-    async analyzeCamera() {
-        this.log('Analyzing camera capabilities...');
+    onConfirmDeleteThumbnail(event) {
+        const { index, element } = event.detail;
         
-        if (!this.stream) {
-            this.log('No active video stream', 'error');
+        this.dialogManager.confirmDelete('Aufnahme').then((confirmed) => {
+            if (confirmed) {
+                const captureId = element.dataset.captureId;
+                this.modeManager.removeCapture(parseInt(captureId));
+                console.log('SmartBoxTouchApp: Thumbnail deleted:', index);
+            }
+        });
+    }
+
+    onExportRequested() {
+        const captures = this.modeManager.getCurrentCaptures();
+        const unexportedCaptures = captures.filter(c => !c.exported);
+        
+        if (unexportedCaptures.length === 0) {
+            this.showError('Keine Aufnahmen zum Exportieren vorhanden.');
             return;
         }
         
+        this.dialogManager.confirmExport(unexportedCaptures.length).then((confirmed) => {
+            if (confirmed) {
+                this.exportCaptures(unexportedCaptures);
+            }
+        });
+    }
+
+    async exportCaptures(captures) {
         try {
-            const track = this.stream.getVideoTracks()[0];
-            const settings = track.getSettings();
-            const capabilities = track.getCapabilities();
+            console.log('SmartBoxTouchApp: Exporting', captures.length, 'captures...');
             
-            const analysis = {
-                deviceLabel: track.label,
-                currentSettings: settings,
-                capabilities: capabilities,
-                supportedConstraints: navigator.mediaDevices.getSupportedConstraints()
-            };
+            // Show loading dialog
+            const message = captures.length === 1 
+                ? 'Aufnahme wird exportiert...' 
+                : `${captures.length} Aufnahmen werden exportiert...`;
             
-            // Log details
-            this.log(`Camera: ${track.label}`);
-            this.log(`Current: ${settings.width}x${settings.height} @ ${settings.frameRate}fps`);
-            this.log(`Capabilities: ${JSON.stringify(capabilities, null, 2)}`);
+            try {
+                this.dialogManager.showLoading({ message });
+                console.log('SmartBoxTouchApp: Loading dialog shown successfully');
+            } catch (dialogError) {
+                console.error('SmartBoxTouchApp: Dialog error (continuing anyway):', dialogError);
+            }
             
-            // Send to C# host
-            this.sendToHost('cameraAnalysis', analysis);
+            // Send export request to WebView2 host
+            if (window.chrome && window.chrome.webview) {
+                console.log('SmartBoxTouchApp: Sending exportCaptures message to C#...');
+                const messageData = {
+                    type: 'exportCaptures',
+                    data: {
+                        captures: captures.map(c => ({ id: c.id, type: c.type })),
+                        patient: this.modeManager.getCurrentPatient()
+                    }
+                };
+                console.log('SmartBoxTouchApp: Message data:', messageData);
+                console.log('SmartBoxTouchApp: JSON stringified:', JSON.stringify(messageData));
+                
+                try {
+                    // WebView2 expects a string, not an object!
+                    const messageString = JSON.stringify(messageData);
+                    window.chrome.webview.postMessage(messageString);
+                    console.log('SmartBoxTouchApp: Message sent successfully');
+                } catch (postError) {
+                    console.error('SmartBoxTouchApp: Failed to post message:', postError);
+                    console.error('SmartBoxTouchApp: Message type:', typeof messageData);
+                    console.error('SmartBoxTouchApp: Message keys:', Object.keys(messageData));
+                }
+            } else {
+                // Simulate export for testing
+                setTimeout(() => {
+                    this.onExportComplete(captures.map(c => c.id));
+                }, 3000);
+            }
             
         } catch (error) {
-            this.log(`Failed to analyze camera: ${error.message}`, 'error');
+            console.error('SmartBoxTouchApp: Export failed:', error);
+            this.dialogManager.dismiss();
+            this.showError('Export fehlgeschlagen: ' + error.message);
         }
     }
 
-    openLogs() {
-        this.log('Opening logs folder...');
-        this.sendToHost('openLogs', {});
+    onExportComplete(captureIds) {
+        this.dialogManager.dismiss();
+        this.modeManager.markCapturesExported(captureIds);
+        
+        const message = captureIds.length === 1 
+            ? 'Aufnahme erfolgreich exportiert.'
+            : `${captureIds.length} Aufnahmen erfolgreich exportiert.`;
+        
+        this.dialogManager.showSuccess({ message });
+        
+        console.log('SmartBoxTouchApp: Export completed for', captureIds.length, 'captures');
     }
 
-    testWebView2() {
-        this.log('Testing WebView2 communication...');
-        this.sendToHost('testWebView', { 
-            message: 'Test from JavaScript',
-            timestamp: new Date().toISOString()
-        });
+    setupPeriodicRefresh() {
+        // Refresh MWL every 5 minutes
+        setInterval(() => {
+            if (this.modeManager.getCurrentMode() === 'patient') {
+                this.loadMWLData();
+            }
+        }, 5 * 60 * 1000);
     }
 
-    handleHostMessage(event) {
-        this.log(`Received message from host: ${JSON.stringify(event.data)}`);
+    showError(message) {
+        if (this.dialogManager) {
+            this.dialogManager.error(message);
+        } else {
+            alert(message);
+        }
+    }
+
+    getDemoMWLData() {
+        return [
+            {
+                id: '12345678',
+                name: 'Müller, Hans',
+                birthDate: '12.05.1965',
+                studyType: 'Endoskopie',
+                scheduledTime: '14:00 Uhr',
+                accessionNumber: 'ACC-001',
+                studyDescription: 'Gastroskopie'
+            },
+            {
+                id: '23456789',
+                name: 'Schmidt, Maria',
+                birthDate: '23.08.1978',
+                studyType: 'Radiographie',
+                scheduledTime: '14:30 Uhr',
+                accessionNumber: 'ACC-002',
+                studyDescription: 'Thorax-Röntgen'
+            },
+            {
+                id: '34567890',
+                name: 'Weber, Klaus',
+                birthDate: '01.01.1990',
+                studyType: 'Sonographie',
+                scheduledTime: '15:00 Uhr',
+                accessionNumber: 'ACC-003',
+                studyDescription: 'Abdomen-Ultraschall'
+            }
+        ];
+    }
+}
+
+// WebView2 message handler
+if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.addEventListener('message', (event) => {
+        const { type, data } = event.data;
         
-        const message = event.data;
-        
-        switch(message.action) {
-            case 'updateConfig':
-                if (message.data && message.data.enableEmergencyTemplates) {
-                    // Show emergency templates section
-                    if (this.emergencySection) {
-                        this.emergencySection.style.display = 'block';
-                    }
-                }
-                // Check if MWL is enabled
-                if (message.data && message.data.enableWorklist) {
-                    const mwlSection = document.getElementById('mwlSection');
-                    if (mwlSection) {
-                        mwlSection.style.display = 'block';
-                    }
+        switch (type) {
+            case 'mwlData':
+                if (window.smartBoxApp) {
+                    window.smartBoxApp.onMWLDataReceived(data);
                 }
                 break;
                 
-            case 'worklistResult':
-                this.updateMwlStatus(message.data.isOnline ? 'Online' : 'Offline (cached)', message.data.isOnline);
-                this.displayWorklistItems(message.data.items);
-                if (message.data.cacheStatus) {
-                    this.updateCacheInfo(message.data.cacheStatus);
+            case 'exportComplete':
+                if (window.smartBoxApp) {
+                    window.smartBoxApp.onExportComplete(data.captureIds);
                 }
-                break;
-                
-            case 'worklistRefreshed':
-                this.updateMwlStatus(message.data.success ? 'Refreshed' : 'Refresh failed', message.data.success);
-                if (message.data.cacheStatus) {
-                    this.updateCacheInfo(message.data.cacheStatus);
-                }
-                // Re-query to get updated list
-                if (message.data.success) {
-                    setTimeout(() => this.queryWorklist(), 500);
-                }
-                break;
-                
-            case 'worklistCacheStatus':
-                this.updateCacheInfo(message.data);
-                break;
-                
-            case 'worklistItemSelected':
-                this.log(`Worklist item selected: ${message.data.studyInstanceUID}`);
-                break;
-                
-            case 'showExitConfirmation':
-                this.showExitConfirmation();
                 break;
                 
             default:
-                this.log(`Unknown action: ${message.action}`);
-                break;
+                console.log('SmartBoxTouchApp: Unknown message type:', type);
         }
-    }
-    
-    applyEmergencyTemplate(template) {
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        const timeStr = now.toTimeString().split(' ')[0];
-        
-        switch(template) {
-            case 'male':
-                this.patientName.value = 'Emergency, Male';
-                this.patientID.value = `EM${now.getTime()}`;
-                this.gender.value = 'M';
-                this.studyDescription.value = `Emergency admission ${dateStr} ${timeStr}`;
-                this.accessionNumber.value = `ACC${now.getTime()}`;
-                break;
-                
-            case 'female':
-                this.patientName.value = 'Emergency, Female';
-                this.patientID.value = `EF${now.getTime()}`;
-                this.gender.value = 'F';
-                this.studyDescription.value = `Emergency admission ${dateStr} ${timeStr}`;
-                this.accessionNumber.value = `ACC${now.getTime()}`;
-                break;
-                
-            case 'child':
-                this.patientName.value = 'Emergency, Child';
-                this.patientID.value = `EC${now.getTime()}`;
-                this.gender.value = 'O';
-                this.studyDescription.value = `Emergency pediatric ${dateStr} ${timeStr}`;
-                this.accessionNumber.value = `ACC${now.getTime()}`;
-                // Set approximate birth date (5 years old)
-                const childBirthDate = new Date();
-                childBirthDate.setFullYear(childBirthDate.getFullYear() - 5);
-                this.birthDate.value = childBirthDate.toISOString().split('T')[0];
-                break;
-        }
-        
-        this.log(`Applied emergency template: ${template}`);
-        
-        // Flash the form to indicate it was filled
-        this.patientName.parentElement.parentElement.style.background = '#e3f2fd';
-        setTimeout(() => {
-            this.patientName.parentElement.parentElement.style.background = '';
-        }, 500);
-    }
-    // MWL Methods
-    async queryWorklist() {
-        this.log('Querying worklist...');
-        this.updateMwlStatus('Lade...', false);
-        
-        // Get selected date range
-        const dateRange = this.dateRangeSelect ? this.dateRangeSelect.value : 'today';
-        let dates = [];
-        const today = new Date();
-        
-        switch(dateRange) {
-            case 'yesterday':
-                const yesterday = new Date(today);
-                yesterday.setDate(yesterday.getDate() - 1);
-                dates.push(yesterday.toISOString().split('T')[0]);
-                break;
-            case 'today':
-                dates.push(today.toISOString().split('T')[0]);
-                break;
-            case 'tomorrow':
-                const tomorrow = new Date(today);
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                dates.push(tomorrow.toISOString().split('T')[0]);
-                break;
-            case 'range':
-                // Yesterday, today, and tomorrow
-                const rangeYesterday = new Date(today);
-                rangeYesterday.setDate(rangeYesterday.getDate() - 1);
-                const rangeTomorrow = new Date(today);
-                rangeTomorrow.setDate(rangeTomorrow.getDate() + 1);
-                
-                dates.push(rangeYesterday.toISOString().split('T')[0]);
-                dates.push(today.toISOString().split('T')[0]);
-                dates.push(rangeTomorrow.toISOString().split('T')[0]);
-                break;
-        }
-        
-        // Store all items for filtering
-        this.allWorklistItems = [];
-        
-        // Query for each date
-        dates.forEach(date => {
-            this.sendToHost('queryWorklist', { date: date });
-        });
-    }
-    
-    async refreshWorklist() {
-        this.log('Refreshing worklist from server...');
-        this.updateMwlStatus('Refreshing...', false);
-        
-        this.sendToHost('refreshWorklist', {});
-    }
-    
-    updateMwlStatus(text, isOnline = null) {
-        if (this.mwlStatus) {
-            const statusText = this.mwlStatus.querySelector('.status-text');
-            if (statusText) {
-                statusText.textContent = text;
-            }
-            
-            if (isOnline !== null) {
-                this.mwlStatus.classList.toggle('online', isOnline);
-                this.mwlStatus.classList.toggle('offline', !isOnline);
-            }
-        }
-    }
-    
-    displayWorklistItems(items) {
-        if (!this.mwlList) return;
-        
-        // Store all items for filtering
-        if (!this.allWorklistItems) {
-            this.allWorklistItems = [];
-        }
-        
-        // Merge new items with existing ones (for multi-date queries)
-        items.forEach(newItem => {
-            const exists = this.allWorklistItems.some(item => 
-                item.studyInstanceUID === newItem.studyInstanceUID
-            );
-            if (!exists) {
-                this.allWorklistItems.push(newItem);
-            }
-        });
-        
-        // Apply filter if active
-        this.filterWorklistItems();
-    }
-    
-    filterWorklistItems() {
-        if (!this.mwlList || !this.allWorklistItems) return;
-        
-        const filterText = this.mwlFilterInput ? this.mwlFilterInput.value.toLowerCase() : '';
-        
-        // Show/hide clear button
-        if (this.mwlFilterClear) {
-            this.mwlFilterClear.style.display = filterText ? 'block' : 'none';
-        }
-        
-        // Filter items
-        let filteredItems = this.allWorklistItems;
-        if (filterText) {
-            filteredItems = this.allWorklistItems.filter(item => {
-                const searchableText = [
-                    item.patientName,
-                    item.patientId,
-                    item.studyDescription,
-                    item.scheduledProcedureStepDescription,
-                    item.accessionNumber
-                ].join(' ').toLowerCase();
-                
-                return searchableText.includes(filterText);
-            });
-        }
-        
-        // Sort items: emergency first, then by date/time
-        filteredItems.sort((a, b) => {
-            if (a.isEmergency && !b.isEmergency) return -1;
-            if (!a.isEmergency && b.isEmergency) return 1;
-            
-            const dateA = new Date(a.scheduledDate + ' ' + a.scheduledTime);
-            const dateB = new Date(b.scheduledDate + ' ' + b.scheduledTime);
-            return dateA - dateB;
-        });
-        
-        // Update status count
-        if (this.mwlStatusCount) {
-            this.mwlStatusCount.textContent = `(${filteredItems.length} von ${this.allWorklistItems.length})`;
-        }
-        
-        // Clear list
-        this.mwlList.innerHTML = '';
-        this.worklistItems = filteredItems;
-        
-        if (filteredItems.length === 0) {
-            this.mwlList.innerHTML = filterText 
-                ? '<div class="mwl-empty">Keine Einträge gefunden für "' + filterText + '"</div>'
-                : '<div class="mwl-empty">Keine Einträge gefunden</div>';
-            return;
-        }
-        
-        // Display filtered items
-        filteredItems.forEach((item, index) => {
-            const div = document.createElement('div');
-            div.className = 'mwl-item';
-            if (item.isEmergency) {
-                div.classList.add('emergency');
-            }
-            
-            // Format birth date
-            const birthDate = item.birthDate ? new Date(item.birthDate).toLocaleDateString('de-DE') : '';
-            
-            // Format scheduled date
-            const schedDate = new Date(item.scheduledDate).toLocaleDateString('de-DE');
-            
-            div.innerHTML = `
-                <div class="mwl-col mwl-col-name">${item.patientName}</div>
-                <div class="mwl-col mwl-col-birth">${birthDate}</div>
-                <div class="mwl-col mwl-col-procedure">${item.scheduledProcedureStepDescription || item.studyDescription || 'Keine Beschreibung'}</div>
-                <div class="mwl-col mwl-col-date">${schedDate}</div>
-            `;
-            
-            div.addEventListener('click', () => this.selectWorklistItem(item, index));
-            this.mwlList.appendChild(div);
-        });
-    }
-    
-    clearFilter() {
-        if (this.mwlFilterInput) {
-            this.mwlFilterInput.value = '';
-            this.filterWorklistItems();
-        }
-    }
-    
-    selectWorklistItem(item, index) {
-        // Remove previous selection
-        document.querySelectorAll('.mwl-item').forEach((el, i) => {
-            el.classList.remove('selected');
-            if (i === index) {
-                el.classList.add('selected');
-            }
-        });
-        
-        this.selectedWorklistItem = item;
-        
-        // Fill patient form
-        this.fillPatientForm(item);
-        
-        // Notify C# backend
-        this.sendToHost('selectWorklistItem', {
-            studyInstanceUID: item.studyInstanceUID,
-            patientId: item.patientId,
-            patientName: item.patientName,
-            accessionNumber: item.accessionNumber,
-            birthDate: item.birthDate,
-            sex: item.sex,
-            studyDescription: item.studyDescription
-        });
-        
-        this.log(`Selected patient: ${item.patientName} (${item.patientId})`);
-    }
-    
-    fillPatientForm(item) {
-        if (this.patientName) {
-            this.patientName.value = item.patientName || '';
-        }
-        if (this.patientID) {
-            this.patientID.value = item.patientId || '';
-        }
-        if (this.birthDate && item.birthDate) {
-            // birthDate should already be in YYYY-MM-DD format from server
-            this.birthDate.value = item.birthDate;
-        }
-        if (this.gender && item.sex) {
-            this.gender.value = item.sex;
-        }
-        if (this.studyDescription) {
-            this.studyDescription.value = item.studyDescription || '';
-        }
-        if (this.accessionNumber) {
-            this.accessionNumber.value = item.accessionNumber || '';
-        }
-    }
-    
-    updateCacheInfo(status) {
-        if (this.cacheAge && status.lastUpdate) {
-            const age = new Date() - new Date(status.lastUpdate);
-            const minutes = Math.floor(age / 60000);
-            const hours = Math.floor(minutes / 60);
-            
-            if (hours > 0) {
-                this.cacheAge.textContent = `${hours}h ago`;
-            } else {
-                this.cacheAge.textContent = `${minutes}m ago`;
-            }
-        }
-        
-        if (this.cacheCount) {
-            this.cacheCount.textContent = status.itemCount || 0;
-        }
-    }
-    
-    // Exit confirmation methods
-    showExitConfirmation() {
-        this.log('Showing exit confirmation dialog');
-        const exitModal = document.getElementById('exitModal');
-        if (exitModal) {
-            exitModal.style.display = 'flex';
-        }
-    }
-    
-    hideExitConfirmation() {
-        this.log('Hiding exit confirmation dialog');
-        const exitModal = document.getElementById('exitModal');
-        if (exitModal) {
-            exitModal.style.display = 'none';
-        }
-    }
-    
-    confirmExit() {
-        this.log('User confirmed exit');
-        
-        // Debug: Check if WebView2 bridge is available
-        if (!window.chrome || !window.chrome.webview) {
-            this.log('WebView2 bridge not available! Trying fallback...', 'error');
-            // Try direct window close as fallback
-            try {
-                window.close();
-            } catch (e) {
-                this.log('Window.close() failed: ' + e.message, 'error');
-            }
-            return;
-        }
-        
-        this.sendToHost('exit', {});
-    }
+    });
 }
 
-// Global function for receiving messages from C#
+// Global function to receive messages from C#
 window.receiveMessage = function(message) {
     console.log('Received message from C#:', message);
     
-    if (window.app) {
-        window.app.handleHostMessage({ data: message });
+    if (!window.smartBoxApp) {
+        console.warn('App not initialized yet, queuing message');
+        return;
     }
     
-    // Handle specific message types
-    if (message.type === 'success' || message.type === 'error' || message.type === 'info') {
-        if (window.app) {
-            window.app.log(message.message, message.type);
-        }
+    // Handle different message types
+    switch (message.action || message.type) {
+        case 'exportComplete':
+            if (window.smartBoxApp.onExportComplete && message.data && message.data.captureIds) {
+                window.smartBoxApp.onExportComplete(message.data.captureIds);
+            }
+            break;
+        case 'error':
+            console.error('Error from C#:', message.message);
+            if (window.smartBoxApp.dialogManager) {
+                window.smartBoxApp.dialogManager.dismiss();
+                window.smartBoxApp.dialogManager.error(message.message);
+            }
+            break;
+        case 'success':
+            console.log('Success from C#:', message.message);
+            break;
+        default:
+            console.log('Unknown message type:', message.action || message.type);
     }
 };
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOM loaded, creating SmartBoxApp');
-        window.app = new SmartBoxApp();
-    });
-} else {
-    console.log('DOM already loaded, creating SmartBoxApp');
-    window.app = new SmartBoxApp();
-}
+// Initialize app when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.smartBoxApp = new SmartBoxTouchApp();
+});
+
+console.log('SmartBoxTouchApp: Script loaded');

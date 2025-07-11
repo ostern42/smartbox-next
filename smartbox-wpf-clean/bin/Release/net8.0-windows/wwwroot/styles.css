@@ -115,6 +115,12 @@ body {
     color: var(--text-secondary);
 }
 
+.header-buttons {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.header-button,
 .exit-button {
     width: var(--touch-target-min);
     height: var(--touch-target-min);
@@ -129,10 +135,20 @@ body {
     transition: transform var(--transition-fast), background var(--transition-fast);
 }
 
+.header-button {
+    background: var(--primary-blue);
+}
+
+.header-button:hover {
+    background: var(--primary-blue-hover);
+}
+
+.header-button:active,
 .exit-button:active {
     transform: scale(0.95);
 }
 
+.header-button i,
 .exit-button i {
     font-size: 20px;
 }
@@ -418,6 +434,35 @@ body {
     align-items: center;
     padding: 0 var(--space-lg);
     box-shadow: 0 2px 8px var(--shadow-medium);
+    gap: var(--space-lg);
+}
+
+.back-button {
+    height: var(--touch-target-min);
+    padding: 0 var(--space-md);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-weight: 600;
+    transition: all var(--transition-fast);
+}
+
+.back-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.back-button:active {
+    transform: scale(0.95);
+}
+
+.back-button i {
+    font-size: 18px;
 }
 
 .patient-data {
@@ -748,6 +793,12 @@ body {
 .dialog-button.cancel {
     background: var(--background-card);
     color: var(--text-primary);
+}
+
+.dialog-button.cancel.danger {
+    background: var(--danger-red);
+    color: white;
+    border-color: var(--danger-red);
 }
 
 .dialog-button.confirm {

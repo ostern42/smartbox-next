@@ -100,6 +100,18 @@ class SmartBoxTouchApp {
             backButton.addEventListener('click', () => this.onBackToPatientSelection());
         }
         
+        // Settings button
+        const settingsButton = document.getElementById('settingsButton');
+        if (settingsButton) {
+            settingsButton.addEventListener('click', () => this.openSettings());
+        }
+        
+        // Exit button
+        const exitButton = document.getElementById('exitButton');
+        if (exitButton) {
+            exitButton.addEventListener('click', () => this.onExitRequested());
+        }
+        
         // Patient card clicks
         document.addEventListener('click', (e) => {
             const patientCard = e.target.closest('.patient-card');
@@ -178,10 +190,10 @@ class SmartBoxTouchApp {
             
             // Send request to WebView2 host
             if (window.chrome && window.chrome.webview) {
-                window.chrome.webview.postMessage({
+                window.chrome.webview.postMessage(JSON.stringify({
                     type: 'loadMWL',
                     data: {}
-                });
+                }));
             } else {
                 // Fallback demo data for testing
                 this.onMWLDataReceived(this.getDemoMWLData());
@@ -343,14 +355,14 @@ class SmartBoxTouchApp {
             
             // Send to WebView2 host for processing
             if (window.chrome && window.chrome.webview) {
-                window.chrome.webview.postMessage({
+                window.chrome.webview.postMessage(JSON.stringify({
                     type: 'capturePhoto',
                     data: {
                         captureId: captureId,
                         imageData: imageData,
                         patient: this.modeManager.getCurrentPatient()
                     }
-                });
+                }));
             }
             
             console.log('SmartBoxTouchApp: Photo captured successfully');
@@ -445,7 +457,7 @@ class SmartBoxTouchApp {
                     // Convert blob to base64 for transmission
                     const reader = new FileReader();
                     reader.onload = () => {
-                        window.chrome.webview.postMessage({
+                        window.chrome.webview.postMessage(JSON.stringify({
                             type: 'captureVideo',
                             data: {
                                 captureId: captureId,
@@ -453,7 +465,7 @@ class SmartBoxTouchApp {
                                 duration: duration,
                                 patient: this.modeManager.getCurrentPatient()
                             }
-                        });
+                        }));
                     };
                     reader.readAsDataURL(blob);
                 }
@@ -647,7 +659,12 @@ class SmartBoxTouchApp {
                 ? 'Aufnahme wird exportiert...' 
                 : `${captures.length} Aufnahmen werden exportiert...`;
             
-            this.dialogManager.showLoading({ message });
+            try {
+                this.dialogManager.showLoading({ message });
+                console.log('SmartBoxTouchApp: Loading dialog shown successfully');
+            } catch (dialogError) {
+                console.error('SmartBoxTouchApp: Dialog error (continuing anyway):', dialogError);
+            }
             
             // Send export request to WebView2 host
             if (window.chrome && window.chrome.webview) {
@@ -660,13 +677,27 @@ class SmartBoxTouchApp {
                 // Store timeout for cleanup
                 this.currentExportTimeout = exportTimeout;
                 
-                window.chrome.webview.postMessage({
+                console.log('SmartBoxTouchApp: Sending exportCaptures message to C#...');
+                const messageData = {
                     type: 'exportCaptures',
                     data: {
                         captures: captures.map(c => ({ id: c.id, type: c.type })),
                         patient: this.modeManager.getCurrentPatient()
                     }
-                });
+                };
+                console.log('SmartBoxTouchApp: Message data:', messageData);
+                console.log('SmartBoxTouchApp: JSON stringified:', JSON.stringify(messageData));
+                
+                try {
+                    // WebView2 expects a string, not an object!
+                    const messageString = JSON.stringify(messageData);
+                    window.chrome.webview.postMessage(messageString);
+                    console.log('SmartBoxTouchApp: Message sent successfully');
+                } catch (postError) {
+                    console.error('SmartBoxTouchApp: Failed to post message:', postError);
+                    console.error('SmartBoxTouchApp: Message type:', typeof messageData);
+                    console.error('SmartBoxTouchApp: Message keys:', Object.keys(messageData));
+                }
             } else {
                 // Simulate export for testing
                 console.log('SmartBoxTouchApp: Simulating export (no WebView2)');
@@ -718,6 +749,37 @@ class SmartBoxTouchApp {
             alert(message);
         }
     }
+    
+    openSettings() {
+        console.log('Opening settings...');
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage(JSON.stringify({
+                type: 'openSettings',
+                data: {}
+            }));
+        }
+    }
+    
+    onExitRequested() {
+        console.log('Exit requested');
+        this.dialogManager.showConfirmation({
+            title: 'Anwendung beenden',
+            message: 'Möchten Sie SmartBox wirklich beenden?',
+            confirmText: 'Beenden',
+            cancelText: 'Abbrechen',
+            confirmStyle: 'danger',
+            onConfirm: () => {
+                // User confirmed exit
+                if (window.chrome && window.chrome.webview) {
+                    window.chrome.webview.postMessage(JSON.stringify({
+                        type: 'exitApp',
+                        data: {}
+                    }));
+                }
+            }
+        });
+    }
+}
 
     getDemoMWLData() {
         return [
@@ -775,6 +837,37 @@ if (window.chrome && window.chrome.webview) {
         }
     });
 }
+
+// Global function to receive messages from C#
+window.receiveMessage = function(message) {
+    console.log('Received message from C#:', message);
+    
+    if (!window.smartBoxApp) {
+        console.warn('App not initialized yet, queuing message');
+        return;
+    }
+    
+    // Handle different message types
+    switch (message.action || message.type) {
+        case 'exportComplete':
+            if (window.smartBoxApp.onExportComplete && message.data && message.data.captureIds) {
+                window.smartBoxApp.onExportComplete(message.data.captureIds);
+            }
+            break;
+        case 'error':
+            console.error('Error from C#:', message.message);
+            if (window.smartBoxApp.dialogManager) {
+                window.smartBoxApp.dialogManager.dismiss();
+                window.smartBoxApp.dialogManager.error(message.message);
+            }
+            break;
+        case 'success':
+            console.log('Success from C#:', message.message);
+            break;
+        default:
+            console.log('Unknown message type:', message.action || message.type);
+    }
+};
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {

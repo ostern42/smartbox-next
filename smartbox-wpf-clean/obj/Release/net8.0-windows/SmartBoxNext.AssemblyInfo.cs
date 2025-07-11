@@ -16,7 +16,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © 2025 CIRSS Medical Systems")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Medical Image Capture System - WPF Edition")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("2.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("2.0.0+c60f2907fc6a5148347326d4851ab61b41286dae")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("2.0.0+85fecbec053179eafb06111538d0b83e788689c3")]
 [assembly: System.Reflection.AssemblyProductAttribute("SmartBox Next")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SmartBoxNext")]
 [assembly: System.Reflection.AssemblyVersionAttribute("2.0.0.0")]

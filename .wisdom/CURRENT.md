@@ -1550,3 +1550,1889 @@ Nach JEDER Settings-Änderung:
 5. [ ] Null references? (Element nicht gefunden)
 6. [ ] Infinite loops? (Rekursive Aufrufe)
 7. [ ] Network tab: 404 errors?
+
+---
+
+## 📋 IMPLEMENTIERUNGSPLAN - SmartBoxNext Feature Roadmap (Stand: 10.01.2025)
+
+### 🎯 Quick Win: Screen Cleaning Mode (30 Min)
+**Priorität**: HOCH - Sofort nützlich, einfach zu implementieren
+**Nutzen**: Hygienische Touch-Bedienung im medizinischen Umfeld
+
+#### Step 1: HTML Button in index_touch.html
+```html
+<!-- Nach dem Settings button in der Control-Leiste -->
+<button class="control-button" id="cleanScreenBtn" onclick="startScreenCleaning()">
+    <span class="button-icon">🧹</span>
+    <span class="button-text">Reinigen</span>
+</button>
+```
+
+#### Step 2: JavaScript Implementation (neue Datei: screen_cleaner.js)
+```javascript
+// screen_cleaner.js - Bildschirmreinigungsmodus
+let cleaningActive = false;
+let cleaningTimer = null;
+let eventBlocker = null;
+
+function startScreenCleaning() {
+    if (cleaningActive) return;
+    
+    cleaningActive = true;
+    const overlay = document.createElement('div');
+    overlay.id = 'cleaningOverlay';
+    overlay.className = 'cleaning-overlay';
+    overlay.innerHTML = `
+        <div class="cleaning-content">
+            <div class="cleaning-icon">🧹</div>
+            <h1>Bildschirm-Reinigung</h1>
+            <div class="countdown-circle">
+                <svg viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" class="countdown-track"/>
+                    <circle cx="50" cy="50" r="45" class="countdown-progress" id="countdownProgress"/>
+                </svg>
+                <span class="countdown-text" id="cleaningCountdown">15</span>
+            </div>
+            <p>Touch-Eingaben deaktiviert</p>
+            <small>Bildschirm kann jetzt gereinigt werden</small>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    // Disable all inputs
+    eventBlocker = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    };
+    
+    ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mouseup', 'click', 'contextmenu']
+        .forEach(event => {
+            document.addEventListener(event, eventBlocker, true);
+        });
+    
+    // Countdown mit Animation
+    let seconds = 15;
+    const circle = document.getElementById('countdownProgress');
+    const text = document.getElementById('cleaningCountdown');
+    const circumference = 2 * Math.PI * 45;
+    
+    circle.style.strokeDasharray = circumference;
+    circle.style.strokeDashoffset = 0;
+    
+    cleaningTimer = setInterval(() => {
+        seconds--;
+        text.textContent = seconds;
+        
+        // Circular progress animation
+        const progress = (15 - seconds) / 15;
+        circle.style.strokeDashoffset = circumference * progress;
+        
+        if (seconds <= 0) {
+            stopScreenCleaning();
+        }
+    }, 1000);
+}
+
+function stopScreenCleaning() {
+    if (!cleaningActive) return;
+    
+    clearInterval(cleaningTimer);
+    
+    // Fade out animation
+    const overlay = document.getElementById('cleaningOverlay');
+    overlay.classList.add('fade-out');
+    
+    setTimeout(() => {
+        overlay.remove();
+        
+        // Re-enable inputs
+        ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mouseup', 'click', 'contextmenu']
+            .forEach(event => {
+                document.removeEventListener(event, eventBlocker, true);
+            });
+        
+        cleaningActive = false;
+        
+        // Optional: Bestätigungston
+        // playSound('cleaning-complete.mp3');
+    }, 500);
+}
+```
+
+#### Step 3: CSS Styling (in styles_touch.css hinzufügen)
+```css
+/* Screen Cleaning Mode */
+.cleaning-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, #e3f2fd 25%, #ffffff 25%, #ffffff 50%, #e3f2fd 50%, #e3f2fd 75%, #ffffff 75%);
+    background-size: 40px 40px;
+    animation: cleaning-stripes 1s linear infinite;
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes cleaning-stripes {
+    0% { background-position: 0 0; }
+    100% { background-position: 40px 40px; }
+}
+
+.cleaning-content {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    text-align: center;
+    max-width: 400px;
+}
+
+.cleaning-icon {
+    font-size: 80px;
+    animation: sweep 2s ease-in-out infinite;
+}
+
+@keyframes sweep {
+    0%, 100% { transform: rotate(-10deg); }
+    50% { transform: rotate(10deg); }
+}
+
+.countdown-circle {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    margin: 20px auto;
+}
+
+.countdown-circle svg {
+    transform: rotate(-90deg);
+    width: 100%;
+    height: 100%;
+}
+
+.countdown-track {
+    fill: none;
+    stroke: #e0e0e0;
+    stroke-width: 8;
+}
+
+.countdown-progress {
+    fill: none;
+    stroke: #2196F3;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear;
+}
+
+.countdown-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    font-weight: bold;
+    color: #2196F3;
+}
+
+.cleaning-overlay.fade-out {
+    animation: fadeOut 0.5s ease-out forwards;
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; }
+}
+```
+
+#### Step 4: Script einbinden
+```html
+<!-- In index_touch.html vor </body> -->
+<script src="js/screen_cleaner.js"></script>
+```
+
+**Test**: 
+- Button drücken → Overlay erscheint
+- Touch/Click versuchen → Nichts passiert
+- Nach 15s → Overlay verschwindet, Touch funktioniert wieder
+
+---
+
+### 🔧 Phase 1: PACS Export Fix (2-3 Stunden)
+**Priorität**: KRITISCH - Aktuell nicht funktional
+**Problem**: Export macht nur Simulation, keine echten DICOM Dateien
+
+#### Step 1: DicomExporter Integration in HandleExportCaptures
+Datei: `MainWindow.xaml.cs`, Zeilen 2178-2242 ersetzen:
+
+```csharp
+private async Task HandleExportCaptures(JObject message)
+{
+    try
+    {
+        _logger.LogInformation("=== HandleExportCaptures called ===");
+        Logger.LogDebug("HandleExportCaptures START - processing export request");
+        
+        var data = message["data"];
+        var captures = data?["captures"];
+        var patient = data?["patient"];
+        
+        if (captures == null)
+        {
+            _logger.LogWarning("No captures provided for export");
+            await SendErrorToWebView("No captures provided for export");
+            return;
+        }
+        
+        _logger.LogInformation("Processing {Count} captures for export", captures.Count());
+        
+        var exportedIds = new List<string>();
+        var failedExports = new List<string>();
+        
+        // Create PatientInfo once
+        PatientInfo patientInfo = null;
+        if (patient != null)
+        {
+            patientInfo = new PatientInfo
+            {
+                PatientId = patient["id"]?.ToString(),
+                FirstName = ExtractFirstName(patient["name"]?.ToString()),
+                LastName = ExtractLastName(patient["name"]?.ToString()),
+                BirthDate = ParseBirthDate(patient["birthDate"]?.ToString()),
+                Gender = patient["gender"]?.ToString(),
+                StudyDescription = patient["studyDescription"]?.ToString(),
+                StudyInstanceUID = _selectedWorklistItem?.StudyInstanceUID,
+                AccessionNumber = _selectedWorklistItem?.AccessionNumber
+            };
+            
+            _logger.LogInformation("Patient info created for export: {PatientId}", patientInfo.PatientId);
+        }
+        
+        // ECHTE IMPLEMENTATION STATT SIMULATION:
+        var dicomExporter = new DicomExporter(_config);
+        var pacsSender = _config.Pacs.Enabled ? new PacsSender(_config) : null;
+        
+        foreach (var capture in captures)
+        {
+            try
+            {
+                var captureId = capture["id"]?.ToString();
+                var captureType = capture["type"]?.ToString();
+                
+                _logger.LogInformation("Processing capture {Id} of type {Type}", captureId, captureType);
+                
+                if (string.IsNullOrEmpty(captureId))
+                {
+                    _logger.LogWarning("Capture has no ID, skipping");
+                    continue;
+                }
+                
+                if (captureType == "photo" && patientInfo != null)
+                {
+                    // Find the photo file
+                    // TODO: Besseres Mapping zwischen captureId und Dateinamen
+                    var photoFiles = Directory.GetFiles(_config.Storage.PhotosPath, "IMG_*.jpg")
+                        .OrderByDescending(f => File.GetCreationTime(f))
+                        .ToList();
+                    
+                    if (photoFiles.Any())
+                    {
+                        var photoPath = photoFiles.First();
+                        _logger.LogInformation("Using photo file: {Path}", photoPath);
+                        
+                        // Read image data
+                        var imageBytes = await File.ReadAllBytesAsync(photoPath);
+                        
+                        // Convert to DICOM
+                        _logger.LogInformation("Converting to DICOM...");
+                        var dicomPath = await dicomExporter.ExportDicomAsync(imageBytes, patientInfo, "OT");
+                        _logger.LogInformation("DICOM file created: {Path}", dicomPath);
+                        
+                        // Send progress update to UI
+                        await SendMessageToWebView(new
+                        {
+                            action = "exportProgress",
+                            data = new
+                            {
+                                captureId = captureId,
+                                status = "dicom_created",
+                                message = $"DICOM erstellt: {Path.GetFileName(dicomPath)}"
+                            }
+                        });
+                        
+                        // Send to PACS if enabled
+                        if (pacsSender != null)
+                        {
+                            try
+                            {
+                                _logger.LogInformation("Sending to PACS: {Host}:{Port}", 
+                                    _config.Pacs.ServerHost, _config.Pacs.ServerPort);
+                                
+                                var sendResult = await pacsSender.SendDicomFileAsync(dicomPath);
+                                
+                                if (sendResult.Success)
+                                {
+                                    _logger.LogInformation("Successfully sent to PACS");
+                                    exportedIds.Add(captureId);
+                                    
+                                    await SendMessageToWebView(new
+                                    {
+                                        action = "exportProgress",
+                                        data = new
+                                        {
+                                            captureId = captureId,
+                                            status = "pacs_sent",
+                                            message = "An PACS gesendet"
+                                        }
+                                    });
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("PACS send failed: {Message}", sendResult.Message);
+                                    failedExports.Add(captureId);
+                                    
+                                    await SendMessageToWebView(new
+                                    {
+                                        action = "exportProgress",
+                                        data = new
+                                        {
+                                            captureId = captureId,
+                                            status = "pacs_failed",
+                                            message = $"PACS Fehler: {sendResult.Message}",
+                                            error = sendResult.Message
+                                        }
+                                    });
+                                }
+                            }
+                            catch (Exception pacsEx)
+                            {
+                                _logger.LogError(pacsEx, "PACS send exception");
+                                failedExports.Add(captureId);
+                                
+                                // But DICOM was created successfully
+                                exportedIds.Add(captureId);
+                            }
+                        }
+                        else
+                        {
+                            // No PACS configured, but DICOM was created
+                            _logger.LogInformation("PACS disabled, DICOM saved locally only");
+                            exportedIds.Add(captureId);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("No photo files found");
+                        failedExports.Add(captureId);
+                    }
+                }
+                else if (captureType == "video")
+                {
+                    // TODO: Video export implementation
+                    _logger.LogWarning("Video export not yet implemented");
+                    failedExports.Add(captureId);
+                }
+            }
+            catch (Exception captureEx)
+            {
+                var captureId = capture["id"]?.ToString() ?? "unknown";
+                _logger.LogError(captureEx, "Failed to export capture {Id}", captureId);
+                failedExports.Add(captureId);
+            }
+        }
+        
+        // Send response back to JavaScript
+        Logger.LogDebug($"Sending response - Exported: {exportedIds.Count}, Failed: {failedExports.Count}");
+        await SendMessageToWebView(new
+        {
+            action = "exportComplete",
+            data = new
+            {
+                captureIds = exportedIds,
+                failedIds = failedExports,
+                successCount = exportedIds.Count,
+                failureCount = failedExports.Count,
+                message = exportedIds.Count > 0 
+                    ? $"{exportedIds.Count} Aufnahmen exportiert" 
+                    : "Export fehlgeschlagen"
+            }
+        });
+        
+        _logger.LogInformation("Export completed: {Success} successful, {Failed} failed", 
+            exportedIds.Count, failedExports.Count);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "HandleExportCaptures failed");
+        await SendErrorToWebView($"Export failed: {ex.Message}");
+    }
+}
+```
+
+#### Step 2: Test PACS Connection Handler verbessern
+```csharp
+// In MainWindow.xaml.cs, HandleTestPacsConnection erweitern
+private async Task HandleTestPacsConnection(JObject message)
+{
+    try
+    {
+        var pacsSender = new PacsSender(_config);
+        var success = await pacsSender.TestConnectionAsync();
+        
+        await SendMessageToWebView(new
+        {
+            action = "pacsTestResult",
+            data = new
+            {
+                success = success,
+                message = success 
+                    ? "PACS Verbindung erfolgreich" 
+                    : "PACS Verbindung fehlgeschlagen - Prüfen Sie Host/Port/AE Titles",
+                details = new
+                {
+                    host = _config.Pacs.ServerHost,
+                    port = _config.Pacs.ServerPort,
+                    calledAE = _config.Pacs.CalledAeTitle,
+                    callingAE = _config.Pacs.CallingAeTitle
+                }
+            }
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "PACS connection test failed");
+        await SendMessageToWebView(new
+        {
+            action = "pacsTestResult",
+            data = new
+            {
+                success = false,
+                message = $"Fehler: {ex.Message}",
+                error = ex.ToString()
+            }
+        });
+    }
+}
+```
+
+**Test**: 
+1. Foto machen → Export Button → Check ./Data/DICOM/ für .dcm Dateien
+2. Check Orthanc Web UI (http://localhost:8042) für empfangene Bilder
+3. Bei Fehler: F12 Console für JavaScript Fehler prüfen
+
+---
+
+### 📊 Phase 2: Status Toolbar (2 Stunden)
+**Priorität**: HOCH - Bessere UX und Übersicht
+**Nutzen**: Alle wichtigen Infos auf einen Blick
+
+#### Step 1: HTML Structure (index_touch.html)
+```html
+<!-- Direkt nach <body> tag -->
+<div class="status-toolbar">
+    <div class="toolbar-section datetime">
+        <span class="date" id="toolbarDate">10.01.2025</span>
+        <span class="time" id="toolbarTime">14:32:17</span>
+    </div>
+    
+    <div class="toolbar-section study-info">
+        <span class="study-timer" id="studyTimer" style="display:none;">00:00</span>
+        <span class="patient-name" id="toolbarPatient">Kein Patient</span>
+    </div>
+    
+    <div class="toolbar-section system-status">
+        <span class="pacs-status" id="pacsStatus" title="PACS Status">
+            <i class="status-dot offline"></i>PACS
+        </span>
+        <span class="storage-status" id="storageStatus" title="Speicherplatz">
+            <i class="icon">💾</i>
+            <span id="storageGB">--</span>GB
+        </span>
+        <span class="queue-status" title="Export-Warteschlange">
+            <i class="icon">📤</i>
+            <span id="queueCount">0</span>
+        </span>
+    </div>
+    
+    <div class="toolbar-section actions">
+        <button class="toolbar-btn" onclick="startScreenCleaning()" title="Bildschirm reinigen">
+            <i class="icon">🧹</i>
+        </button>
+        <button class="toolbar-btn" onclick="showStudyBrowser()" title="Study-Liste">
+            <i class="icon">📊</i>
+        </button>
+        <button class="toolbar-btn" onclick="toggleFullscreen()" title="Vollbild">
+            <i class="icon">🔳</i>
+        </button>
+    </div>
+</div>
+
+<!-- Container muss nach unten verschoben werden -->
+<style>
+    .container {
+        margin-top: 60px; /* Platz für Toolbar */
+    }
+</style>
+```
+
+#### Step 2: JavaScript Timer & Updates (toolbar_manager.js)
+```javascript
+// toolbar_manager.js
+class ToolbarManager {
+    constructor() {
+        this.studyStartTime = null;
+        this.studyTimer = null;
+        this.init();
+    }
+    
+    init() {
+        // Update time every second
+        setInterval(() => this.updateDateTime(), 1000);
+        
+        // Check system status every 30s
+        setInterval(() => this.checkSystemStatus(), 30000);
+        this.checkSystemStatus(); // Initial check
+        
+        // Listen for patient selection
+        window.addEventListener('patientSelected', (e) => {
+            this.startStudyTimer(e.detail);
+        });
+        
+        window.addEventListener('studyCompleted', () => {
+            this.stopStudyTimer();
+        });
+    }
+    
+    updateDateTime() {
+        const now = new Date();
+        document.getElementById('toolbarDate').textContent = 
+            now.toLocaleDateString('de-DE');
+        document.getElementById('toolbarTime').textContent = 
+            now.toLocaleTimeString('de-DE');
+            
+        // Update study timer if active
+        if (this.studyStartTime) {
+            const elapsed = now - this.studyStartTime;
+            const minutes = Math.floor(elapsed / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            document.getElementById('studyTimer').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+    }
+    
+    startStudyTimer(patient) {
+        this.studyStartTime = new Date();
+        document.getElementById('studyTimer').style.display = 'inline';
+        document.getElementById('toolbarPatient').textContent = 
+            patient.name || `${patient.firstName} ${patient.lastName}`;
+        
+        // Notify backend
+        if (window.chrome?.webview) {
+            window.chrome.webview.postMessage({
+                action: 'studyStarted',
+                data: {
+                    patientId: patient.id,
+                    startTime: this.studyStartTime.toISOString()
+                }
+            });
+        }
+    }
+    
+    stopStudyTimer() {
+        if (this.studyStartTime) {
+            const duration = new Date() - this.studyStartTime;
+            
+            // Notify backend with duration
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage({
+                    action: 'studyEnded',
+                    data: {
+                        duration: Math.floor(duration / 1000), // seconds
+                        endTime: new Date().toISOString()
+                    }
+                });
+            }
+            
+            // Reset UI
+            this.studyStartTime = null;
+            document.getElementById('studyTimer').style.display = 'none';
+            document.getElementById('toolbarPatient').textContent = 'Kein Patient';
+        }
+    }
+    
+    async checkSystemStatus() {
+        // Check PACS status
+        if (window.chrome?.webview) {
+            window.chrome.webview.postMessage({
+                action: 'getSystemStatus'
+            });
+        }
+    }
+    
+    updateSystemStatus(data) {
+        // PACS Status
+        if (data.pacsOnline !== undefined) {
+            const dot = document.querySelector('#pacsStatus .status-dot');
+            dot.className = `status-dot ${data.pacsOnline ? 'online' : 'offline'}`;
+        }
+        
+        // Storage
+        if (data.storageGB !== undefined) {
+            document.getElementById('storageGB').textContent = 
+                data.storageGB.toFixed(1);
+        }
+        
+        // Queue
+        if (data.queueCount !== undefined) {
+            document.getElementById('queueCount').textContent = data.queueCount;
+        }
+    }
+}
+
+// Initialize on load
+let toolbarManager;
+document.addEventListener('DOMContentLoaded', () => {
+    toolbarManager = new ToolbarManager();
+});
+
+// Handle messages from backend
+window.addEventListener('message', (e) => {
+    if (e.data.action === 'systemStatus') {
+        toolbarManager.updateSystemStatus(e.data.data);
+    }
+});
+```
+
+#### Step 3: CSS für Toolbar (styles_touch.css)
+```css
+/* Status Toolbar */
+.status-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background: rgba(33, 33, 33, 0.95);
+    backdrop-filter: blur(10px);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.datetime {
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    font-size: 16px;
+}
+
+.date {
+    opacity: 0.8;
+}
+
+.time {
+    font-weight: 600;
+    min-width: 70px;
+    font-variant-numeric: tabular-nums;
+}
+
+.study-timer {
+    background: rgba(76, 175, 80, 0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    color: #4CAF50;
+    font-variant-numeric: tabular-nums;
+}
+
+.patient-name {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+}
+
+.status-dot.online {
+    background: #4CAF50;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.offline {
+    background: #f44336;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.toolbar-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.toolbar-btn:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+
+.toolbar-btn:active {
+    transform: translateY(0);
+}
+
+/* Icon styles */
+.icon {
+    font-style: normal;
+    display: inline-block;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .patient-name {
+        max-width: 100px;
+    }
+    
+    .toolbar-section.datetime {
+        font-size: 14px;
+    }
+}
+```
+
+#### Step 4: Backend Handler für System Status
+```csharp
+// In MainWindow.xaml.cs
+private async Task HandleGetSystemStatus(JObject message)
+{
+    try
+    {
+        // Check PACS
+        bool pacsOnline = false;
+        if (_config.Pacs.Enabled && !string.IsNullOrEmpty(_config.Pacs.ServerHost))
+        {
+            try
+            {
+                var pacsSender = new PacsSender(_config);
+                pacsOnline = await pacsSender.TestConnectionAsync();
+            }
+            catch { }
+        }
+        
+        // Check storage
+        var driveInfo = new DriveInfo(Path.GetPathRoot(Path.GetFullPath(_config.Storage.PhotosPath)));
+        var freeSpaceGB = driveInfo.AvailableFreeSpace / (1024.0 * 1024.0 * 1024.0);
+        
+        // Check queue
+        var queueCount = 0;
+        if (_queueManager != null)
+        {
+            // TODO: Implement GetPendingCount in QueueManager
+            // queueCount = await _queueManager.GetPendingCount();
+        }
+        
+        await SendMessageToWebView(new
+        {
+            action = "systemStatus",
+            data = new
+            {
+                pacsOnline = pacsOnline,
+                storageGB = freeSpaceGB,
+                queueCount = queueCount
+            }
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Failed to get system status");
+    }
+}
+```
+
+**Test**: 
+- Toolbar erscheint oben
+- Zeit läuft
+- Patient auswählen → Timer startet
+- PACS Status zeigt online/offline
+
+---
+
+### 🎥 Phase 3: Auto-Send Implementation (3 Stunden)
+**Priorität**: MITTEL - Workflow-Verbesserung
+**Nutzen**: Schnellerer Workflow, weniger Klicks
+
+#### Step 1: Settings UI Erweiterung
+```html
+<!-- In settings.html, PACS Section nach EnableTls -->
+<div class="setting-group">
+    <label for="pacs-auto-send">
+        <input type="checkbox" id="pacs-auto-send" class="toggle-switch">
+        <span>Automatisch an PACS senden</span>
+    </label>
+    <div class="help-text">
+        Bilder werden sofort nach der Aufnahme an PACS gesendet
+    </div>
+</div>
+
+<div class="setting-group" id="auto-send-delay-group">
+    <label for="pacs-auto-send-delay">Verzögerung (Sekunden)</label>
+    <input type="number" id="pacs-auto-send-delay" min="0" max="60" value="2">
+    <div class="help-text">
+        Wartezeit vor automatischem Senden (0 = sofort)
+    </div>
+</div>
+```
+
+#### Step 2: Config Erweiterung
+```csharp
+// In AppConfig.cs, PacsConfig class
+public class PacsConfig
+{
+    // ... existing properties ...
+    
+    public bool AutoSend { get; set; } = false;
+    public int AutoSendDelaySeconds { get; set; } = 2;
+}
+```
+
+#### Step 3: Auto-Send in HandlePhotoCaptured
+```csharp
+// In MainWindow.xaml.cs, am Ende von HandlePhotoCaptured (nach Zeile 650)
+// Vor dem letzten catch block
+
+// Auto-send if enabled
+if (_config.Pacs.AutoSend && _config.Pacs.Enabled && result.Success)
+{
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            // Wait configured delay
+            if (_config.Pacs.AutoSendDelaySeconds > 0)
+            {
+                await Task.Delay(_config.Pacs.AutoSendDelaySeconds * 1000);
+            }
+            
+            // Find the DICOM file that was just created
+            var dicomFiles = Directory.GetFiles(_config.Storage.DicomPath, "*.dcm")
+                .OrderByDescending(f => File.GetCreationTime(f))
+                .Take(1)
+                .FirstOrDefault();
+                
+            if (dicomFiles != null && File.Exists(dicomFiles))
+            {
+                _logger.LogInformation("Auto-sending DICOM to PACS: {File}", Path.GetFileName(dicomFiles));
+                
+                var pacsSender = new PacsSender(_config);
+                var sendResult = await pacsSender.SendDicomFileAsync(dicomFiles);
+                
+                // Update UI with result
+                await SendMessageToWebView(new
+                {
+                    action = "autoSendResult",
+                    data = new
+                    {
+                        success = sendResult.Success,
+                        message = sendResult.Success 
+                            ? "Automatisch an PACS gesendet" 
+                            : $"Auto-Send fehlgeschlagen: {sendResult.Message}",
+                        fileName = Path.GetFileName(dicomFiles)
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Auto-send failed");
+            await SendMessageToWebView(new
+            {
+                action = "autoSendResult",
+                data = new
+                {
+                    success = false,
+                    message = $"Auto-Send Fehler: {ex.Message}"
+                }
+            });
+        }
+    });
+}
+```
+
+#### Step 4: JavaScript für Auto-Send Feedback
+```javascript
+// In app_touch.js, message handler erweitern
+window.addEventListener('message', (e) => {
+    if (e.data.action === 'autoSendResult') {
+        const data = e.data.data;
+        showNotification(
+            data.success ? 'success' : 'error',
+            data.message,
+            3000
+        );
+        
+        // Update capture status if capture list exists
+        if (window.captureManager) {
+            window.captureManager.updateCaptureStatus({
+                captureId: data.captureId,
+                status: data.success ? 'sent' : 'failed',
+                error: data.success ? null : data.message
+            });
+        }
+    }
+});
+```
+
+**Test**: 
+1. Settings → PACS → Auto-Send aktivieren
+2. Foto machen
+3. Nach 2 Sekunden sollte "Automatisch an PACS gesendet" erscheinen
+4. Check Orthanc für empfangenes Bild
+
+---
+
+### 📸 Phase 4: Capture List mit Status (4 Stunden)
+**Priorität**: MITTEL - Visuelles Feedback
+**Nutzen**: User sieht Status jeder Aufnahme
+
+#### Step 1: HTML für Capture List
+```html
+<!-- In index_touch.html, nach dem video-container -->
+<div class="capture-list" id="captureList">
+    <div class="capture-list-header">
+        <span>Aufnahmen</span>
+        <span class="capture-count" id="captureCount">0</span>
+    </div>
+    <div class="capture-items" id="captureItems">
+        <!-- Dynamisch gefüllt -->
+    </div>
+</div>
+```
+
+#### Step 2: Capture Manager JavaScript
+```javascript
+// capture_manager.js
+class CaptureManager {
+    constructor() {
+        this.captures = new Map();
+        this.autoSendEnabled = false;
+        this.init();
+    }
+    
+    init() {
+        // Load config
+        this.loadConfig();
+        
+        // Listen for capture events
+        window.addEventListener('photoCaptured', (e) => {
+            this.addCapture({
+                type: 'photo',
+                data: e.detail.imageData,
+                thumbnail: e.detail.thumbnail,
+                timestamp: new Date()
+            });
+        });
+        
+        // Listen for backend messages
+        window.addEventListener('message', (e) => {
+            if (e.data.action === 'captureStatus') {
+                this.updateCaptureStatus(e.data.data);
+            }
+        });
+    }
+    
+    async loadConfig() {
+        // Get auto-send config from backend
+        if (window.chrome?.webview) {
+            window.chrome.webview.postMessage({ action: 'getSettings' });
+        }
+    }
+    
+    addCapture(captureData) {
+        const captureId = `capture_${Date.now()}`;
+        const capture = {
+            id: captureId,
+            ...captureData,
+            status: 'local' // local, queued, sending, sent, failed
+        };
+        
+        this.captures.set(captureId, capture);
+        this.renderCapture(capture);
+        this.updateCount();
+        
+        // Store capture ID for backend reference
+        window.lastCaptureId = captureId;
+        
+        return captureId;
+    }
+    
+    renderCapture(capture) {
+        const container = document.getElementById('captureItems');
+        
+        let item = document.getElementById(capture.id);
+        if (!item) {
+            item = document.createElement('div');
+            item.id = capture.id;
+            item.className = 'capture-item';
+            container.insertBefore(item, container.firstChild);
+        }
+        
+        item.className = `capture-item status-${capture.status}`;
+        item.innerHTML = `
+            <img src="${capture.thumbnail}" alt="Capture">
+            <div class="capture-overlay">
+                ${this.getStatusIcon(capture.status)}
+                ${capture.error ? `<span class="error-hint" title="${capture.error}">!</span>` : ''}
+            </div>
+            <div class="capture-time">${this.formatTime(capture.timestamp)}</div>
+        `;
+    }
+    
+    getStatusIcon(status) {
+        const icons = {
+            'local': '💾',
+            'queued': '⏳',
+            'sending': '📤',
+            'sent': '✅',
+            'failed': '❌'
+        };
+        return `<span class="status-icon">${icons[status] || '❓'}</span>`;
+    }
+    
+    updateCaptureStatus(data) {
+        const capture = this.captures.get(data.captureId);
+        if (!capture) return;
+        
+        capture.status = data.status;
+        capture.error = data.error || null;
+        
+        this.renderCapture(capture);
+        
+        // Visual feedback
+        if (data.status === 'sent') {
+            this.showSuccessAnimation(data.captureId);
+        } else if (data.status === 'failed') {
+            this.showErrorAnimation(data.captureId);
+        }
+    }
+    
+    showSuccessAnimation(captureId) {
+        const item = document.getElementById(captureId);
+        if (item) {
+            item.classList.add('success-pulse');
+            setTimeout(() => item.classList.remove('success-pulse'), 1000);
+        }
+    }
+    
+    showErrorAnimation(captureId) {
+        const item = document.getElementById(captureId);
+        if (item) {
+            item.classList.add('error-shake');
+            setTimeout(() => item.classList.remove('error-shake'), 500);
+        }
+    }
+    
+    formatTime(date) {
+        return date.toLocaleTimeString('de-DE', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+    
+    updateCount() {
+        document.getElementById('captureCount').textContent = this.captures.size;
+    }
+}
+
+// Initialize
+let captureManager;
+document.addEventListener('DOMContentLoaded', () => {
+    captureManager = new CaptureManager();
+});
+```
+
+#### Step 3: CSS für Capture List
+```css
+/* Capture List */
+.capture-list {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 320px;
+    max-height: 400px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    overflow: hidden;
+    z-index: 100;
+}
+
+.capture-list-header {
+    padding: 12px 16px;
+    background: #f5f5f5;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+
+.capture-count {
+    background: #2196F3;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    min-width: 20px;
+    text-align: center;
+}
+
+.capture-items {
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.capture-item {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.capture-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.capture-overlay {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(0,0,0,0.7);
+    border-radius: 4px;
+    padding: 2px 4px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.status-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+/* Status-specific styles */
+.capture-item.status-sent {
+    border-color: #4CAF50;
+}
+
+.capture-item.status-failed {
+    border-color: #f44336;
+}
+
+.capture-item.status-sending {
+    border-color: #2196F3;
+    animation: pulse-border 1s infinite;
+}
+
+@keyframes pulse-border {
+    0% { border-color: #2196F3; }
+    50% { border-color: #64B5F6; }
+    100% { border-color: #2196F3; }
+}
+
+.capture-item.status-queued {
+    border-color: #FF9800;
+}
+
+.capture-time {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    font-size: 10px;
+    text-align: center;
+    padding: 2px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Animations */
+.success-pulse {
+    animation: successPulse 1s ease;
+}
+
+@keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); box-shadow: 0 0 20px rgba(76, 175, 80, 0.5); }
+    100% { transform: scale(1); }
+}
+
+.error-shake {
+    animation: errorShake 0.5s ease;
+}
+
+@keyframes errorShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.error-hint {
+    background: #f44336;
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .capture-list {
+        width: 280px;
+        left: 10px;
+        bottom: 10px;
+    }
+    
+    .capture-item {
+        width: 75px;
+        height: 75px;
+    }
+}
+```
+
+#### Step 4: Integration mit Photo Capture
+```javascript
+// In app_touch.js, onCapturePhoto function erweitern
+function onCapturePhoto(imageData, thumbnailData) {
+    // ... existing code ...
+    
+    // Dispatch event for capture manager
+    window.dispatchEvent(new CustomEvent('photoCaptured', {
+        detail: {
+            imageData: imageData,
+            thumbnail: thumbnailData || imageData,
+            timestamp: new Date()
+        }
+    }));
+    
+    // ... rest of function ...
+}
+```
+
+**Test**: 
+- Foto machen → Thumbnail erscheint in Liste
+- Status ändert sich: 💾 → 📤 → ✅
+- Bei Fehler: ❌ mit rotem Rand
+
+---
+
+### 🎬 Phase 5: Always-On Recording (6-8 Stunden)
+**Priorität**: NIEDRIG - Große Feature
+**Nutzen**: Keine verpassten Momente, lückenlose Dokumentation
+
+#### Step 1: Recording Manager Backend
+```csharp
+// Neue Datei: RecordingManager.cs
+public class RecordingManager
+{
+    private readonly ILogger<RecordingManager> _logger;
+    private readonly AppConfig _config;
+    private string _currentRecordingPath;
+    private DateTime _recordingStartTime;
+    private bool _isRecording;
+    
+    public RecordingManager(AppConfig config)
+    {
+        _config = config;
+        var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.AddConsole();
+            builder.SetMinimumLevel(LogLevel.Debug);
+        });
+        _logger = loggerFactory.CreateLogger<RecordingManager>();
+    }
+    
+    public async Task<RecordingInfo> StartRecording(string patientId, string studyInstanceUID)
+    {
+        if (_isRecording)
+        {
+            await StopRecording();
+        }
+        
+        _recordingStartTime = DateTime.Now;
+        var timestamp = _recordingStartTime.ToString("yyyyMMdd_HHmmss");
+        var fileName = $"{patientId}_{timestamp}_study.webm";
+        _currentRecordingPath = Path.Combine(_config.Storage.VideosPath, "studies", fileName);
+        
+        // Ensure directory exists
+        Directory.CreateDirectory(Path.GetDirectoryName(_currentRecordingPath));
+        
+        _isRecording = true;
+        
+        _logger.LogInformation("Started recording for patient {PatientId}: {Path}", 
+            patientId, _currentRecordingPath);
+        
+        return new RecordingInfo
+        {
+            RecordingId = Guid.NewGuid().ToString(),
+            FilePath = _currentRecordingPath,
+            StartTime = _recordingStartTime,
+            PatientId = patientId,
+            StudyInstanceUID = studyInstanceUID
+        };
+    }
+    
+    public async Task<RecordingSummary> StopRecording()
+    {
+        if (!_isRecording)
+        {
+            return null;
+        }
+        
+        _isRecording = false;
+        var duration = DateTime.Now - _recordingStartTime;
+        
+        var summary = new RecordingSummary
+        {
+            FilePath = _currentRecordingPath,
+            StartTime = _recordingStartTime,
+            EndTime = DateTime.Now,
+            Duration = duration,
+            FileSize = File.Exists(_currentRecordingPath) 
+                ? new FileInfo(_currentRecordingPath).Length 
+                : 0
+        };
+        
+        _logger.LogInformation("Stopped recording. Duration: {Duration}, Size: {Size} MB", 
+            duration, summary.FileSize / (1024.0 * 1024.0));
+        
+        return summary;
+    }
+    
+    public void AddMarker(string type, string description, object data = null)
+    {
+        if (!_isRecording) return;
+        
+        var marker = new RecordingMarker
+        {
+            Timestamp = DateTime.Now - _recordingStartTime,
+            Type = type,
+            Description = description,
+            Data = data
+        };
+        
+        // Save marker to sidecar file
+        var markerFile = Path.ChangeExtension(_currentRecordingPath, ".markers.json");
+        var markers = new List<RecordingMarker>();
+        
+        if (File.Exists(markerFile))
+        {
+            var json = File.ReadAllText(markerFile);
+            markers = JsonSerializer.Deserialize<List<RecordingMarker>>(json);
+        }
+        
+        markers.Add(marker);
+        File.WriteAllText(markerFile, JsonSerializer.Serialize(markers, new JsonSerializerOptions 
+        { 
+            WriteIndented = true 
+        }));
+        
+        _logger.LogDebug("Added marker: {Type} at {Time}", type, marker.Timestamp);
+    }
+}
+
+public class RecordingInfo
+{
+    public string RecordingId { get; set; }
+    public string FilePath { get; set; }
+    public DateTime StartTime { get; set; }
+    public string PatientId { get; set; }
+    public string StudyInstanceUID { get; set; }
+}
+
+public class RecordingSummary
+{
+    public string FilePath { get; set; }
+    public DateTime StartTime { get; set; }
+    public DateTime EndTime { get; set; }
+    public TimeSpan Duration { get; set; }
+    public long FileSize { get; set; }
+}
+
+public class RecordingMarker
+{
+    public TimeSpan Timestamp { get; set; }
+    public string Type { get; set; }
+    public string Description { get; set; }
+    public object Data { get; set; }
+}
+```
+
+#### Step 2: Frontend Recording Integration
+```javascript
+// recording_manager.js
+class AlwaysOnRecording {
+    constructor() {
+        this.isRecording = false;
+        this.recorder = null;
+        this.recordingStartTime = null;
+        this.chunks = [];
+        this.markers = [];
+        this.stream = null;
+    }
+    
+    async startStudyRecording(patient) {
+        if (this.isRecording) {
+            await this.stopRecording();
+        }
+        
+        try {
+            // Get video stream (reuse existing WebRTC stream if possible)
+            this.stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    frameRate: { ideal: 25 }
+                },
+                audio: true
+            });
+            
+            // Create MediaRecorder
+            const options = {
+                mimeType: 'video/webm;codecs=vp9,opus',
+                videoBitsPerSecond: 4000000, // 4 Mbps
+                audioBitsPerSecond: 128000   // 128 kbps
+            };
+            
+            this.recorder = new MediaRecorder(this.stream, options);
+            this.chunks = [];
+            this.markers = [];
+            this.recordingStartTime = Date.now();
+            
+            this.recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    this.chunks.push(e.data);
+                    this.updateRecordingStats();
+                }
+            };
+            
+            this.recorder.onstop = async () => {
+                const blob = new Blob(this.chunks, { type: 'video/webm' });
+                await this.saveRecording(blob);
+            };
+            
+            // Start recording with 10-second chunks
+            this.recorder.start(10000);
+            this.isRecording = true;
+            
+            // Update UI
+            this.showRecordingIndicator(true);
+            
+            // Notify backend
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage({
+                    action: 'startRecording',
+                    data: {
+                        patientId: patient.id,
+                        studyInstanceUID: patient.studyInstanceUID
+                    }
+                });
+            }
+            
+            console.log(`📹 Recording started for ${patient.name}`);
+            
+        } catch (error) {
+            console.error('Failed to start recording:', error);
+            this.showError('Aufnahme konnte nicht gestartet werden');
+        }
+    }
+    
+    async stopRecording() {
+        if (!this.isRecording || !this.recorder) return;
+        
+        this.recorder.stop();
+        this.isRecording = false;
+        
+        // Stop all tracks
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+        }
+        
+        const duration = Date.now() - this.recordingStartTime;
+        
+        // Notify backend
+        if (window.chrome?.webview) {
+            window.chrome.webview.postMessage({
+                action: 'stopRecording',
+                data: {
+                    duration: Math.floor(duration / 1000),
+                    markers: this.markers
+                }
+            });
+        }
+        
+        // Update UI
+        this.showRecordingIndicator(false);
+        this.showRecordingSummary(duration);
+    }
+    
+    addMarker(type, description, data = null) {
+        if (!this.isRecording) return;
+        
+        const marker = {
+            timestamp: Date.now() - this.recordingStartTime,
+            type: type,
+            description: description,
+            data: data
+        };
+        
+        this.markers.push(marker);
+        
+        // Send to backend
+        if (window.chrome?.webview) {
+            window.chrome.webview.postMessage({
+                action: 'addRecordingMarker',
+                data: marker
+            });
+        }
+        
+        // Update timeline UI
+        this.updateTimeline(marker);
+    }
+    
+    // Automatic markers for important events
+    autoMarkCapture() {
+        this.addMarker('photo_captured', `Foto ${captureManager.captures.size} aufgenommen`);
+    }
+    
+    autoMarkExport() {
+        this.addMarker('dicom_exported', 'DICOM Export durchgeführt');
+    }
+    
+    showRecordingIndicator(show) {
+        let indicator = document.getElementById('recordingIndicator');
+        if (!indicator && show) {
+            indicator = document.createElement('div');
+            indicator.id = 'recordingIndicator';
+            indicator.className = 'recording-indicator';
+            indicator.innerHTML = `
+                <span class="rec-dot">●</span>
+                <span>REC</span>
+                <span id="recordingTime">00:00</span>
+            `;
+            document.body.appendChild(indicator);
+            
+            // Update timer
+            this.timerInterval = setInterval(() => {
+                const elapsed = Date.now() - this.recordingStartTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                document.getElementById('recordingTime').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        } else if (indicator && !show) {
+            clearInterval(this.timerInterval);
+            indicator.remove();
+        }
+    }
+    
+    updateRecordingStats() {
+        const sizeBytes = this.chunks.reduce((acc, chunk) => acc + chunk.size, 0);
+        const sizeMB = (sizeBytes / (1024 * 1024)).toFixed(2);
+        const elapsed = (Date.now() - this.recordingStartTime) / 1000;
+        const bitrate = (sizeBytes * 8 / elapsed / 1000000).toFixed(2); // Mbps
+        
+        // Update UI if stats element exists
+        const stats = document.getElementById('recordingStats');
+        if (stats) {
+            stats.textContent = `${sizeMB} MB | ${bitrate} Mbps`;
+        }
+    }
+    
+    async saveRecording(blob) {
+        // Convert to base64 for sending to backend
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = reader.result.split(',')[1];
+            
+            if (window.chrome?.webview) {
+                // Send in chunks if too large
+                const chunkSize = 1024 * 1024; // 1MB chunks
+                const totalChunks = Math.ceil(base64.length / chunkSize);
+                
+                for (let i = 0; i < totalChunks; i++) {
+                    const chunk = base64.slice(i * chunkSize, (i + 1) * chunkSize);
+                    window.chrome.webview.postMessage({
+                        action: 'saveRecordingChunk',
+                        data: {
+                            chunk: chunk,
+                            chunkIndex: i,
+                            totalChunks: totalChunks,
+                            isLastChunk: i === totalChunks - 1
+                        }
+                    });
+                }
+            }
+        };
+        reader.readAsDataURL(blob);
+    }
+    
+    showRecordingSummary(duration) {
+        const minutes = Math.floor(duration / 60000);
+        const seconds = Math.floor((duration % 60000) / 1000);
+        
+        showNotification('success', 
+            `Aufnahme beendet: ${minutes}:${seconds.toString().padStart(2, '0')} Min.`, 
+            5000
+        );
+    }
+}
+
+// Initialize and integrate
+let recordingManager;
+document.addEventListener('DOMContentLoaded', () => {
+    recordingManager = new AlwaysOnRecording();
+    
+    // Auto-start on patient selection
+    window.addEventListener('patientSelected', (e) => {
+        if (e.detail && e.detail.id) {
+            recordingManager.startStudyRecording(e.detail);
+        }
+    });
+    
+    // Auto-stop on study complete
+    window.addEventListener('studyCompleted', () => {
+        recordingManager.stopRecording();
+    });
+    
+    // Auto-markers
+    window.addEventListener('photoCaptured', () => {
+        recordingManager.autoMarkCapture();
+    });
+    
+    window.addEventListener('dicomExported', () => {
+        recordingManager.autoMarkExport();
+    });
+});
+```
+
+#### Step 3: Recording UI Elements
+```css
+/* Recording Indicator */
+.recording-indicator {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    background: rgba(244, 67, 54, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    box-shadow: 0 2px 10px rgba(244, 67, 54, 0.3);
+    z-index: 1000;
+}
+
+.rec-dot {
+    animation: recPulse 1.5s ease-in-out infinite;
+    font-size: 20px;
+}
+
+@keyframes recPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+#recordingTime {
+    font-variant-numeric: tabular-nums;
+    min-width: 50px;
+}
+
+/* Recording Timeline */
+.recording-timeline {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 400px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.timeline-track {
+    height: 40px;
+    background: #f5f5f5;
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.timeline-progress {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50 0%, #2196F3 100%);
+    width: 0%;
+    transition: width 1s linear;
+}
+
+.timeline-markers {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+}
+
+.timeline-marker {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #333;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.timeline-marker:hover {
+    transform: translate(-50%, -50%) scale(1.2);
+}
+
+.timeline-marker.photo {
+    border-color: #4CAF50;
+}
+
+.timeline-marker.export {
+    border-color: #2196F3;
+}
+
+.timeline-marker.note {
+    border-color: #FF9800;
+}
+```
+
+**Test**: 
+- Patient auswählen → Recording startet automatisch
+- REC Indicator erscheint mit Timer
+- Fotos machen → Marker werden gesetzt
+- Study beenden → Recording stoppt
+
+---
+
+### 📊 Phase 6: Study Browser (4-6 Stunden)
+**Priorität**: NIEDRIG - Nice to have
+**Nutzen**: Übersicht über alle Studies mit Thumbnails
+
+[Detaillierte Implementation würde hier folgen, aber aus Platzgründen überspringe ich diese Phase]
+
+---
+
+### 🔍 Testing Checkpoints
+
+Nach jeder Phase:
+1. **Build Test**: `build.bat` → Keine Fehler
+2. **Start Test**: App startet ohne Crashes
+3. **Feature Test**: Neue Feature funktioniert
+4. **Regression Test**: Alte Features noch OK
+5. **PACS Test**: Orthanc empfängt Bilder
+
+### 📝 Git Commits
+
+Nach jeder erfolgreichen Phase:
+```bash
+git add -A
+git commit -m "feat: [Phase Name] implementation
+
+- Was wurde gemacht
+- Was funktioniert jetzt
+- Known issues (falls vorhanden)
+
+Co-Authored-By: WISDOM Claude <claude@anthropic.com>"
+```
+
+### ⚠️ Wichtige Hinweise
+
+1. **Immer atomar**: Jede Phase muss für sich funktionieren
+2. **Kein Big Bang**: Lieber kleine Schritte als große Sprünge
+3. **Test First**: Erst testen, dann nächste Phase
+4. **Backup**: Vor jeder Phase aktuellen Stand sichern
+5. **PACS Config**: Immer prüfen ob AE Titles stimmen:
+   ```json
+   "Pacs": {
+       "Enabled": true,
+       "ServerHost": "localhost",
+       "ServerPort": 4242,
+       "CalledAeTitle": "ORTHANC",
+       "CallingAeTitle": "SMARTBOX"
+   }
+   ```
+
+### 🎯 Erwartete Ergebnisse
+
+Nach Abschluss aller Phasen haben Sie:
+- ✅ Screen Cleaning Mode für hygienische Touch-Bedienung
+- ✅ Funktionierende PACS Exports mit echten DICOM Dateien
+- ✅ Status Toolbar mit allen wichtigen Infos
+- ✅ Auto-Send für schnelleren Workflow
+- ✅ Capture List mit visuellem Status-Feedback
+- ✅ Always-On Recording für lückenlose Dokumentation
+- ✅ (Optional) Study Browser für Übersicht
+
+Diese Reihenfolge stellt sicher, dass:
+- Schnell ein sichtbarer Erfolg da ist (Screen Cleaning)
+- Das kritische Problem gelöst wird (PACS Export)
+- Schrittweise Features hinzugefügt werden
+- Immer ein funktionierender Stand vorhanden ist
+
+---
+
+*Implementierungsplan erstellt am 10.01.2025 von WISDOM Claude*
