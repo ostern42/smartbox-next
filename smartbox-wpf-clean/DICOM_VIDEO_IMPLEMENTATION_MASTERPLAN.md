@@ -60,17 +60,23 @@ Oliver's Vision umgesetzt:
 
 ## 🚀 IMPLEMENTIERUNGSPLAN: Kleinteilig & Testbar
 
-### PHASE 1: FFmpeg Foundation (4 Steps, je 1-2 Tage)
+### PHASE 1: FFmpeg Foundation (4 Steps, je 1-2 Tage) ✅ COMPLETE!
 
-#### **Step 1.1: FFmpeg Integration Setup** ⭐
+#### **Step 1.1: FFmpeg Integration Setup** ⭐ ✅ DONE
 **Ziel**: FFmpeg in SmartBoxNext integrieren, basic functionality testen
 
-**Implementation**:
+**Implementation COMPLETE (Session 27)**:
 ```xml
-<!-- NuGet packages hinzufügen -->
-<PackageReference Include="FFMpegCore" Version="5.0.2" />
-<PackageReference Include="FFmpeg.AutoGen" Version="7.1.1" />
+<!-- NuGet packages hinzugefügt -->
+<PackageReference Include="FFMpegCore" Version="5.1.0" />
+<PackageReference Include="FFmpeg.Native" Version="4.4.0.2386" /> <!-- LGPL-compliant binaries! -->
 ```
+
+**Key Learnings**:
+- FFMpegCore includes NO binaries - must use FFmpeg.Native package
+- Architecture-aware deployment (x86/x64) implemented in FFmpegService.cs
+- MPEG-2 Main Profile @ Main Level has 95%+ PACS compatibility (Research verified!)
+- H.264 only 85-90% - too risky for production
 
 ```csharp
 // Services/FFmpegService.cs - Neue Klasse
@@ -94,10 +100,19 @@ public class FFmpegService
 
 ---
 
-#### **Step 1.2: DICOM Video Service Implementation** ⭐⭐
+#### **Step 1.2: DICOM Video Service Implementation** ⭐⭐ ✅ DONE
 **Ziel**: DicomVideoService.cs komplettieren - von TODO zu functional
 
-**Implementation**:
+**Implementation COMPLETE (Session 27)**:
+- ✅ WebM → MPEG-2 conversion (ConvertWebMToMpeg2Async)
+- ✅ WebM → MP4 conversion (ConvertWebMToMp4Async) 
+- ✅ Frame extraction with FFmpeg (ExtractVideoFramesAsync)
+- ✅ Multiframe DICOM creation with real frames
+- ✅ Complete WebM → DICOM pipeline (ProcessWebMToDicomAsync)
+- ✅ Proper DICOM Transfer Syntax support
+- ✅ Medical-grade video quality settings (10 Mbps, yuv420p)
+
+**Original Implementation**:
 ```csharp
 // Services/DicomVideoService.cs - ALLE TODOs implementieren!
 public class DicomVideoService

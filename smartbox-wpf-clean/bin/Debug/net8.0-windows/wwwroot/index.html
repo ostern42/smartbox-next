@@ -19,9 +19,14 @@
                     <i class="ms-Icon ms-Icon--Contact"></i>
                     <span id="patientStatusText">Kein Patient</span>
                 </div>
-                <button class="exit-button" id="exitButton" aria-label="Beenden">
-                    <i class="ms-Icon ms-Icon--ChromeClose"></i>
-                </button>
+                <div class="header-buttons">
+                    <button class="header-button" id="settingsButton" data-action="opensettings" aria-label="Einstellungen">
+                        <span style="font-size: 20px;">⚙</span>
+                    </button>
+                    <button class="exit-button" id="exitButton" data-action="exitapp" aria-label="Beenden">
+                        <span style="font-size: 20px; font-weight: bold;">✕</span>
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -126,6 +131,10 @@
             <div class="mode-container hidden" id="recordingMode">
                 <!-- Patient Info Bar -->
                 <div class="patient-info-bar">
+                    <button class="back-button" id="backToPatientSelection" aria-label="Zurück zur Patientenauswahl">
+                        <i class="ms-Icon ms-Icon--Back"></i>
+                        <span>Zurück</span>
+                    </button>
                     <div class="patient-data">
                         <i class="ms-Icon ms-Icon--Contact"></i>
                         <span id="recordingPatientName">-</span>
@@ -192,7 +201,7 @@
 
                 <!-- Export Button -->
                 <div class="export-section">
-                    <button class="export-button" id="exportButton">
+                    <button class="export-button" id="exportButton" data-action="exportcaptures">
                         <i class="ms-Icon ms-Icon--Export"></i>
                         <span>Alle an PACS senden</span>
                         <small id="exportCount">(0 Aufnahmen)</small>
@@ -233,10 +242,11 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/touch_gestures_fixed.js"></script>
+    <script src="js/actions.js"></script>
+    <script src="js/touch_gestures.js"></script>
     <script src="js/touch_dialogs.js"></script>
     <script src="js/mode_manager.js"></script>
     <script src="app.js"></script>
-    <script src="debug_overlay.js"></script>
+    <!-- <script src="debug_overlay.js"></script> -->
 </body>
 </html>

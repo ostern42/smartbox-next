@@ -28,7 +28,8 @@ class TouchDialogManager {
 
         // Backdrop click to cancel (optional behavior)
         this.backdrop.addEventListener('click', (e) => {
-            if (e.target === this.backdrop) {
+            if (e.target === this.backdrop && this.currentDialog?.allowBackdropDismiss !== false) {
+                console.log('Backdrop clicked - dismissing dialog');
                 this.dismiss();
             }
         });
@@ -82,6 +83,44 @@ class TouchDialogManager {
         };
 
         this.showDialog(config);
+    }
+
+    /**
+     * Show exit confirmation dialog with special button arrangement
+     * EXIT button (danger) on LEFT, CANCEL on RIGHT
+     */
+    showExitConfirmation(options = {}) {
+        // Extract the exit callback before spreading options
+        const exitCallback = options.onConfirm || null;
+        
+        const config = {
+            title: options.title || 'Anwendung beenden?',
+            message: options.message || 'Möchten Sie SmartBox wirklich beenden?',
+            cancelText: options.cancelText || 'Beenden',  // LEFT button
+            confirmText: 'Abbrechen', // RIGHT button - always "Abbrechen"
+            cancelIcon: 'ms-Icon ms-Icon--ChromeClose',
+            confirmIcon: 'ms-Icon ms-Icon--Cancel',
+            onConfirm: () => {
+                console.log('Exit dialog: Abbrechen clicked - doing nothing');
+            }, // RIGHT button does nothing (cancels the exit)
+            onCancel: () => {
+                console.log('Exit dialog: Beenden clicked - exiting app');
+                if (exitCallback) exitCallback();
+            }, // LEFT button confirms exit
+            allowBackdropDismiss: true
+        };
+
+        // Special styling for exit dialog
+        this.showDialog(config);
+        
+        // Make LEFT button (exit) red
+        if (this.cancelButton) {
+            this.cancelButton.className = 'dialog-button cancel danger';
+        }
+        // Make RIGHT button (cancel) normal
+        if (this.confirmButton) {
+            this.confirmButton.className = 'dialog-button confirm';
+        }
     }
 
     /**
@@ -296,12 +335,15 @@ class TouchDialogManager {
      * Handle cancel button (LEFT button)
      */
     onCancel() {
+        console.log('Dialog: Cancel button clicked');
         if (!this.currentDialog) return;
 
         const callback = this.currentDialog.onCancel;
+        console.log('Dialog: Cancel callback exists:', !!callback);
         this.dismiss();
         
         if (callback && typeof callback === 'function') {
+            console.log('Dialog: Executing cancel callback');
             callback();
         }
 
@@ -312,12 +354,15 @@ class TouchDialogManager {
      * Handle confirm button (RIGHT button)
      */
     onConfirm() {
+        console.log('Dialog: Confirm button clicked');
         if (!this.currentDialog) return;
 
         const callback = this.currentDialog.onConfirm;
+        console.log('Dialog: Confirm callback exists:', !!callback);
         this.dismiss();
         
         if (callback && typeof callback === 'function') {
+            console.log('Dialog: Executing confirm callback');
             callback();
         }
 

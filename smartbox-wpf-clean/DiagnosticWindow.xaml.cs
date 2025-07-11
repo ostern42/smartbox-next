@@ -24,6 +24,10 @@ namespace SmartBoxNext
         private readonly string _calledAet;
         private readonly bool _isMwl;
         
+        public bool TestSuccessful { get; private set; }
+        public string TestMessage { get; private set; }
+        public int WorklistCount { get; private set; }
+        
         public DiagnosticWindow(ILogger logger, string host, int port, string callingAet, string calledAet, bool isMwl = false)
         {
             InitializeComponent();
@@ -76,6 +80,11 @@ namespace SmartBoxNext
                 }
                 else
                 {
+                    // Extract worklist count from details
+                    if (int.TryParse(mwlResult.Details, out int count))
+                    {
+                        WorklistCount = count;
+                    }
                     ShowSummary(true, $"All tests passed! Found {mwlResult.Details} worklist items.");
                 }
             }
@@ -304,6 +313,9 @@ namespace SmartBoxNext
         
         private void ShowSummary(bool success, string message)
         {
+            TestSuccessful = success;
+            TestMessage = message;
+            
             Dispatcher.Invoke(() =>
             {
                 SummaryText.Text = message;

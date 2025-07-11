@@ -52,32 +52,32 @@ class SettingsManager {
             });
         }
 
-        // Save button
-        if (this.saveButton) {
-            this.saveButton.addEventListener('click', () => this.saveSettings());
-        }
+        // Save button - NOW HANDLED BY data-action="savesettings"
+        // if (this.saveButton) {
+        //     this.saveButton.addEventListener('click', () => this.saveSettings());
+        // }
 
-        // Test PACS button
-        if (this.testPacsButton) {
-            this.testPacsButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.testPacsConnection();
-            });
-        }
+        // Test PACS button - NOW HANDLED BY data-action="testpacsconnection"
+        // if (this.testPacsButton) {
+        //     this.testPacsButton.addEventListener('click', (e) => {
+        //         e.preventDefault();
+        //         this.testPacsConnection();
+        //     });
+        // }
 
-        // Test MWL button
-        if (this.testMwlButton) {
-            this.testMwlButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.testMwlConnection();
-            });
-        }
+        // Test MWL button - NOW HANDLED BY data-action="testmwlconnection"
+        // if (this.testMwlButton) {
+        //     this.testMwlButton.addEventListener('click', (e) => {
+        //         e.preventDefault();
+        //         this.testMwlConnection();
+        //     });
+        // }
 
-        // Browse folder buttons
-        const browseButtons = document.querySelectorAll('.browse-button');
-        browseButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => this.browseFolder(e.currentTarget));
-        });
+        // Browse folder buttons - NOW HANDLED BY data-action="browsefolder"
+        // const browseButtons = document.querySelectorAll('.browse-button');
+        // browseButtons.forEach(btn => {
+        //     btn.addEventListener('click', (e) => this.browseFolder(e.currentTarget));
+        // });
 
         // Keyboard shortcut for back (ESC key)
         document.addEventListener('keydown', (e) => {
@@ -161,8 +161,8 @@ class SettingsManager {
             // Send to C# host
             this.sendToHost('savesettings', config);
             
-            // Show success notification
-            this.showNotification('Settings saved successfully!', 'success');
+            // Notification is handled by settings-handler.js
+            // this.showNotification('Settings saved successfully!', 'success');
         } catch (error) {
             console.error('Failed to save settings:', error);
             this.showNotification('Failed to save settings: ' + error.message, 'error');
@@ -203,11 +203,7 @@ class SettingsManager {
                 value = input.value;
             }
 
-            // Special handling for certain fields
-            if (property === 'EnablePacs') {
-                // PACS doesn't have EnablePacs, it's determined by ServerHost
-                return;
-            }
+            // No special handling needed anymore
 
             // Set value in config
             if (config[section]) {
@@ -237,11 +233,8 @@ class SettingsManager {
             
             if (!sectionConfig) return;
 
-            // Special handling for EnablePacs
-            if (input.id === 'pacs-enable-pacs') {
-                input.checked = !!(sectionConfig.ServerHost);
-                return;
-            }
+            // No special handling needed for pacs-enabled anymore
+            // The standard checkbox handling below will work
 
             const value = sectionConfig[property];
             if (value === undefined) return;
@@ -256,79 +249,15 @@ class SettingsManager {
     }
 
     async testPacsConnection() {
-        try {
-            this.showNotification('Testing PACS connection...', 'info');
-            
-            // Gather current PACS settings - using PascalCase to match C# models
-            const serverHostInput = document.getElementById('pacs-server-host');
-            const serverHost = serverHostInput ? serverHostInput.value : '';
-            
-            if (!serverHost) {
-                this.showNotification('Server host is empty. Please enter a server address.', 'error');
-                return;
-            }
-            
-            const pacsConfig = {
-                ServerHost: serverHost,
-                ServerPort: parseInt(document.getElementById('pacs-server-port').value) || 104,
-                CalledAeTitle: document.getElementById('pacs-called-ae-title').value,
-                CallingAeTitle: document.getElementById('pacs-calling-ae-title').value,
-                Timeout: parseInt(document.getElementById('pacs-timeout').value) || 30
-            };
-
-            console.log('Testing PACS with config:', pacsConfig);
-            
-            // Show detailed test info
-            this.showNotification(
-                `Testing PACS connection to ${pacsConfig.ServerHost}:${pacsConfig.ServerPort} ` +
-                `(AET: ${pacsConfig.CallingAeTitle} → ${pacsConfig.CalledAeTitle})`, 
-                'info'
-            );
-            
-            this.sendToHost('testpacsconnection', pacsConfig);
-        } catch (error) {
-            console.error('Failed to test PACS connection:', error);
-            this.showNotification('Failed to test connection: ' + error.message, 'error');
-        }
+        // This is now handled by settings-handler.js via action system
+        console.log('[SettingsManager] PACS test should be triggered via data-action');
+        // No-op to prevent errors if called directly
     }
 
     async testMwlConnection() {
-        try {
-            // Gather current MWL settings - using PascalCase to match C# models
-            const serverHostInput = document.getElementById('mwlsettings-mwl-server-host');
-            const serverHost = serverHostInput ? serverHostInput.value : '';
-            
-            if (!serverHost) {
-                this.showNotification('MWL server host is empty. Please enter a server address.', 'error');
-                return;
-            }
-            
-            const mwlConfig = {
-                EnableWorklist: document.getElementById('mwlsettings-enable-worklist').checked,
-                MwlServerHost: serverHost,
-                MwlServerPort: parseInt(document.getElementById('mwlsettings-mwl-server-port').value) || 105,
-                MwlServerAET: document.getElementById('mwlsettings-mwl-server-aet').value,
-                LocalAET: 'SMARTBOX' // This matches C# property name
-            };
-
-            console.log('Testing MWL with config:', mwlConfig);
-            
-            // Show detailed test info
-            let testMsg = `Testing MWL connection to ${mwlConfig.MwlServerHost}:${mwlConfig.MwlServerPort} ` +
-                `(AET: ${mwlConfig.LocalAET} → ${mwlConfig.MwlServerAET})`;
-            
-            // Warn if using non-standard port
-            if (mwlConfig.MwlServerPort !== 105 && mwlConfig.MwlServerPort !== 104) {
-                testMsg += ` ⚠️ Non-standard port`;
-            }
-            
-            this.showNotification(testMsg, 'info');
-            
-            this.sendToHost('testmwlconnection', mwlConfig);
-        } catch (error) {
-            console.error('Failed to test MWL connection:', error);
-            this.showNotification('Failed to test connection: ' + error.message, 'error');
-        }
+        // This is now handled by settings-handler.js via action system
+        console.log('[SettingsManager] MWL test should be triggered via data-action');
+        // No-op to prevent errors if called directly
     }
 
     browseFolder(button) {
@@ -372,16 +301,12 @@ class SettingsManager {
                 this.populateForm(message.data);
                 break;
                 
-            case 'settingsSaved':
-                if (message.success) {
-                    this.showNotification('Settings saved successfully!', 'success');
-                } else {
-                    const errorMsg = message.error || message.message || 'Unknown error';
-                    this.showNotification('Failed to save settings: ' + errorMsg, 'error');
+                case 'settingsSaved':
+                // Notification is handled by settings-handler.js
+                if (!message.success) {
                     console.error('Save settings error:', message);
                 }
-                break;
-                
+                break;                
             case 'folderSelected':
                 console.log('Folder selected message:', message);
                 if (message.fieldId && message.path) {
@@ -399,19 +324,57 @@ class SettingsManager {
                 break;
                 
             case 'pacsTestResult':
-                if (message.success) {
-                    this.showNotification('PACS connection successful!', 'success');
-                } else {
-                    this.showNotification('PACS connection failed: ' + (message.error || 'Unknown error'), 'error');
+                const pacsButton = document.getElementById('test-pacs');
+                if (pacsButton) {
+                    pacsButton.disabled = false;
+                    if (message.success) {
+                        // Show success state on button
+                        pacsButton.innerHTML = '<i class="ms-Icon ms-Icon--CheckMark"></i><span>Connected!</span>';
+                        pacsButton.style.background = '#107c10';
+                        pacsButton.style.color = 'white';
+                        this.showNotification('PACS connection successful!', 'success');
+                    } else {
+                        // Show error state on button
+                        pacsButton.innerHTML = '<i class="ms-Icon ms-Icon--ErrorBadge"></i><span>Failed</span>';
+                        pacsButton.style.background = '#d13438';
+                        pacsButton.style.color = 'white';
+                        this.showNotification('PACS connection failed: ' + (message.error || 'Unknown error'), 'error');
+                    }
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        pacsButton.innerHTML = '<i class="ms-Icon ms-Icon--TestBeaker"></i><span>Test Connection</span>';
+                        pacsButton.style.background = '';
+                        pacsButton.style.color = '';
+                    }, 3000);
                 }
                 break;
                 
             case 'mwlTestResult':
-                if (message.success) {
-                    const count = message.data?.itemCount || 0;
-                    this.showNotification(`MWL connection successful! Found ${count} worklist items.`, 'success');
-                } else {
-                    this.showNotification('MWL connection failed: ' + (message.error || 'Unknown error'), 'error');
+                const mwlButton = document.getElementById('test-mwl');
+                if (mwlButton) {
+                    mwlButton.disabled = false;
+                    if (message.success) {
+                        const count = message.data?.worklistCount || 0;
+                        // Show success state on button
+                        mwlButton.innerHTML = `<i class="ms-Icon ms-Icon--CheckMark"></i><span>${count} Items Found!</span>`;
+                        mwlButton.style.background = '#107c10';
+                        mwlButton.style.color = 'white';
+                        this.showNotification(`MWL connection successful! Found ${count} worklist items.`, 'success');
+                    } else {
+                        // Show error state on button
+                        mwlButton.innerHTML = '<i class="ms-Icon ms-Icon--ErrorBadge"></i><span>Failed</span>';
+                        mwlButton.style.background = '#d13438';
+                        mwlButton.style.color = 'white';
+                        this.showNotification('MWL connection failed: ' + (message.error || 'Unknown error'), 'error');
+                    }
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        mwlButton.innerHTML = '<i class="ms-Icon ms-Icon--TestBeaker"></i><span>Test MWL Connection</span>';
+                        mwlButton.style.background = '';
+                        mwlButton.style.color = '';
+                    }, 3000);
                 }
                 break;
                 
@@ -454,4 +417,7 @@ class SettingsManager {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     window.settingsManager = new SettingsManager();
+    
+    // Handler werden jetzt von settings-handler.js registriert
+    console.log('[SettingsManager] Using new settings-handler.js for action handling');
 });

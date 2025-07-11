@@ -1,3 +1,2 @@
-2025/07/11-01:11:43.236 68b8 Reusing MANIFEST C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\WebView2Data\EBWebView\Default\Session Storage/MANIFEST-000001
-2025/07/11-01:11:43.238 68b8 Recovering log #3
-2025/07/11-01:11:43.241 68b8 Reusing old log C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\WebView2Data\EBWebView\Default\Session Storage/000003.log 
+2025/07/11-17:40:38.904 a9b0 Creating DB C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\WebView2Data\EBWebView\Default\Session Storage since it was missing.
+2025/07/11-17:40:38.917 a9b0 Reusing MANIFEST C:\Users\oliver.stern\source\repos\smartbox-next\smartbox-wpf-clean\bin\Release\net8.0-windows\WebView2Data\EBWebView\Default\Session Storage/MANIFEST-000001

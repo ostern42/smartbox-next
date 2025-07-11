@@ -217,32 +217,24 @@ namespace SmartBoxNext.Helpers
             var webView2Processes = FindWebView2Processes();
             Debug.WriteLine($"Found {webView2Processes.Count} WebView2 processes to kill");
 
+            if (!webView2Processes.Any())
+                return;
+
             var killTasks = new List<Task>();
             
             foreach (var process in webView2Processes)
             {
-                killTasks.Add(Task.Run(async () =>
+                killTasks.Add(Task.Run(() =>
                 {
                     try
                     {
                         Debug.WriteLine($"Killing WebView2 process: {process.Id} ({process.ProcessName})");
                         
-                        // Try graceful first
-                        process.CloseMainWindow();
-                        
-                        if (!process.WaitForExit(1000))
+                        // Skip graceful shutdown - just kill immediately
+                        // WebView2 processes don't have main windows anyway
+                        if (!process.HasExited)
                         {
-                            // Force kill
-                            ForceKillProcess(process);
-                            
-                            // Wait a bit more
-                            await Task.Delay(500);
-                            
-                            // Double-check it's dead
-                            if (!process.HasExited)
-                            {
-                                process.Kill(true); // Kill entire tree
-                            }
+                            process.Kill(true); // Kill entire process tree
                         }
                     }
                     catch (Exception ex)
@@ -252,13 +244,16 @@ namespace SmartBoxNext.Helpers
                 }));
             }
 
-            // Wait for all kills to complete
+            // Wait for all kills to complete with timeout
             if (killTasks.Any())
             {
-                await Task.WhenAll(killTasks);
+                var allKillsTask = Task.WhenAll(killTasks);
+                var timeoutTask = Task.Delay(maxWaitMs);
                 
-                // Give Windows time to clean up handles
-                await Task.Delay(1000);
+                await Task.WhenAny(allKillsTask, timeoutTask);
+                
+                // Small delay for Windows to release handles
+                await Task.Delay(200);
             }
         }
 

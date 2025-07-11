@@ -9,6 +9,7 @@
     "EnableAutoCleanup": false
   },
   "Pacs": {
+    "Enabled": true,
     "ServerHost": "localhost",
     "ServerPort": 104,
     "CalledAeTitle": "ORTHANC",

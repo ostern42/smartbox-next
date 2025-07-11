@@ -88,10 +88,47 @@ class SmartBoxTouchApp {
             mwlFilter.addEventListener('input', (e) => this.onMWLFilterChange(e));
         }
         
-        // Export button
-        const exportButton = document.getElementById('exportButton');
-        if (exportButton) {
-            exportButton.addEventListener('click', () => this.onExportRequested());
+        // MIGRATED TO ACTION SYSTEM - Old event listeners disabled
+        // Export, Settings, and Exit buttons now use data-action attributes
+        
+        // // Export button
+        // const exportButton = document.getElementById('exportButton');
+        // if (exportButton) {
+        //     exportButton.addEventListener('click', () => this.onExportRequested());
+        // }
+        
+        // // Settings button
+        // const settingsButton = document.getElementById('settingsButton');
+        // if (settingsButton) {
+        //     console.log('Settings button found, adding event listener');
+        //     settingsButton.addEventListener('click', (e) => {
+        //         e.preventDefault();
+        //         e.stopPropagation();
+        //         console.log('Settings button clicked');
+        //         this.openSettings();
+        //     });
+        // } else {
+        //     console.error('Settings button not found!');
+        // }
+        
+        // // Exit button
+        // const exitButton = document.getElementById('exitButton');
+        // if (exitButton) {
+        //     console.log('Exit button found, adding event listener');
+        //     exitButton.addEventListener('click', (e) => {
+        //         e.preventDefault();
+        //         e.stopPropagation();
+        //         console.log('Exit button clicked');
+        //         this.onExitRequested();
+        //     });
+        // } else {
+        //     console.error('Exit button not found!');
+        // }
+        
+        // Back to patient selection button
+        const backButton = document.getElementById('backToPatientSelection');
+        if (backButton) {
+            backButton.addEventListener('click', () => this.onBackToPatientSelection());
         }
         
         // Patient card clicks
@@ -325,8 +362,14 @@ class SmartBoxTouchApp {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0);
             
-            // Get image data
-            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            // Create unique capture ID and filename
+            const captureId = Date.now();
+            const fileName = `IMG_${captureId}.jpg`;
+            
+            // Convert canvas to blob for file saving
+            const imageBlob = await new Promise(resolve => {
+                canvas.toBlob(resolve, 'image/jpeg', 0.8);
+            });
             
             // Create thumbnail
             const thumbnailCanvas = document.createElement('canvas');
@@ -336,26 +379,33 @@ class SmartBoxTouchApp {
             thumbCtx.drawImage(video, 0, 0, 160, 120);
             const thumbnail = thumbnailCanvas.toDataURL('image/jpeg', 0.6);
             
-            // Add capture to mode manager
-            const captureId = this.modeManager.addCapture({
+            // Add capture to mode manager with file reference
+            this.modeManager.addCapture({
                 type: 'photo',
-                data: imageData,
-                thumbnail: thumbnail
+                fileName: fileName,
+                filePath: `Data/Photos/${fileName}`,
+                thumbnail: thumbnail,
+                id: captureId
             });
             
-            // Send to WebView2 host for processing
+            // Send to WebView2 host for file saving
             if (window.chrome && window.chrome.webview) {
-                window.chrome.webview.postMessage(JSON.stringify({
-                    type: 'capturePhoto',
-                    data: {
-                        captureId: captureId,
-                        imageData: imageData,
-                        patient: this.modeManager.getCurrentPatient()
-                    }
-                }));
+                const reader = new FileReader();
+                reader.onload = () => {
+                    window.chrome.webview.postMessage(JSON.stringify({
+                        type: 'savePhoto',
+                        data: {
+                            captureId: captureId,
+                            fileName: fileName,
+                            imageData: reader.result, // base64 for saving only
+                            patient: this.modeManager.getCurrentPatient()
+                        }
+                    }));
+                };
+                reader.readAsDataURL(imageBlob);
             }
             
-            console.log('SmartBoxTouchApp: Photo captured successfully');
+            console.log('SmartBoxTouchApp: Photo captured successfully, saving as:', fileName);
             
         } catch (error) {
             console.error('SmartBoxTouchApp: Photo capture failed:', error);
@@ -527,8 +577,15 @@ class SmartBoxTouchApp {
     }
 
     onExportRequested() {
-        const captures = this.modeManager.getCurrentCaptures();
-        const unexportedCaptures = captures.filter(c => !c.exported);
+        console.log('SmartBoxTouchApp: onExportRequested called');
+        console.log('SmartBoxTouchApp: modeManager exists:', !!this.modeManager);
+        
+        // Get captures for export (selected or all)
+        const capturesToExport = this.modeManager.getCapturesForExport();
+        console.log('SmartBoxTouchApp: Captures to export:', capturesToExport);
+        
+        const unexportedCaptures = capturesToExport.filter(c => !c.exported);
+        console.log('SmartBoxTouchApp: Unexported captures:', unexportedCaptures);
         
         if (unexportedCaptures.length === 0) {
             this.showError('Keine Aufnahmen zum Exportieren vorhanden.');
@@ -564,12 +621,18 @@ class SmartBoxTouchApp {
                 const messageData = {
                     type: 'exportCaptures',
                     data: {
-                        captures: captures.map(c => ({ id: c.id, type: c.type })),
+                        captures: captures.map(c => ({ 
+                            id: c.id, 
+                            type: c.type,
+                            fileName: c.fileName,
+                            filePath: c.filePath,
+                            timestamp: c.timestamp
+                        })),
                         patient: this.modeManager.getCurrentPatient()
                     }
                 };
                 console.log('SmartBoxTouchApp: Message data:', messageData);
-                console.log('SmartBoxTouchApp: JSON stringified:', JSON.stringify(messageData));
+                console.log('SmartBoxTouchApp: Captures being sent:', messageData.data.captures.length);
                 
                 try {
                     // WebView2 expects a string, not an object!
@@ -622,6 +685,119 @@ class SmartBoxTouchApp {
             this.dialogManager.error(message);
         } else {
             alert(message);
+        }
+    }
+    
+    openSettings() {
+        console.log('Settings button clicked - openSettings called');
+        if (window.chrome && window.chrome.webview) {
+            console.log('Sending openSettings message to WebView2');
+            window.chrome.webview.postMessage(JSON.stringify({
+                type: 'openSettings',
+                data: {}
+            }));
+        } else {
+            console.warn('WebView2 not available - cannot open settings');
+            alert('Settings können nicht geöffnet werden - WebView2 nicht verfügbar');
+        }
+    }
+    
+    onExitRequested() {
+        console.log('Exit requested - app.js onExitRequested called');
+        
+        // Delegate to mode manager which handles the exit logic including
+        // checking for unsaved captures
+        if (this.modeManager && this.modeManager.onExitRequested) {
+            console.log('Delegating to mode manager exit handler');
+            this.modeManager.onExitRequested();
+        } else {
+            // Fallback if mode manager not available
+            console.log('Mode manager not available, using fallback exit');
+            if (!this.dialogManager) {
+                console.error('DialogManager not available!');
+                return;
+            }
+            
+            this.dialogManager.showConfirmation({
+                title: 'Anwendung beenden',
+                message: 'Möchten Sie SmartBox wirklich beenden?',
+                confirmText: 'Beenden',
+                cancelText: 'Abbrechen',
+                confirmStyle: 'danger',
+                onConfirm: () => {
+                    console.log('Exit confirmed - sending exitApp message');
+                    if (window.chrome && window.chrome.webview) {
+                        window.chrome.webview.postMessage(JSON.stringify({
+                            type: 'exitApp',
+                            data: {}
+                        }));
+                    }
+                }
+            });
+        }
+    }
+    
+    onBackToPatientSelection() {
+        console.log('SmartBoxTouchApp: Back to patient selection requested');
+        
+        // Check if recording is in progress
+        if (this.isRecording) {
+            this.dialogManager.showConfirmation({
+                title: 'Aufnahme abbrechen?',
+                message: 'Die laufende Video-Aufnahme wird gestoppt. Fortfahren?',
+                confirmText: 'Ja, zurück',
+                cancelText: 'Weiter aufnehmen',
+                confirmStyle: 'danger',
+                onConfirm: () => {
+                    this.stopVideoRecording();
+                    this.switchToPatientMode();
+                }
+            });
+        } else {
+            // Check for unsaved captures
+            const captures = this.modeManager.getCurrentCaptures();
+            const unexportedCaptures = captures.filter(c => !c.exported);
+            
+            if (unexportedCaptures.length > 0) {
+                const message = unexportedCaptures.length === 1
+                    ? 'Eine Aufnahme wurde noch nicht exportiert. Trotzdem zurück?'
+                    : `${unexportedCaptures.length} Aufnahmen wurden noch nicht exportiert. Trotzdem zurück?`;
+                
+                this.dialogManager.showConfirmation({
+                    title: 'Ungespeicherte Aufnahmen',
+                    message: message,
+                    confirmText: 'Ja, zurück',
+                    cancelText: 'Bleiben',
+                    confirmStyle: 'danger',
+                    onConfirm: () => this.switchToPatientMode()
+                });
+            } else {
+                this.switchToPatientMode();
+            }
+        }
+    }
+    
+    switchToPatientMode() {
+        console.log('SmartBoxTouchApp: Switching to patient selection mode');
+        
+        // Reset current patient
+        if (this.modeManager) {
+            this.modeManager.setCurrentPatient(null);
+        }
+        
+        // Switch modes via mode manager
+        if (this.modeManager && this.modeManager.switchToMode) {
+            this.modeManager.switchToMode('patient');
+        } else {
+            // Fallback: manual mode switching
+            document.getElementById('recordingMode').classList.add('hidden');
+            document.getElementById('patientMode').classList.remove('hidden');
+            
+            // Update header
+            const patientStatus = document.getElementById('patientStatusText');
+            if (patientStatus) {
+                patientStatus.textContent = 'Kein Patient';
+            }
         }
     }
 
@@ -708,6 +884,14 @@ window.receiveMessage = function(message) {
         case 'success':
             console.log('Success from C#:', message.message);
             break;
+        case 'showSettings':
+            console.log('Settings data received from C#');
+            // For now, just log the settings - you can implement a settings UI here
+            if (message.config) {
+                console.log('Current settings:', message.config);
+                alert('Settings-Seite wird noch implementiert.\n\nAktuelle Einstellungen wurden in der Konsole ausgegeben.');
+            }
+            break;
         default:
             console.log('Unknown message type:', message.action || message.type);
     }
@@ -715,7 +899,49 @@ window.receiveMessage = function(message) {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('SmartBoxTouchApp: DOM loaded, creating app instance...');
     window.smartBoxApp = new SmartBoxTouchApp();
+    
+    // Register special handlers immediately
+    if (window.actionHandler) {
+        window.actionHandler.registerSpecialHandler('exportcaptures', () => {
+            window.smartBoxApp.onExportRequested();
+        });
+        
+        window.actionHandler.registerSpecialHandler('exitapp', () => {
+            window.smartBoxApp.onExitRequested();
+        });
+        console.log('[ActionSystem] Special handlers registered immediately');
+    }
+    
+    // Migrate to new action system after a delay
+    setTimeout(() => {
+        console.log('[ActionSystem] Starting button migration...');
+        if (window.simpleActionHandler) {
+            // Liste der Buttons die umgestellt werden sollen
+            const buttonsToMigrate = ['settingsButton', 'exitButton', 'exportButton'];
+            
+            buttonsToMigrate.forEach(buttonId => {
+                const button = document.getElementById(buttonId);
+                if (button) {
+                    // Clone node to remove all event listeners
+                    const newButton = button.cloneNode(true);
+                    button.parentNode.replaceChild(newButton, button);
+                    console.log(`[ActionSystem] Removed old listeners from ${buttonId}`);
+                    
+                    // Bind mit neuem System
+                    window.simpleActionHandler.bindButton(buttonId);
+                    console.log(`[ActionSystem] ${buttonId} migrated to new system`);
+                }
+            });
+            
+            // Special handlers already registered above
+            
+            console.log('[ActionSystem] Migration complete!');
+        } else {
+            console.error('[ActionSystem] simpleActionHandler not available!');
+        }
+    }, 1000);
 });
 
 console.log('SmartBoxTouchApp: Script loaded');

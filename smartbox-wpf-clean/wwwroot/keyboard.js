@@ -106,11 +106,6 @@ class TouchKeyboard {
                 // Store AltGr character if available
                 if (altGrMap[key]) {
                     button.setAttribute('data-altgr', altGrMap[key]);
-                    // Add visual indicator for AltGr characters
-                    const altGrSpan = document.createElement('span');
-                    altGrSpan.className = 'altgr-char';
-                    altGrSpan.textContent = altGrMap[key];
-                    button.appendChild(altGrSpan);
                 }
                 
                 button.addEventListener('click', (e) => this.handleKeyPress(e));
@@ -277,10 +272,6 @@ class TouchKeyboard {
         document.querySelectorAll('.key-altgr').forEach(key => {
             key.classList.toggle('active', this.isAltGrActive);
         });
-        // Show/hide AltGr characters
-        document.querySelectorAll('.altgr-char').forEach(char => {
-            char.style.opacity = this.isAltGrActive ? '1' : '0.3';
-        });
         // Update key labels to show AltGr characters
         this.updateKeyLabels();
     }
@@ -310,6 +301,7 @@ class TouchKeyboard {
                 displayChar = key.toLowerCase();
             }
             
+            // Update button text
             button.textContent = displayChar;
         });
     }

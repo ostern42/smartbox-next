@@ -18,7 +18,7 @@
             </button>
             <h1>Settings</h1>
             <div class="header-actions">
-                <button class="save-button" id="saveButton">
+                <button class="save-button" id="saveButton" data-action="savesettings" data-collect-form="settingsForm">
                     <i class="ms-Icon ms-Icon--Save"></i>
                     <span>Save</span>
                 </button>
@@ -60,7 +60,7 @@
                         <label for="storage-photos-path">Photos Directory</label>
                         <div class="input-with-button">
                             <input type="text" id="storage-photos-path" class="use-keyboard" value="./Data/Photos">
-                            <button type="button" class="browse-button" data-for="storage-photos-path">
+                            <button type="button" class="browse-button" data-action="browsefolder" data-for="storage-photos-path">
                                 <i class="ms-Icon ms-Icon--FolderOpen"></i>
                             </button>
                         </div>
@@ -71,7 +71,7 @@
                         <label for="storage-videos-path">Videos Directory</label>
                         <div class="input-with-button">
                             <input type="text" id="storage-videos-path" class="use-keyboard" value="./Data/Videos">
-                            <button type="button" class="browse-button" data-for="storage-videos-path">
+                            <button type="button" class="browse-button" data-action="browsefolder" data-for="storage-videos-path">
                                 <i class="ms-Icon ms-Icon--FolderOpen"></i>
                             </button>
                         </div>
@@ -82,7 +82,7 @@
                         <label for="storage-dicom-path">DICOM Directory</label>
                         <div class="input-with-button">
                             <input type="text" id="storage-dicom-path" class="use-keyboard" value="./Data/DICOM">
-                            <button type="button" class="browse-button" data-for="storage-dicom-path">
+                            <button type="button" class="browse-button" data-action="browsefolder" data-for="storage-dicom-path">
                                 <i class="ms-Icon ms-Icon--FolderOpen"></i>
                             </button>
                         </div>
@@ -93,7 +93,7 @@
                         <label for="storage-temp-path">Temporary Directory</label>
                         <div class="input-with-button">
                             <input type="text" id="storage-temp-path" class="use-keyboard" value="./Data/Temp">
-                            <button type="button" class="browse-button" data-for="storage-temp-path">
+                            <button type="button" class="browse-button" data-action="browsefolder" data-for="storage-temp-path">
                                 <i class="ms-Icon ms-Icon--FolderOpen"></i>
                             </button>
                         </div>
@@ -104,7 +104,7 @@
                         <label for="storage-queue-path">Queue Directory</label>
                         <div class="input-with-button">
                             <input type="text" id="storage-queue-path" class="use-keyboard" value="./Data/Queue">
-                            <button type="button" class="browse-button" data-for="storage-queue-path">
+                            <button type="button" class="browse-button" data-action="browsefolder" data-for="storage-queue-path">
                                 <i class="ms-Icon ms-Icon--FolderOpen"></i>
                             </button>
                         </div>
@@ -132,23 +132,23 @@
                     <h2>PACS Configuration</h2>
                     
                     <div class="setting-group">
-                        <label for="pacs-enable-pacs">Enable PACS</label>
+                        <label for="pacs-enabled">Enable PACS</label>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="pacs-enable-pacs">
+                            <input type="checkbox" id="pacs-enabled">
                             <span class="toggle-slider"></span>
                         </label>
-                        <p class="help-text">Enable automatic upload to PACS server</p>
+                        <p class="help-text">Enable DICOM image export to PACS server</p>
                     </div>
-
+                    
                     <div class="setting-group">
                         <label for="pacs-server-host">Server IP Address</label>
-                        <input type="text" id="pacs-server-host" class="use-keyboard numeric-input" value="192.168.1.100">
+                        <input type="text" id="pacs-server-host" class="use-keyboard" value="192.168.1.100">
                         <p class="help-text">IP address or hostname of the PACS server</p>
                     </div>
 
                     <div class="setting-group">
                         <label for="pacs-server-port">Server Port</label>
-                        <input type="text" id="pacs-server-port" class="use-keyboard numeric-input" value="104">
+                        <input type="number" id="pacs-server-port" class="use-keyboard numeric-input" value="104" min="1" max="65535">
                         <p class="help-text">DICOM port (usually 104 or 11112)</p>
                     </div>
 
@@ -183,7 +183,7 @@
                     </div>
 
                     <div class="setting-group">
-                        <button type="button" class="test-button" id="test-pacs">
+                        <button type="button" class="test-button" id="test-pacs" data-action="testpacsconnection">
                             <i class="ms-Icon ms-Icon--TestBeaker"></i>
                             <span>Test Connection</span>
                         </button>
@@ -205,13 +205,13 @@
 
                     <div class="setting-group">
                         <label for="mwlsettings-mwl-server-host">MWL Server IP Address</label>
-                        <input type="text" id="mwlsettings-mwl-server-host" class="use-keyboard numeric-input" value="192.168.1.100">
+                        <input type="text" id="mwlsettings-mwl-server-host" class="use-keyboard" value="192.168.1.100">
                         <p class="help-text">IP address of the Worklist server (often same as PACS)</p>
                     </div>
 
                     <div class="setting-group">
                         <label for="mwlsettings-mwl-server-port">MWL Server Port</label>
-                        <input type="text" id="mwlsettings-mwl-server-port" class="use-keyboard numeric-input" value="104">
+                        <input type="number" id="mwlsettings-mwl-server-port" class="use-keyboard numeric-input" value="105" min="1" max="65535">
                         <p class="help-text">DICOM port for worklist queries (usually 104 or 11112)</p>
                     </div>
 
@@ -243,7 +243,7 @@
                     </div>
 
                     <div class="setting-group">
-                        <button type="button" class="test-button" id="test-mwl">
+                        <button type="button" class="test-button" id="test-mwl" data-action="testmwlconnection">
                             <i class="ms-Icon ms-Icon--TestBeaker"></i>
                             <span>Test MWL Connection</span>
                         </button>
@@ -343,7 +343,7 @@
 
                     <div class="setting-group">
                         <label for="application-web-server-port">Web Server Port</label>
-                        <input type="number" id="application-web-server-port" class="use-keyboard numeric-input" value="5111" min="1024" max="65535">
+                        <input type="number" id="application-web-server-port" class="use-keyboard numeric-input" value="5112" min="1024" max="65535">
                         <p class="help-text">Local web server port (1024-65535)</p>
                     </div>
 
@@ -379,6 +379,8 @@
         </div>
     </div>
 
+    <script src="js/actions.js"></script>
+    <script src="js/settings-handler.js"></script>
     <script src="settings.js"></script>
     <script src="keyboard.js"></script>
 </body>

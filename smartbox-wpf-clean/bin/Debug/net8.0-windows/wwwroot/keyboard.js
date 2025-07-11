@@ -106,11 +106,6 @@ class TouchKeyboard {
                 // Store AltGr character if available
                 if (altGrMap[key]) {
                     button.setAttribute('data-altgr', altGrMap[key]);
-                    // Add visual indicator for AltGr characters
-                    const altGrSpan = document.createElement('span');
-                    altGrSpan.className = 'altgr-char';
-                    altGrSpan.textContent = altGrMap[key];
-                    button.appendChild(altGrSpan);
                 }
                 
                 button.addEventListener('click', (e) => this.handleKeyPress(e));
@@ -277,24 +272,37 @@ class TouchKeyboard {
         document.querySelectorAll('.key-altgr').forEach(key => {
             key.classList.toggle('active', this.isAltGrActive);
         });
-        // Show/hide AltGr characters
-        document.querySelectorAll('.altgr-char').forEach(char => {
-            char.style.opacity = this.isAltGrActive ? '1' : '0.3';
-        });
+        // Update key labels to show AltGr characters
+        this.updateKeyLabels();
     }
 
     updateKeyLabels() {
         document.querySelectorAll('.keyboard-key').forEach(button => {
             const key = button.getAttribute('data-key');
             const shiftChar = button.getAttribute('data-shift');
+            const altGrChar = button.getAttribute('data-altgr');
             
-            if (this.isShiftActive && shiftChar) {
-                button.textContent = shiftChar;
-            } else if ((this.isShiftActive || this.isCapsLockActive) && key.match(/^[a-z]$/)) {
-                button.textContent = key.toUpperCase();
-            } else if (key.match(/^[a-zA-Z]$/) || shiftChar) {
-                button.textContent = key.toLowerCase();
+            // Skip special keys (they have icons/text)
+            if (button.classList.contains('special-key')) {
+                return;
             }
+            
+            // Determine which character to show
+            let displayChar = key;
+            
+            // Priority: AltGr > Shift > Caps > Normal
+            if (this.isAltGrActive && altGrChar) {
+                displayChar = altGrChar;
+            } else if (this.isShiftActive && shiftChar) {
+                displayChar = shiftChar;
+            } else if ((this.isShiftActive || this.isCapsLockActive) && key.match(/^[a-z]$/)) {
+                displayChar = key.toUpperCase();
+            } else if (key.match(/^[A-Z]$/) && !this.isShiftActive && !this.isCapsLockActive) {
+                displayChar = key.toLowerCase();
+            }
+            
+            // Update button text
+            button.textContent = displayChar;
         });
     }
 

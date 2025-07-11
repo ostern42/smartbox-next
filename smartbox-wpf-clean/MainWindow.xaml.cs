@@ -499,6 +499,11 @@ namespace SmartBoxNext
                     await HandleExitApp();
                     break;
                     
+                case "deleteCapture":
+                case "deletecapture":
+                    await HandleDeleteCapture(message);
+                    break;
+                    
                 default:
                     _logger.LogWarning("Unknown action: {Action}", action);
                     Logger.LogDebug($"Unknown action received: {action}, full message: {message}");
@@ -736,8 +741,51 @@ namespace SmartBoxNext
         
         private async Task SavePhoto(JObject message)
         {
-            // Legacy handler - redirect to new handler
-            await HandlePhotoCaptured(message);
+            try
+            {
+                var data = message["data"];
+                var imageData = data?["imageData"]?.ToString();
+                var fileName = data?["fileName"]?.ToString();
+                var captureId = data?["captureId"]?.ToString();
+                var patient = data?["patient"];
+                
+                if (string.IsNullOrEmpty(imageData) || string.IsNullOrEmpty(fileName))
+                {
+                    throw new ArgumentException("No image data or filename provided");
+                }
+                
+                // Extract base64 data
+                var base64Data = imageData.StartsWith("data:image") 
+                    ? imageData.Substring(imageData.IndexOf(',') + 1)
+                    : imageData;
+                var imageBytes = Convert.FromBase64String(base64Data);
+                
+                // Save to Photos directory
+                var photoDir = _config!.Storage.PhotosPath;
+                Directory.CreateDirectory(photoDir);
+                
+                var filePath = Path.Combine(photoDir, fileName);
+                await File.WriteAllBytesAsync(filePath, imageBytes);
+                
+                _logger.LogInformation("Photo saved: {Path} (ID: {CaptureId})", filePath, captureId);
+                
+                // Send confirmation back to UI
+                await SendMessageToWebView(new
+                {
+                    action = "photoSaved",
+                    data = new
+                    {
+                        captureId = captureId,
+                        fileName = fileName,
+                        filePath = filePath
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save photo");
+                await SendErrorToWebView($"Failed to save photo: {ex.Message}");
+            }
         }
         
         private async Task HandleVideoRecorded(JObject message)
@@ -1539,71 +1587,36 @@ namespace SmartBoxNext
                     return;
                 }
                 
-                // Test connection using our PacsService
-                var pacsService = new PacsService(
-                    _logger,
-                    serverHost,
-                    serverPort,
-                    callingAeTitle,
-                    calledAeTitle,
-                    30 // timeout
-                );
+                // Always show diagnostic window for PACS test (like MWL)
+                bool testSuccess = false;
+                string testMessage = "";
                 
-                var success = await pacsService.TestConnectionAsync();
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    var diagnosticWindow = new DiagnosticWindow(
+                        _logger,
+                        serverHost,
+                        serverPort,
+                        callingAeTitle,
+                        calledAeTitle,
+                        isMwl: false
+                    );
+                    diagnosticWindow.Owner = this;
+                    diagnosticWindow.ShowDialog();
+                    
+                    // Get results from diagnostic window
+                    testSuccess = diagnosticWindow.TestSuccessful;
+                    testMessage = diagnosticWindow.TestMessage;
+                });
                 
-                if (success)
+                // Send results to WebView
+                await SendMessageToWebView(new
                 {
-                    _logger.LogInformation("PACS connection test successful");
-                    await SendMessageToWebView(new
-                    {
-                        action = "testConnectionResult",
-                        data = new 
-                        { 
-                            success = true,
-                            message = "PACS Verbindung erfolgreich",
-                            type = "pacs",
-                            details = new
-                            {
-                                host = serverHost,
-                                port = serverPort,
-                                calledAE = calledAeTitle,
-                                callingAE = callingAeTitle
-                            }
-                        }
-                    });
-                }
-                else
-                {
-                    _logger.LogWarning("PACS connection test failed");
-                    await SendMessageToWebView(new
-                    {
-                        action = "testConnectionResult",
-                        data = new 
-                        { 
-                            success = false,
-                            message = "PACS Verbindung fehlgeschlagen - Prüfen Sie Host/Port/AE Titles",
-                            type = "pacs"
-                        }
-                    });
-                }
-                
-                // Optionally still open diagnostic window for detailed info
-                if (!success)
-                {
-                    await Dispatcher.InvokeAsync(() =>
-                    {
-                        var diagnosticWindow = new DiagnosticWindow(
-                            _logger,
-                            serverHost,
-                            serverPort,
-                            callingAeTitle,
-                            calledAeTitle,
-                            isMwl: false
-                        );
-                        diagnosticWindow.Owner = this;
-                        diagnosticWindow.ShowDialog();
-                    });
-                }
+                    action = "pacsTestResult",
+                    success = testSuccess,
+                    error = testSuccess ? null : testMessage,
+                    message = testMessage
+                });
             }
             catch (Exception ex)
             {
@@ -2187,7 +2200,7 @@ namespace SmartBoxNext
         {
             try
             {
-                _logger.LogInformation("=== HandleExportCaptures called ===");
+                Logger.LogInfo("=== HandleExportCaptures called ===");
                 Logger.LogDebug("HandleExportCaptures START - processing export request");
                 
                 var data = message["data"];
@@ -2199,13 +2212,13 @@ namespace SmartBoxNext
                 
                 if (captures == null)
                 {
-                    _logger.LogWarning("No captures provided for export");
+                    Logger.LogWarning("No captures provided for export");
                     Logger.LogDebug("No captures found - returning error");
                     await SendErrorToWebView("No captures provided for export");
                     return;
                 }
                 
-                _logger.LogInformation("Processing {Count} captures for export", captures.Count());
+                Logger.LogInfo($"Processing {captures.Count()} captures for export");
                 Logger.LogDebug($"Found {captures.Count()} captures to process");
                 
                 var exportedIds = new List<string>();
@@ -2227,15 +2240,19 @@ namespace SmartBoxNext
                         AccessionNumber = _selectedWorklistItem?.AccessionNumber
                     };
                     
-                    _logger.LogInformation("Patient info created for export: {PatientId}", patientInfo.PatientId);
+                    Logger.LogInfo($"Patient info created for export: {patientInfo.PatientId}");
                 }
                 
                 // Initialize services if needed
                 var dicomService = new DicomService(_logger);
                 PacsService? pacsService = null;
                 
+                Logger.LogInfo($"PACS Config Check - Enabled: {_config?.Pacs?.Enabled}, Host: {_config?.Pacs?.ServerHost}, Port: {_config?.Pacs?.ServerPort}");
+                
                 if (_config?.Pacs?.Enabled == true)
                 {
+                    Logger.LogInfo($"Initializing PACS service with Host: {_config.Pacs.ServerHost}, Port: {_config.Pacs.ServerPort}, CallingAE: {_config.Pacs.CallingAeTitle}, CalledAE: {_config.Pacs.CalledAeTitle}");
+                    
                     pacsService = new PacsService(
                         _logger,
                         _config.Pacs.ServerHost,
@@ -2245,6 +2262,10 @@ namespace SmartBoxNext
                         _config.Pacs.Timeout
                     );
                 }
+                else
+                {
+                    Logger.LogWarning("PACS is disabled in configuration or config is null");
+                }
                 
                 foreach (var capture in captures)
                 {
@@ -2253,32 +2274,99 @@ namespace SmartBoxNext
                         var captureId = capture["id"]?.ToString();
                         var captureType = capture["type"]?.ToString();
                         
-                        _logger.LogInformation("Processing capture {Id} of type {Type}", captureId, captureType);
+                        Logger.LogInfo($"Processing capture {captureId} of type {captureType}");
                         
                         if (string.IsNullOrEmpty(captureId))
                         {
-                            _logger.LogWarning("Capture has no ID, skipping");
+                            Logger.LogWarning("Capture has no ID, skipping");
                             continue;
                         }
                         
-                        _logger.LogInformation("Capture type: {Type}, PatientInfo null: {IsNull}", captureType, patientInfo == null);
+                        Logger.LogInfo($"Capture type: {captureType}, PatientInfo null: {patientInfo == null}");
                         
                         if (captureType == "photo" && patientInfo != null)
                         {
-                            // Find the photo file
-                            var searchPath = _config?.Storage?.PhotosPath ?? "./Data/Photos";
-                            _logger.LogInformation("Searching for photos in: {Path}", searchPath);
+                            string photoPath = null;
                             
-                            var photoFiles = Directory.GetFiles(searchPath, "IMG_*.jpg")
-                                .OrderByDescending(f => File.GetCreationTime(f))
-                                .ToList();
+                            // NEW: Check for filename/filepath first (file-based approach)
+                            var fileName = capture["fileName"]?.ToString();
+                            var filePath = capture["filePath"]?.ToString();
                             
-                            _logger.LogInformation("Found {Count} photo files", photoFiles.Count);
-                            
-                            if (photoFiles.Any())
+                            if (!string.IsNullOrEmpty(fileName))
                             {
-                                var photoPath = photoFiles.First();
-                                _logger.LogInformation("Using photo file: {Path}", photoPath);
+                                var photosDir = _config?.Storage?.PhotosPath ?? "./Data/Photos";
+                                photoPath = Path.Combine(photosDir, fileName);
+                                
+                                if (File.Exists(photoPath))
+                                {
+                                    _logger.LogInformation("Using file-based capture: {Path}", photoPath);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("File not found: {Path}", photoPath);
+                                    photoPath = null;
+                                }
+                            }
+                            
+                            // FALLBACK: Legacy base64 approach
+                            if (photoPath == null)
+                            {
+                                var imageData = capture["data"]?.ToString();
+                                if (!string.IsNullOrEmpty(imageData) && imageData.StartsWith("data:image"))
+                                {
+                                    _logger.LogInformation("Using legacy base64 image data from UI");
+                                    
+                                    // Extract base64 data
+                                    var base64Data = imageData.Substring(imageData.IndexOf(',') + 1);
+                                    var imageBytes = Convert.FromBase64String(base64Data);
+                                    
+                                    // Save to temp file
+                                    var tempPath = Path.Combine(_config?.Storage?.TempPath ?? "./Data/Temp", $"export_{captureId}.jpg");
+                                    Directory.CreateDirectory(Path.GetDirectoryName(tempPath));
+                                    await File.WriteAllBytesAsync(tempPath, imageBytes);
+                                    photoPath = tempPath;
+                                    
+                                    _logger.LogInformation("Saved legacy image data to temp file: {Path}", photoPath);
+                                }
+                                else
+                                {
+                                    // Final fallback: Search for recent files
+                                    var searchPath = _config?.Storage?.PhotosPath ?? "./Data/Photos";
+                                    var absolutePath = Path.GetFullPath(searchPath);
+                                    Logger.LogInfo($"No image data provided, searching for photos in: {searchPath} (absolute: {absolutePath})");
+                                    
+                                    if (!Directory.Exists(searchPath))
+                                    {
+                                        Logger.LogWarning($"Photos directory does not exist: {absolutePath}");
+                                        Directory.CreateDirectory(searchPath);
+                                        Logger.LogInfo("Created photos directory");
+                                    }
+                                    
+                                    var photoFiles = Directory.GetFiles(searchPath, "IMG_*.jpg")
+                                        .OrderByDescending(f => File.GetCreationTime(f))
+                                        .ToList();
+                                    
+                                    Logger.LogInfo($"Found {photoFiles.Count} photo files in {searchPath}");
+                                    if (photoFiles.Any())
+                                    {
+                                        Logger.LogInfo("Photo files found:");
+                                        foreach (var file in photoFiles.Take(5))
+                                        {
+                                            var info = new FileInfo(file);
+                                            Logger.LogInfo($"  - {info.Name} ({info.Length} bytes, created: {info.CreationTime})");
+                                        }
+                                    }
+                                    
+                                    if (photoFiles.Any())
+                                    {
+                                        photoPath = photoFiles.First();
+                                        Logger.LogInfo($"Using fallback photo file: {photoPath}");
+                                    }
+                                }
+                            }
+                            
+                            if (!string.IsNullOrEmpty(photoPath) && File.Exists(photoPath))
+                            {
                                 
                                 try
                                 {
@@ -2307,14 +2395,19 @@ namespace SmartBoxNext
                                     {
                                         try
                                         {
-                                            _logger.LogInformation("Sending to PACS: {Host}:{Port}", 
-                                                _config.Pacs.ServerHost, _config.Pacs.ServerPort);
+                                            Logger.LogInfo("=== PACS SEND START ===");
+                                            Logger.LogInfo($"DICOM File: {dicomPath}");
+                                            Logger.LogInfo($"File exists: {File.Exists(dicomPath)}, Size: {(File.Exists(dicomPath) ? new FileInfo(dicomPath).Length : 0)} bytes");
+                                            Logger.LogInfo($"Sending to PACS: {_config.Pacs.ServerHost}:{_config.Pacs.ServerPort} (AET: {_config.Pacs.CallingAeTitle} -> {_config.Pacs.CalledAeTitle})");
                                             
                                             var sendResult = await pacsService.SendDicomFileAsync(dicomPath);
                                             
+                                            Logger.LogInfo("=== PACS SEND RESULT ===");
+                                            Logger.LogInfo($"Success: {sendResult.Success}, Message: {sendResult.Message}, SOP UID: {sendResult.SOPInstanceUID}");
+                                            
                                             if (sendResult.Success)
                                             {
-                                                _logger.LogInformation("Successfully sent to PACS");
+                                                Logger.LogInfo("Successfully sent to PACS");
                                                 exportedIds.Add(captureId);
                                                 
                                                 await SendMessageToWebView(new
@@ -2355,13 +2448,12 @@ namespace SmartBoxNext
                                             exportedIds.Add(captureId);
                                         }
                                     }
-                                    else
-                                    {
-                                        // No PACS configured, but DICOM was created
-                                        _logger.LogInformation("PACS disabled, DICOM saved locally only");
-                                        exportedIds.Add(captureId);
-                                    }
-                                }
+                                        else
+                                        {
+                                            // No PACS configured, but DICOM was created
+                                            Logger.LogInfo("PACS disabled, DICOM saved locally only");
+                                            exportedIds.Add(captureId);
+                                        }                                }
                                 catch (Exception dicomEx)
                                 {
                                     _logger.LogError(dicomEx, "Failed to create DICOM for capture {Id}", captureId);
@@ -2380,12 +2472,11 @@ namespace SmartBoxNext
                                     });
                                 }
                             }
-                            else
-                            {
-                                _logger.LogWarning("No photo files found");
-                                failedExports.Add(captureId);
-                            }
-                        }
+                                else
+                                {
+                                    Logger.LogWarning("No photo files found");
+                                    failedExports.Add(captureId);
+                                }                        }
                         else if (captureType == "video")
                         {
                             // TODO: Video export implementation
@@ -2445,7 +2536,7 @@ namespace SmartBoxNext
                 // Navigate to settings page
                 await Dispatcher.InvokeAsync(() =>
                 {
-                    webView.CoreWebView2.Navigate("http://localhost:5111/settings.html");
+                    webView.CoreWebView2.Navigate($"http://localhost:{_config.Application.WebServerPort}/settings.html");
                 });
                 
                 _logger.LogInformation("Navigated to settings page");
@@ -2472,6 +2563,75 @@ namespace SmartBoxNext
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to exit application");
+            }
+        }
+        
+        private async Task HandleDeleteCapture(JObject message)
+        {
+            try
+            {
+                var data = message["data"];
+                var captureId = data?["captureId"]?.ToString();
+                var type = data?["type"]?.ToString();
+                var filePath = data?["filePath"]?.ToString();
+                
+                Logger.LogInfo($"Delete capture requested - ID: {captureId}, Type: {type}, Path: {filePath}");
+                
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    Logger.LogWarning("No file path provided for deletion");
+                    await SendErrorToWebView("Datei konnte nicht gelöscht werden");
+                    return;
+                }
+                
+                // Delete the file
+                try
+                {
+                    if (File.Exists(filePath))
+                    {
+                        File.Delete(filePath);
+                        Logger.LogInfo($"Deleted file: {filePath}");
+                        
+                        // Also try to delete associated DICOM file if it exists
+                        var dicomPath = filePath.Replace("\\Photos\\", "\\DICOM\\")
+                                               .Replace("\\Videos\\", "\\DICOM\\")
+                                               .Replace(".jpg", ".dcm")
+                                               .Replace(".webm", ".dcm")
+                                               .Replace(".mp4", ".dcm");
+                        
+                        if (File.Exists(dicomPath))
+                        {
+                            File.Delete(dicomPath);
+                            Logger.LogInfo($"Also deleted DICOM file: {dicomPath}");
+                        }
+                        
+                        // Send success response
+                        await SendMessageToWebView(new
+                        {
+                            action = "captureDeleted",
+                            data = new
+                            {
+                                captureId = captureId,
+                                success = true
+                            }
+                        });
+                    }
+                    else
+                    {
+                        Logger.LogWarning($"File not found for deletion: {filePath}");
+                        await SendErrorToWebView("Datei nicht gefunden");
+                    }
+                }
+                catch (Exception fileEx)
+                {
+                    Logger.LogError($"Failed to delete file: {fileEx.Message}");
+                    await SendErrorToWebView($"Löschen fehlgeschlagen: {fileEx.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to handle delete capture");
+                await SendErrorToWebView("Löschen fehlgeschlagen");
             }
         }
     }

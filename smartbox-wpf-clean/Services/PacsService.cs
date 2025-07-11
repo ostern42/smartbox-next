@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using FellowOakDicom;
 using FellowOakDicom.Network;
@@ -69,9 +70,22 @@ namespace SmartBoxNext.Services
         {
             try
             {
-                _logger.LogInformation($"Sending DICOM file to PACS: {dicomFilePath}");
+                _logger.LogInformation("=== PacsService.SendDicomFileAsync START ===");
+                _logger.LogInformation("DICOM file path: {Path}", dicomFilePath);
+                _logger.LogInformation("File exists: {Exists}, Size: {Size} bytes", 
+                    File.Exists(dicomFilePath), 
+                    File.Exists(dicomFilePath) ? new FileInfo(dicomFilePath).Length : 0);
                 
                 var dicomFile = await DicomFile.OpenAsync(dicomFilePath);
+                _logger.LogInformation("DICOM file loaded successfully");
+                
+                // Log some DICOM metadata
+                var dataset = dicomFile.Dataset;
+                _logger.LogInformation("Patient Name: {Name}, Patient ID: {ID}, Study UID: {StudyUID}", 
+                    dataset.GetSingleValueOrDefault(DicomTag.PatientName, "N/A"),
+                    dataset.GetSingleValueOrDefault(DicomTag.PatientID, "N/A"),
+                    dataset.GetSingleValueOrDefault(DicomTag.StudyInstanceUID, "N/A"));
+                
                 return await SendDicomFileAsync(dicomFile);
             }
             catch (Exception ex)
@@ -89,36 +103,56 @@ namespace SmartBoxNext.Services
         {
             try
             {
+                _logger.LogInformation("=== Creating DICOM Client ===");
+                _logger.LogInformation("Target: {Host}:{Port}, AET: {CallingAE} -> {CalledAE}", 
+                    _pacsHost, _pacsPort, _callingAeTitle, _calledAeTitle);
+                
                 var client = DicomClientFactory.Create(_pacsHost, _pacsPort, false, _callingAeTitle, _calledAeTitle);
                 // Note: In fo-dicom 5.x, options are set differently
                 // For now, we'll use default timeout
 
                 // Enable async operations for better performance
                 client.NegotiateAsyncOps();
+                _logger.LogInformation("DICOM client created, async ops negotiated");
 
                 var result = new PacsSendResult();
+                var sopInstanceUid = dicomFile.Dataset.GetSingleValue<string>(DicomTag.SOPInstanceUID);
+                _logger.LogInformation("Creating C-STORE request for SOP Instance UID: {UID}", sopInstanceUid);
+                
                 var request = new DicomCStoreRequest(dicomFile)
                 {
                     OnResponseReceived = (req, response) =>
                     {
+                        _logger.LogInformation("=== C-STORE Response Received ===");
+                        _logger.LogInformation("Status Code: {Code}, Status: {Status}, Description: {Desc}", 
+                            response.Status.Code, response.Status.State, response.Status.Description);
+                        
                         if (response.Status == DicomStatus.Success)
                         {
-                            _logger.LogInformation($"DICOM file sent successfully. SOP Instance UID: {req.SOPInstanceUID}");
+                            _logger.LogInformation("✓ DICOM file sent successfully. SOP Instance UID: {UID}", req.SOPInstanceUID);
                             result.Success = true;
                             result.Message = "DICOM file sent successfully";
                             result.SOPInstanceUID = req.SOPInstanceUID.UID;
                         }
                         else
                         {
-                            _logger.LogWarning($"Failed to send DICOM file. Status: {response.Status}");
+                            _logger.LogWarning("✗ Failed to send DICOM file. Status: {Status} ({Code})", 
+                                response.Status.Description, response.Status.Code);
                             result.Success = false;
-                            result.Message = $"PACS returned status: {response.Status}";
+                            result.Message = $"PACS returned status: {response.Status.Description} (Code: {response.Status.Code})";
                         }
                     }
                 };
 
+                _logger.LogInformation("Adding C-STORE request to client");
                 await client.AddRequestAsync(request);
+                
+                _logger.LogInformation("Sending request to PACS server...");
                 await client.SendAsync();
+                
+                _logger.LogInformation("=== PACS Send Complete ===");
+                _logger.LogInformation("Final Result - Success: {Success}, Message: {Message}", 
+                    result.Success, result.Message);
 
                 return result;
             }

@@ -29,6 +29,8 @@
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="SharedMemory" Version="2.2.3" />
+    <PackageReference Include="FFMpegCore" Version="5.1.0" />
+    <PackageReference Include="FFmpeg.Native" Version="4.4.0.2386" />
   </ItemGroup>
 
   <ItemGroup>

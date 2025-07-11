@@ -14,17 +14,18 @@ class DebugOverlay {
         overlay.id = 'debugOverlay';
         overlay.style.cssText = `
             position: fixed;
-            top: 10px;
-            right: 10px;
+            top: 90px;
+            left: 10px;
             background: rgba(0,0,0,0.8);
             color: white;
             padding: 10px;
             border-radius: 8px;
             font-family: monospace;
-            font-size: 12px;
+            font-size: 11px;
             z-index: 10000;
-            max-width: 300px;
+            max-width: 250px;
             pointer-events: none;
+            opacity: 0.7;
         `;
         
         document.body.appendChild(overlay);

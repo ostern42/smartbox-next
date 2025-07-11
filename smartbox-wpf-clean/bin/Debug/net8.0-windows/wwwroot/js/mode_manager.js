@@ -45,13 +45,7 @@ class ModeManager {
             this.onEndSession();
         });
         
-        // Listen for exit button
-        const exitButton = document.getElementById('exitButton');
-        if (exitButton) {
-            exitButton.addEventListener('click', () => {
-                this.onExitRequested();
-            });
-        }
+        // Exit button is now handled in app.js to avoid duplicate handlers
         
         console.log('ModeManager: Initialized in', this.currentMode, 'mode');
     }
@@ -243,30 +237,46 @@ class ModeManager {
             const unsavedCaptures = this.captures.filter(c => !c.exported).length;
             
             if (unsavedCaptures > 0) {
-                dialogManager.showConfirmation({
-                    title: 'Anwendung beenden?',
-                    message: unsavedCaptures === 1
-                        ? 'Eine Aufnahme wurde noch nicht exportiert!'
-                        : `${unsavedCaptures} Aufnahmen wurden noch nicht exportiert!`,
-                    cancelText: 'Abbrechen',
-                    confirmText: 'Trotzdem beenden',
-                    confirmStyle: 'danger',
-                    onConfirm: () => this.exitApp(),
-                    onCancel: () => {} // Do nothing
-                });
+                if (dialogManager.showExitConfirmation) {
+                    dialogManager.showExitConfirmation({
+                        message: unsavedCaptures === 1
+                            ? 'Eine Aufnahme wurde noch nicht exportiert!'
+                            : `${unsavedCaptures} Aufnahmen wurden noch nicht exportiert!`,
+                        cancelText: 'Trotzdem beenden',
+                        onConfirm: () => this.exitApp()
+                    });
+                } else {
+                    dialogManager.showConfirmation({
+                        title: 'Anwendung beenden?',
+                        message: unsavedCaptures === 1
+                            ? 'Eine Aufnahme wurde noch nicht exportiert!'
+                            : `${unsavedCaptures} Aufnahmen wurden noch nicht exportiert!`,
+                        cancelText: 'Abbrechen',
+                        confirmText: 'Trotzdem beenden',
+                        confirmStyle: 'danger',
+                        onConfirm: () => this.exitApp(),
+                        onCancel: () => {} // Do nothing
+                    });
+                }
                 return;
             }
         }
         
         // Standard exit confirmation
-        dialogManager.showConfirmation({
-            title: 'Beenden',
-            message: 'SmartBox Next wirklich beenden?',
-            cancelText: 'Abbrechen',
-            confirmText: 'Beenden',
-            onConfirm: () => this.exitApp(),
-            onCancel: () => {} // Do nothing
-        });
+        if (dialogManager.showExitConfirmation) {
+            dialogManager.showExitConfirmation({
+                onConfirm: () => this.exitApp()
+            });
+        } else {
+            dialogManager.showConfirmation({
+                title: 'Beenden',
+                message: 'SmartBox Next wirklich beenden?',
+                cancelText: 'Abbrechen',
+                confirmText: 'Beenden',
+                onConfirm: () => this.exitApp(),
+                onCancel: () => {} // Do nothing
+            });
+        }
     }
 
     /**
@@ -334,18 +344,20 @@ class ModeManager {
      */
     addCapture(captureData) {
         const capture = {
-            id: Date.now(),
+            id: captureData.id || Date.now(),
             type: captureData.type, // 'photo' | 'video'
             timestamp: new Date(),
             thumbnail: captureData.thumbnail,
-            data: captureData.data,
+            fileName: captureData.fileName,
+            filePath: captureData.filePath,
+            data: captureData.data, // Keep for backward compatibility (thumbnail uses base64)
             exported: false,
             duration: captureData.duration || null
         };
         
         this.captures.push(capture);
         
-        console.log('ModeManager: Added capture:', capture.type, 'Total captures:', this.captures.length);
+        console.log('ModeManager: Added capture:', capture.type, 'File:', capture.fileName, 'Total captures:', this.captures.length);
         
         // Update export button
         this.updateExportButton();
@@ -442,6 +454,32 @@ class ModeManager {
         thumbnail.dataset.index = index;
         thumbnail.dataset.captureId = capture.id;
         
+        // Create selection checkbox
+        const selectBox = document.createElement('div');
+        selectBox.className = 'thumbnail-select';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'capture-checkbox';
+        checkbox.dataset.captureId = capture.id;
+        checkbox.checked = capture.selected || false;
+        checkbox.addEventListener('change', (e) => {
+            capture.selected = e.target.checked;
+            this.updateSelectionCount();
+        });
+        selectBox.appendChild(checkbox);
+        thumbnail.appendChild(selectBox);
+        
+        // Create delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'thumbnail-delete';
+        deleteBtn.innerHTML = '<i class="ms-Icon ms-Icon--Delete"></i>';
+        deleteBtn.title = 'Löschen';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.deleteCapture(capture.id);
+        });
+        thumbnail.appendChild(deleteBtn);
+        
         // Create image
         const img = document.createElement('img');
         img.src = capture.thumbnail;
@@ -467,6 +505,15 @@ class ModeManager {
             thumbnail.classList.add('exported');
         }
         
+        // Click on thumbnail toggles selection
+        thumbnail.addEventListener('click', (e) => {
+            if (e.target !== checkbox && e.target !== deleteBtn && !deleteBtn.contains(e.target)) {
+                checkbox.checked = !checkbox.checked;
+                capture.selected = checkbox.checked;
+                this.updateSelectionCount();
+            }
+        });
+        
         return thumbnail;
     }
 
@@ -479,7 +526,7 @@ class ModeManager {
         // Send exit message to WebView2 host
         if (window.chrome && window.chrome.webview) {
             window.chrome.webview.postMessage(JSON.stringify({
-                type: 'exit',
+                type: 'exitApp',
                 data: {}
             }));
         } else {
@@ -488,6 +535,63 @@ class ModeManager {
         }
     }
 
+    /**
+     * Delete a capture
+     */
+    deleteCapture(captureId) {
+        const capture = this.captures.find(c => c.id === captureId);
+        if (!capture) return;
+        
+        const confirmDelete = confirm(`Möchten Sie diese ${capture.type === 'video' ? 'Videoaufnahme' : 'Fotoaufnahme'} wirklich löschen?`);
+        if (!confirmDelete) return;
+        
+        // Remove from captures array
+        this.captures = this.captures.filter(c => c.id !== captureId);
+        
+        // Send delete message to host
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage(JSON.stringify({
+                type: 'deleteCapture',
+                data: {
+                    captureId: captureId,
+                    type: capture.type,
+                    filePath: capture.data || capture.url
+                }
+            }));
+        }
+        
+        // Update UI
+        this.updateUI();
+    }
+    
+    /**
+     * Update selection count in export button
+     */
+    updateSelectionCount() {
+        const selectedCount = this.captures.filter(c => c.selected).length;
+        const exportButton = document.getElementById('exportButton');
+        const exportCount = document.getElementById('exportCount');
+        
+        if (exportButton && exportCount) {
+            if (selectedCount > 0) {
+                exportCount.textContent = `(${selectedCount} ausgewählt)`;
+                exportButton.innerHTML = `<i class="ms-Icon ms-Icon--Export"></i><span>Ausgewählte senden</span><small id="exportCount">(${selectedCount} ausgewählt)</small>`;
+            } else {
+                const totalCaptures = this.captures.length;
+                exportCount.textContent = `(${totalCaptures} Aufnahmen)`;
+                exportButton.innerHTML = `<i class="ms-Icon ms-Icon--Export"></i><span>Alle an PACS senden</span><small id="exportCount">(${totalCaptures} Aufnahmen)</small>`;
+            }
+        }
+    }
+    
+    /**
+     * Get captures for export (selected or all)
+     */
+    getCapturesForExport() {
+        const selectedCaptures = this.captures.filter(c => c.selected);
+        return selectedCaptures.length > 0 ? selectedCaptures : this.captures;
+    }
+    
     /**
      * Emit custom events
      */
