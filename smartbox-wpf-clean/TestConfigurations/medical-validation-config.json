@@ -1,0 +1,135 @@
+{
+  "FDACompliance": {
+    "Part820": {
+      "DesignControls": {
+        "RequireDesignInputs": true,
+        "RequireDesignOutputs": true,
+        "RequireDesignReviews": true,
+        "RequireVerification": true,
+        "RequireValidation": true,
+        "RequireDesignTransfer": true,
+        "RequireChangeControl": true,
+        "RequireDesignHistoryFile": true
+      },
+      "DocumentControls": {
+        "RequireDocumentApproval": true,
+        "RequireControlledDistribution": true,
+        "RequireChangeControl": true,
+        "RequireObsoleteDocumentControl": true
+      },
+      "ProductionControls": {
+        "RequireProcessValidation": true,
+        "RequireSoftwareValidation": true,
+        "RequireEquipmentCalibration": true
+      }
+    },
+    "Part11": {
+      "ElectronicRecords": {
+        "RequireSystemValidation": true,
+        "RequireRecordProtection": true,
+        "RequireAccessControls": true,
+        "RequireAuditTrails": true,
+        "RequireOperationalChecks": true,
+        "RequireAuthorityChecks": true,
+        "RequireDeviceChecks": true
+      },
+      "ElectronicSignatures": {
+        "RequireSignatureInformation": true,
+        "RequireSecureLinking": true,
+        "RequireUniqueness": true
+      }
+    },
+    "Cybersecurity": {
+      "PremarketRequirements": {
+        "RequireThreatModeling": true,
+        "RequireRiskAssessment": true,
+        "RequireSecurityControls": true,
+        "RequireSecurityTesting": true
+      },
+      "PostmarketRequirements": {
+        "RequireCybersecurityMonitoring": true,
+        "RequireVulnerabilityDisclosure": true,
+        "RequireSecurityUpdates": true,
+        "RequireIncidentResponse": true
+      }
+    }
+  },
+  "ISO14971": {
+    "RiskManagement": {
+      "RequireRiskManagementProcess": true,
+      "RequireRiskAnalysis": true,
+      "RequireRiskEvaluation": true,
+      "RequireRiskControl": true,
+      "RequireRiskManagementFile": true,
+      "RequirePostProductionInformation": true
+    }
+  },
+  "IEC62304": {
+    "SoftwareLifecycle": {
+      "RequireSafetyClassification": true,
+      "RequireDevelopmentPlanning": true,
+      "RequireRequirementsAnalysis": true,
+      "RequireArchitecturalDesign": true,
+      "RequireDetailedDesign": true,
+      "RequireImplementation": true,
+      "RequireIntegrationTesting": true,
+      "RequireSystemTesting": true,
+      "RequireRelease": true,
+      "RequireMaintenance": true
+    }
+  },
+  "HIPAA": {
+    "PrivacyRule": {
+      "RequireMinimumNecessary": true,
+      "RequireAccessControls": true,
+      "RequireBusinessAssociateAgreements": true,
+      "RequirePatientRights": true
+    },
+    "SecurityRule": {
+      "AdminSafeguards": {
+        "RequireSecurityOfficer": true,
+        "RequireWorkforceTraining": true,
+        "RequireInformationAccessManagement": true,
+        "RequireSecurityIncidentProcedures": true,
+        "RequireContingencyPlan": true,
+        "RequireSecurityEvaluations": true
+      },
+      "PhysicalSafeguards": {
+        "RequireFacilityAccessControls": true,
+        "RequireWorkstationUse": true,
+        "RequireDeviceMediaControls": true
+      },
+      "TechnicalSafeguards": {
+        "RequireAccessControl": true,
+        "RequireAuditControls": true,
+        "RequireIntegrityControls": true,
+        "RequirePersonEntityAuthentication": true,
+        "RequireTransmissionSecurity": true
+      }
+    }
+  },
+  "GDPR": {
+    "DataProtection": {
+      "RequireLawfulBasis": true,
+      "RequireDataSubjectRights": true,
+      "RequireDataProtectionByDesign": true,
+      "RequireDataProtectionImpactAssessment": true,
+      "RequireBreachNotification": true
+    }
+  },
+  "ValidationLevels": {
+    "MinimumComplianceThreshold": 95.0,
+    "CriticalComplianceThreshold": 100.0,
+    "EnableStrictValidation": true,
+    "FailOnMinorViolations": false,
+    "EnableContinuousMonitoring": true
+  },
+  "TestingRequirements": {
+    "RequireTraceabilityMatrix": true,
+    "RequireTestProtocols": true,
+    "RequireTestReports": true,
+    "RequireRiskAssessment": true,
+    "RequireClinicalEvidence": true,
+    "MinimumTestCoverage": 95.0
+  }
+}
