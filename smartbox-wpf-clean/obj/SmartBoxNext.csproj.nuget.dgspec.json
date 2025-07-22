@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\oliver.stern\\source\\repos\\smartbox-next\\smartbox-wpf-clean\\SmartBoxNext.csproj": {}
+    "C:\\Users\\oliver.stern\\source\\repos\\projects\\smartbox-next\\smartbox-wpf-clean\\SmartBoxNext.csproj": {}
   },
   "projects": {
-    "C:\\Users\\oliver.stern\\source\\repos\\smartbox-next\\smartbox-wpf-clean\\SmartBoxNext.csproj": {
+    "C:\\Users\\oliver.stern\\source\\repos\\projects\\smartbox-next\\smartbox-wpf-clean\\SmartBoxNext.csproj": {
       "version": "2.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\oliver.stern\\source\\repos\\smartbox-next\\smartbox-wpf-clean\\SmartBoxNext.csproj",
+        "projectUniqueName": "C:\\Users\\oliver.stern\\source\\repos\\projects\\smartbox-next\\smartbox-wpf-clean\\SmartBoxNext.csproj",
         "projectName": "SmartBoxNext",
-        "projectPath": "C:\\Users\\oliver.stern\\source\\repos\\smartbox-next\\smartbox-wpf-clean\\SmartBoxNext.csproj",
+        "projectPath": "C:\\Users\\oliver.stern\\source\\repos\\projects\\smartbox-next\\smartbox-wpf-clean\\SmartBoxNext.csproj",
         "packagesPath": "C:\\Users\\oliver.stern\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\oliver.stern\\source\\repos\\smartbox-next\\smartbox-wpf-clean\\obj\\",
+        "outputPath": "C:\\Users\\oliver.stern\\source\\repos\\projects\\smartbox-next\\smartbox-wpf-clean\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -50,13 +50,33 @@
         "net8.0-windows7.0": {
           "targetAlias": "net8.0-windows",
           "dependencies": {
+            "AutoFixture": {
+              "target": "Package",
+              "version": "[4.18.0, )"
+            },
             "FFMpegCore": {
               "target": "Package",
-              "version": "[5.1.0, )"
+              "version": "[4.8.0, )"
             },
             "FFmpeg.Native": {
               "target": "Package",
               "version": "[4.4.0.2386, )"
+            },
+            "FluentAssertions": {
+              "target": "Package",
+              "version": "[6.12.0, )"
+            },
+            "HL7-DOTNETCORE": {
+              "target": "Package",
+              "version": "[2.36.0, )"
+            },
+            "Hl7.Fhir.R4": {
+              "target": "Package",
+              "version": "[4.0.0, )"
+            },
+            "Microsoft.Extensions.DependencyInjection": {
+              "target": "Package",
+              "version": "[8.0.0, )"
             },
             "Microsoft.Extensions.Logging": {
               "target": "Package",
@@ -69,6 +89,18 @@
             "Microsoft.Web.WebView2": {
               "target": "Package",
               "version": "[1.0.2739.15, )"
+            },
+            "Moq": {
+              "target": "Package",
+              "version": "[4.20.69, )"
+            },
+            "NAudio": {
+              "target": "Package",
+              "version": "[2.2.1, )"
+            },
+            "NBomber": {
+              "target": "Package",
+              "version": "[5.4.0, )"
             },
             "Newtonsoft.Json": {
               "target": "Package",
@@ -86,9 +118,21 @@
               "target": "Package",
               "version": "[8.0.0, )"
             },
+            "System.Speech": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
             "fo-dicom": {
               "target": "Package",
               "version": "[5.1.2, )"
+            },
+            "xunit": {
+              "target": "Package",
+              "version": "[2.4.2, )"
+            },
+            "xunit.runner.visualstudio": {
+              "target": "Package",
+              "version": "[2.4.5, )"
             }
           },
           "imports": [

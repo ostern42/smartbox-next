@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBox Admin - WebSocket Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 2px 0;
+        }
+        .message.sent {
+            color: #0066cc;
+        }
+        .message.received {
+            color: #cc6600;
+        }
+        .message.error {
+            color: #cc0000;
+            font-weight: bold;
+        }
+        .message.info {
+            color: #666;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SmartBox Admin - WebSocket Connection Test</h1>
+        
+        <div id="connectionStatus" class="status disconnected">
+            Disconnected
+        </div>
+        
+        <div class="controls">
+            <h2>Connection Controls</h2>
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div class="controls">
+            <h2>Test Commands</h2>
+            <button onclick="sendMessage('get_system_status')" id="statusBtn" disabled>Get System Status</button>
+            <button onclick="sendMessage('get_patient_list')" id="patientsBtn" disabled>Get Patients</button>
+            <button onclick="sendMessage('get_queue_status')" id="queueBtn" disabled>Get Queue</button>
+            <button onclick="sendMessage('get_recording_state')" id="recordingBtn" disabled>Get Recording State</button>
+            <button onclick="sendMessage('heartbeat')" id="heartbeatBtn" disabled>Send Heartbeat</button>
+        </div>
+        
+        <div class="controls">
+            <h2>Advanced Commands</h2>
+            <button onclick="sendMessage('run_diagnostics')" id="diagBtn" disabled>Run Diagnostics</button>
+            <button onclick="sendMessage('capture_photo')" id="photoBtn" disabled>Capture Photo</button>
+            <button onclick="testEmergencyStop()" id="emergencyBtn" disabled style="background: #dc3545;">Test Emergency Stop</button>
+        </div>
+        
+        <h2>Communication Log</h2>
+        <div id="log" class="log">
+            <div class="message info">Click "Connect" to start WebSocket connection test...</div>
+        </div>
+    </div>
+
+    <script>
+        let websocket = null;
+        let messageCount = 0;
+
+        function updateStatus(status, message) {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = message;
+            
+            // Update button states
+            const isConnected = status === 'connected';
+            document.getElementById('connectBtn').disabled = isConnected;
+            document.getElementById('disconnectBtn').disabled = !isConnected;
+            
+            // Update command buttons
+            ['statusBtn', 'patientsBtn', 'queueBtn', 'recordingBtn', 'heartbeatBtn', 
+             'diagBtn', 'photoBtn', 'emergencyBtn'].forEach(id => {
+                document.getElementById(id).disabled = !isConnected;
+            });
+        }
+
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = `<span style="color: #999;">[${time}]</span> ${message}`;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function connect() {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                addLog('Already connected!', 'info');
+                return;
+            }
+
+            updateStatus('connecting', 'Connecting...');
+            addLog('Attempting to connect to ws://localhost:5001/', 'info');
+
+            try {
+                websocket = new WebSocket('ws://localhost:5001/');
+                
+                websocket.onopen = function() {
+                    updateStatus('connected', 'Connected to SmartBox Admin Server');
+                    addLog('✅ WebSocket connection established!', 'info');
+                    addLog('Server should send initial system status...', 'info');
+                };
+                
+                websocket.onmessage = function(event) {
+                    addLog(`📨 Received: ${event.data}`, 'received');
+                    
+                    try {
+                        const data = JSON.parse(event.data);
+                        addLog(`   Type: ${data.type}`, 'received');
+                        if (data.data) {
+                            addLog(`   Data: ${JSON.stringify(data.data, null, 2)}`, 'received');
+                        }
+                    } catch (e) {
+                        addLog('   (Could not parse as JSON)', 'error');
+                    }
+                };
+                
+                websocket.onclose = function(event) {
+                    updateStatus('disconnected', 'Disconnected');
+                    addLog(`❌ Connection closed (Code: ${event.code}, Reason: ${event.reason})`, 'error');
+                    
+                    if (event.code !== 1000) {
+                        addLog('This might indicate the SmartBox server is not running', 'error');
+                        addLog('Make sure SmartBox-Next main application is started', 'info');
+                    }
+                };
+                
+                websocket.onerror = function(error) {
+                    updateStatus('disconnected', 'Connection Error');
+                    addLog('❌ WebSocket error occurred', 'error');
+                    addLog('Possible causes:', 'error');
+                    addLog('- SmartBox main application not running', 'error');
+                    addLog('- WebSocket server not started (port 5001)', 'error');
+                    addLog('- Firewall blocking connection', 'error');
+                };
+                
+            } catch (error) {
+                updateStatus('disconnected', 'Connection Failed');
+                addLog(`❌ Failed to create WebSocket: ${error.message}`, 'error');
+            }
+        }
+
+        function disconnect() {
+            if (websocket) {
+                websocket.close(1000, 'User requested disconnect');
+                websocket = null;
+            }
+        }
+
+        function sendMessage(type, data = {}) {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                addLog('❌ Cannot send message - not connected!', 'error');
+                return;
+            }
+
+            const message = {
+                type: type,
+                data: data,
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                const messageStr = JSON.stringify(message);
+                websocket.send(messageStr);
+                addLog(`📤 Sent: ${messageStr}`, 'sent');
+                messageCount++;
+                addLog(`   Message #${messageCount} sent successfully`, 'sent');
+            } catch (error) {
+                addLog(`❌ Failed to send message: ${error.message}`, 'error');
+            }
+        }
+
+        function testEmergencyStop() {
+            if (confirm('This will test the emergency stop command. Continue?')) {
+                sendMessage('emergency_stop', { test: true });
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            messageCount = 0;
+            addLog('Log cleared', 'info');
+        }
+
+        // Auto-connect on page load
+        window.addEventListener('load', function() {
+            addLog('WebSocket test page loaded', 'info');
+            addLog('This page tests the WebSocket connection to SmartBox Admin Server', 'info');
+            addLog('Expected server address: ws://localhost:5001/', 'info');
+            addLog('Click "Connect" to begin test...', 'info');
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (websocket) {
+                websocket.close();
+            }
+        });
+    </script>
+</body>
+</html>

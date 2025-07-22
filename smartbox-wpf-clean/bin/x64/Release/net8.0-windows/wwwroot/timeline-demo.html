@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBox Timeline Demo</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/segoe-fluent-icons/font/SegoeFluentIcons.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f8f9fa;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .demo-header {
+            background: #034C81;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .demo-content {
+            padding: 20px;
+        }
+        .demo-video {
+            width: 100%;
+            height: 300px;
+            background: #000;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        .demo-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        .demo-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: #034C81;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .demo-btn:hover {
+            background: #023d68;
+            transform: translateY(-1px);
+        }
+        .demo-btn.recording {
+            background: #d83b01;
+        }
+        .demo-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>SmartBox Video Timeline Demo</h1>
+            <p>Professional Video Editor Style Timeline for Medical Recording</p>
+        </div>
+        
+        <div class="demo-content">
+            <div class="demo-info">
+                <strong>Features Demonstrated:</strong>
+                <ul style="margin: 10px 0 0 20px;">
+                    <li>Adaptive time scaling (5→10→20→60 minutes)</li>
+                    <li>Recording segments and progress visualization</li>
+                    <li>Critical moment markers (red flags)</li>
+                    <li>Timeline scrubbing and seeking</li>
+                    <li>Prerecording buffer indicator</li>
+                    <li>Storage usage tracking</li>
+                    <li>Professional medical UI styling</li>
+                </ul>
+            </div>
+            
+            <div class="demo-video">
+                📹 Video Preview Area (simulated)
+            </div>
+            
+            <div class="demo-controls">
+                <button class="demo-btn" id="startBtn">Start Recording</button>
+                <button class="demo-btn" id="stopBtn" disabled>Stop Recording</button>
+                <button class="demo-btn" id="markBtn" disabled>Mark Critical</button>
+                <button class="demo-btn" id="clearBtn">Clear Timeline</button>
+            </div>
+            
+            <!-- Timeline Component -->
+            <div id="demoTimeline"></div>
+        </div>
+    </div>
+
+    <script src="js/timeline-component.js"></script>
+    <script>
+        // Demo Script
+        let timeline;
+        let isRecording = false;
+        let recordingTimer = null;
+        let startTime = 0;
+        
+        // Initialize timeline
+        timeline = new VideoTimelineComponent('demoTimeline', {
+            height: 200,
+            timeScales: [5, 10, 20, 60],
+            prerecordingDurations: [60, 30, 10]
+        });
+        
+        // Demo controls
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const markBtn = document.getElementById('markBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        
+        // Demo thumbnails (random colors)
+        function addRandomThumbnail() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 120;
+            canvas.height = 68;
+            const ctx = canvas.getContext('2d');
+            
+            // Random gradient
+            const gradient = ctx.createLinearGradient(0, 0, 120, 68);
+            gradient.addColorStop(0, `hsl(${Math.random() * 360}, 70%, 60%)`);
+            gradient.addColorStop(1, `hsl(${Math.random() * 360}, 70%, 40%)`);
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 120, 68);
+            
+            // Add some "video" elements
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            for (let i = 0; i < 5; i++) {
+                ctx.fillRect(
+                    Math.random() * 100, 
+                    Math.random() * 48, 
+                    10 + Math.random() * 20, 
+                    10 + Math.random() * 20
+                );
+            }
+            
+            return canvas.toDataURL();
+        }
+        
+        startBtn.addEventListener('click', () => {
+            if (isRecording) return;
+            
+            isRecording = true;
+            startTime = Date.now();
+            
+            timeline.startRecording();
+            
+            // Update UI
+            startBtn.disabled = true;
+            startBtn.classList.add('recording');
+            stopBtn.disabled = false;
+            markBtn.disabled = false;
+            
+            // Simulate recording progress
+            recordingTimer = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                timeline.updateTime(elapsed);
+                
+                // Add thumbnails periodically
+                if (Math.floor(elapsed) % 3 === 0 && elapsed > 0) {
+                    timeline.addThumbnail(addRandomThumbnail(), elapsed, 'frame');
+                }
+                
+                // Simulate storage usage
+                timeline.updateStorageUsage(elapsed * 0.5); // 0.5 MB per second
+                
+            }, 100);
+        });
+        
+        stopBtn.addEventListener('click', () => {
+            if (!isRecording) return;
+            
+            isRecording = false;
+            timeline.stopRecording();
+            
+            if (recordingTimer) {
+                clearInterval(recordingTimer);
+                recordingTimer = null;
+            }
+            
+            // Update UI
+            startBtn.disabled = false;
+            startBtn.classList.remove('recording');
+            stopBtn.disabled = true;
+            markBtn.disabled = true;
+        });
+        
+        markBtn.addEventListener('click', () => {
+            if (!isRecording) return;
+            
+            const markerId = timeline.addCriticalMarker();
+            console.log('Critical marker added:', markerId);
+            
+            // Add special thumbnail for critical moment
+            setTimeout(() => {
+                const criticalThumb = addRandomThumbnail();
+                timeline.addThumbnail(criticalThumb, timeline.currentTime, 'key');
+            }, 100);
+        });
+        
+        clearBtn.addEventListener('click', () => {
+            timeline.clear();
+            
+            if (recordingTimer) {
+                clearInterval(recordingTimer);
+                recordingTimer = null;
+            }
+            
+            isRecording = false;
+            startBtn.disabled = false;
+            startBtn.classList.remove('recording');
+            stopBtn.disabled = true;
+            markBtn.disabled = true;
+        });
+        
+        // Timeline event listeners
+        timeline.on('seek', (e) => {
+            console.log('Seek to:', e.detail.time);
+        });
+        
+        timeline.on('scaleChanged', (e) => {
+            console.log('Scale changed to:', e.detail.scale, 'minutes');
+        });
+        
+        timeline.on('criticalMarkerAdded', (e) => {
+            console.log('Critical marker added at:', e.detail.time);
+        });
+        
+        // Add some initial demo content
+        setTimeout(() => {
+            // Add some demo thumbnails
+            for (let i = 0; i < 8; i++) {
+                timeline.addThumbnail(addRandomThumbnail(), i * 15, 'frame');
+            }
+            
+            // Add a critical marker
+            timeline.addCriticalMarker(45);
+            
+            // Update buffer and storage
+            timeline.updatePrerecordingBuffer();
+            timeline.updateStorageUsage(2.5);
+        }, 1000);
+    </script>
+</body>
+</html>
