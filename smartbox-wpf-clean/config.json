@@ -44,6 +44,9 @@
     "MwlServerAET": "ORTHANC",
     "AutoRefreshSeconds": 300,
     "ShowEmergencyFirst": true,
-    "CacheExpiryHours": 24
+    "CacheExpiryHours": 24,
+    "DefaultQueryPeriod": "3days",
+    "QueryDaysBefore": 1,
+    "QueryDaysAfter": 1
   }
 }

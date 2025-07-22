@@ -27,14 +27,13 @@ namespace SmartBoxNext.Services
         public static class VideoTransferSyntax
         {
             // MPEG-2 - 95%+ PACS compatibility (RECOMMENDED)
+            // Video transfer syntaxes - fo-dicom 5.x compatible UIDs
             public static readonly DicomTransferSyntax MPEG2MainProfileMainLevel = 
-                new DicomTransferSyntax("1.2.840.10008.1.2.4.100", "MPEG2 Main Profile @ Main Level", 
-                    false, true, true, false, false);
+                DicomTransferSyntax.Parse("1.2.840.10008.1.2.4.100"); // MPEG2 Main Profile @ Main Level
             
-            // H.264 - 85-90% PACS compatibility
+            // H.264 - 85-90% PACS compatibility  
             public static readonly DicomTransferSyntax MPEG4HighProfile41 = 
-                new DicomTransferSyntax("1.2.840.10008.1.2.4.102", "MPEG-4 AVC/H.264 High Profile / Level 4.1",
-                    false, true, true, false, false);
+                DicomTransferSyntax.Parse("1.2.840.10008.1.2.4.102"); // MPEG-4 AVC/H.264 High Profile / Level 4.1
             
             // Motion JPEG - 98% legacy support
             public static readonly DicomTransferSyntax JPEGBaseline = DicomTransferSyntax.JPEGProcess1;
@@ -75,7 +74,7 @@ namespace SmartBoxNext.Services
                     .FromFileInput(webmPath)
                     .OutputToFile(mpeg2Path, overwrite: true, options => options
                         .WithVideoCodec("mpeg2video")
-                        .WithPixelFormat("yuv420p")  // YBR_PARTIAL_420 in DICOM
+                        .WithCustomArgument("-pix_fmt yuv420p")  // YBR_PARTIAL_420 in DICOM
                         .WithVideoBitrate(10000)     // 10 Mbps for diagnostic quality
                         .WithFramerate(30)           // Standard medical video framerate
                         .WithCustomArgument("-q:v 2") // High quality quantizer
@@ -288,10 +287,30 @@ namespace SmartBoxNext.Services
             dataset.Add(DicomTag.SOPClassUID, sopClassUid);
             dataset.Add(DicomTag.SOPInstanceUID, DicomUID.Generate());
             
-            // TODO: Read video file and add as encapsulated pixel data
-            // This will require handling the specific video encoding
-            
-            _logger.LogWarning("Video encoding not yet implemented - placeholder DICOM created");
+            // Read video file and add as encapsulated pixel data
+            if (File.Exists(videoPath))
+            {
+                var videoBytes = await File.ReadAllBytesAsync(videoPath);
+                _logger.LogInformation($"Read video file: {videoBytes.Length} bytes");
+                
+                // Create encapsulated pixel data for video
+                var pixelData = DicomPixelData.Create(dataset, true);
+                
+                // Add video data as single encapsulated frame
+                pixelData.AddFrame(new MemoryByteBuffer(videoBytes));
+                
+                // Set video-specific DICOM attributes
+                dataset.AddOrUpdate(DicomTag.NumberOfFrames, "1"); // Single video stream
+                dataset.AddOrUpdate(DicomTag.SamplesPerPixel, (ushort)3); // Color video
+                dataset.AddOrUpdate(DicomTag.PhotometricInterpretation, PhotometricInterpretation.YbrFull422.Value);
+                
+                _logger.LogInformation($"Created encapsulated video DICOM with {videoBytes.Length} bytes of video data");
+            }
+            else
+            {
+                _logger.LogError($"Video file not found: {videoPath}");
+                throw new FileNotFoundException($"Video file not found: {videoPath}");
+            }
             
             var file = new DicomFile(dataset);
             file.FileMetaInfo.TransferSyntax = options.TransferSyntax;
@@ -348,7 +367,7 @@ namespace SmartBoxNext.Services
         /// <summary>
         /// Extract frames from video file using FFMpeg
         /// </summary>
-        private async Task<List<SixLabors.ImageSharp.Image>> ExtractVideoFramesAsync(string videoPath, VideoEncodingOptions options)
+        private async Task<List<SixLabors.ImageSharp.Image>> ExtractVideoFramesAsync(string videoPath, VideoEncodingOptions encodingOptions)
         {
             _logger.LogInformation($"Extracting frames from video: {videoPath}");
             
@@ -359,14 +378,14 @@ namespace SmartBoxNext.Services
             {
                 Directory.CreateDirectory(tempDir);
                 
-                // Extract frames to temporary directory
+                // Extract frames using FFMpegCore 4.8.0 compatible API
                 await FFMpegArguments
                     .FromFileInput(videoPath)
                     .OutputToFile(Path.Combine(tempDir, "frame_%04d.png"), overwrite: true, options => options
                         .WithVideoCodec(VideoCodec.Png)
-                        .WithFramerate(options.FrameRate)
-                        .WithCustomArgument($"-vf scale={options.Width}:{options.Height}")
-                        .WithDuration(TimeSpan.FromSeconds(30)))  // Limit to 30 seconds for now
+                        .WithCustomArgument($"-r {encodingOptions.FrameRate}") // Frame rate
+                        .WithCustomArgument($"-vf scale={encodingOptions.Width}:{encodingOptions.Height}") // Scale
+                        .WithCustomArgument("-t 30")) // Limit to 30 seconds for medical clips
                     .ProcessAsynchronously();
                 
                 // Load extracted frames

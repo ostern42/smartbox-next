@@ -123,6 +123,11 @@ class ActionHandler {
             return {};
         }
         
+        // Special handling for settings form - create hierarchical structure
+        if (formId === 'settingsForm') {
+            return this.collectSettingsFormData(form);
+        }
+        
         const data = {};
         const inputs = form.querySelectorAll('input, select, textarea');
         
@@ -144,8 +149,78 @@ class ActionHandler {
         return data;
     }
     
+    collectSettingsFormData(form) {
+        console.log('[ActionHandler] Collecting settings with hierarchical structure');
+        
+        const config = {
+            Storage: {},
+            Pacs: {},
+            MwlSettings: {},
+            Video: {},
+            Application: {}
+        };
+        
+        const inputs = form.querySelectorAll('input, select, textarea');
+        
+        inputs.forEach(input => {
+            if (!input.id) return;
+            
+            const mapping = this.htmlIdToPropertyPath(input.id);
+            if (!mapping) return;
+            
+            const { section, property } = mapping;
+            
+            // Get value based on input type
+            let value;
+            if (input.type === 'checkbox') {
+                value = input.checked;
+            } else if (input.type === 'number' || input.classList.contains('numeric-input')) {
+                value = parseInt(input.value) || 0;
+            } else {
+                value = input.value;
+            }
+            
+            // Set value in hierarchical config
+            if (config[section]) {
+                config[section][property] = value;
+            }
+        });
+        
+        console.log('[ActionHandler] Settings config collected:', config);
+        return config;
+    }
+    
+    // Convert HTML ID to C# property path (same as settings.js)
+    htmlIdToPropertyPath(htmlId) {
+        const parts = htmlId.split('-');
+        if (parts.length < 2) return null;
+        
+        const section = this.capitalizeSection(parts[0]);
+        const property = parts.slice(1)
+            .map((p, i) => i === 0 ? this.capitalize(p) : this.capitalize(p))
+            .join('');
+        
+        return { section, property };
+    }
+    
+    // Special handling for section names (same as settings.js)
+    capitalizeSection(section) {
+        const sectionMap = {
+            'storage': 'Storage',
+            'pacs': 'Pacs',
+            'mwlsettings': 'MwlSettings',
+            'video': 'Video',
+            'application': 'Application'
+        };
+        return sectionMap[section.toLowerCase()] || section;
+    }
+    
+    capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    }
+    
     needsConfirmation(action) {
-        return ['exitapp', 'deletecapture', 'clearpatient'].includes(action);
+        return ['deletecapture', 'clearpatient'].includes(action);
     }
     
     confirmAndExecute(action, data, element) {

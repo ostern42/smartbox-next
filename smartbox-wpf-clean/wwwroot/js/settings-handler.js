@@ -46,6 +46,13 @@ class SettingsHandler {
             console.log('[SettingsHandler] Message type:', message.type);
             
             switch (message.action || message.type) {
+                case 'settingsLoaded':
+                    console.log('[SettingsHandler] Settings loaded, delegating to settingsManager');
+                    if (window.settingsManager && window.settingsManager.populateForm) {
+                        window.settingsManager.populateForm(message.data);
+                    }
+                    break;
+                    
                 case 'settingsSaved':
                     console.log('[SettingsHandler] Settings saved successfully!');
                     this.showNotification('Settings saved successfully!', 'success');
@@ -67,6 +74,12 @@ class SettingsHandler {
                 case 'pacsTestResult':
                     const pacsButton = document.getElementById('test-pacs');
                     if (pacsButton) {
+                        // Cancel timeout since we got a response
+                        if (pacsButton.timeoutId) {
+                            clearTimeout(pacsButton.timeoutId);
+                            pacsButton.timeoutId = null;
+                        }
+                        
                         pacsButton.disabled = false;
                         if (message.success) {
                             // Show success state on button
@@ -94,6 +107,12 @@ class SettingsHandler {
                 case 'mwlTestResult':
                     const mwlButton = document.getElementById('test-mwl');
                     if (mwlButton) {
+                        // Cancel timeout since we got a response
+                        if (mwlButton.timeoutId) {
+                            clearTimeout(mwlButton.timeoutId);
+                            mwlButton.timeoutId = null;
+                        }
+                        
                         mwlButton.disabled = false;
                         if (message.success) {
                             const count = message.data?.worklistCount || 0;
@@ -125,6 +144,62 @@ class SettingsHandler {
                         if (input) {
                             input.value = message.data.path;
                             input.dispatchEvent(new Event('change'));
+                        }
+                    }
+                    break;
+                    
+                case 'testResult':
+                    // Handle test results from C# diagnostic window
+                    if (message.service === 'PACS') {
+                        const pacsButton = document.getElementById('test-pacs');
+                        if (pacsButton) {
+                            pacsButton.disabled = false;
+                            if (message.success) {
+                                // Show success state on button
+                                pacsButton.innerHTML = '<i class="ms-Icon ms-Icon--CheckMark"></i><span>Connected!</span>';
+                                pacsButton.style.background = '#107c10';
+                                pacsButton.style.color = 'white';
+                                this.showNotification(message.message || 'PACS connection successful!', 'success');
+                            } else {
+                                // Show error state on button
+                                pacsButton.innerHTML = '<i class="ms-Icon ms-Icon--ErrorBadge"></i><span>Failed</span>';
+                                pacsButton.style.background = '#d13438';
+                                pacsButton.style.color = 'white';
+                                this.showNotification(message.message || 'PACS connection failed', 'error');
+                            }
+                            
+                            // Reset button after 3 seconds
+                            setTimeout(() => {
+                                pacsButton.innerHTML = '<i class="ms-Icon ms-Icon--TestBeaker"></i><span>Test Connection</span>';
+                                pacsButton.style.background = '';
+                                pacsButton.style.color = '';
+                            }, 3000);
+                        }
+                    } else if (message.service === 'MWL') {
+                        const mwlButton = document.getElementById('test-mwl');
+                        if (mwlButton) {
+                            mwlButton.disabled = false;
+                            if (message.success) {
+                                const count = message.worklistCount || 0;
+                                // Show success state on button
+                                mwlButton.innerHTML = `<i class="ms-Icon ms-Icon--CheckMark"></i><span>${count} Items Found!</span>`;
+                                mwlButton.style.background = '#107c10';
+                                mwlButton.style.color = 'white';
+                                this.showNotification(message.message || `MWL connection successful! Found ${count} worklist items.`, 'success');
+                            } else {
+                                // Show error state on button
+                                mwlButton.innerHTML = '<i class="ms-Icon ms-Icon--ErrorBadge"></i><span>Failed</span>';
+                                mwlButton.style.background = '#d13438';
+                                mwlButton.style.color = 'white';
+                                this.showNotification(message.message || 'MWL connection failed', 'error');
+                            }
+                            
+                            // Reset button after 3 seconds
+                            setTimeout(() => {
+                                mwlButton.innerHTML = '<i class="ms-Icon ms-Icon--TestBeaker"></i><span>Test MWL Connection</span>';
+                                mwlButton.style.background = '';
+                                mwlButton.style.color = '';
+                            }, 3000);
                         }
                     }
                     break;
@@ -236,7 +311,10 @@ class SettingsHandler {
             'mwlsettings-enable-worklist': { section: 'MwlSettings', property: 'EnableWorklist' },
             'mwlsettings-cache-expiry-hours': { section: 'MwlSettings', property: 'CacheExpiryHours' },
             'mwlsettings-auto-refresh-seconds': { section: 'MwlSettings', property: 'AutoRefreshSeconds' },
-            'mwlsettings-show-emergency-first': { section: 'MwlSettings', property: 'ShowEmergencyFirst' }
+            'mwlsettings-show-emergency-first': { section: 'MwlSettings', property: 'ShowEmergencyFirst' },
+            'mwlsettings-default-query-period': { section: 'MwlSettings', property: 'DefaultQueryPeriod' },
+            'mwlsettings-query-days-before': { section: 'MwlSettings', property: 'QueryDaysBefore' },
+            'mwlsettings-query-days-after': { section: 'MwlSettings', property: 'QueryDaysAfter' }
         };
         
         if (mwlSpecialCases[htmlId]) {
@@ -348,6 +426,21 @@ class SettingsHandler {
             console.log('[SettingsHandler] Testing PACS:', pacsConfig);
             this.sendToHost('testpacsconnection', pacsConfig);
             
+            // Auto-reset button after 10 seconds if no response
+            const pacsTimeoutId = setTimeout(() => {
+                if (pacsButton && pacsButton.disabled) {
+                    console.warn('[SettingsHandler] PACS test timeout - resetting button');
+                    pacsButton.disabled = false;
+                    pacsButton.innerHTML = '<i class="ms-Icon ms-Icon--TestBeaker"></i><span>Test Connection</span>';
+                    pacsButton.style.background = '';
+                    pacsButton.style.color = '';
+                    this.showNotification('PACS test timed out', 'error');
+                }
+            }, 10000);
+            
+            // Store timeout ID on button for cancellation
+            pacsButton.timeoutId = pacsTimeoutId;
+            
         } catch (error) {
             console.error('[SettingsHandler] PACS test failed:', error);
             this.showNotification('PACS test failed: ' + error.message, 'error');
@@ -405,6 +498,21 @@ class SettingsHandler {
             
             console.log('[SettingsHandler] Testing MWL:', mwlConfig);
             this.sendToHost('testmwlconnection', mwlConfig);
+            
+            // Auto-reset button after 10 seconds if no response
+            const mwlTimeoutId = setTimeout(() => {
+                if (mwlButton && mwlButton.disabled) {
+                    console.warn('[SettingsHandler] MWL test timeout - resetting button');
+                    mwlButton.disabled = false;
+                    mwlButton.innerHTML = '<i class="ms-Icon ms-Icon--TestBeaker"></i><span>Test MWL Connection</span>';
+                    mwlButton.style.background = '';
+                    mwlButton.style.color = '';
+                    this.showNotification('MWL test timed out', 'error');
+                }
+            }, 10000);
+            
+            // Store timeout ID on button for cancellation
+            mwlButton.timeoutId = mwlTimeoutId;
             
         } catch (error) {
             console.error('[SettingsHandler] MWL test failed:', error);

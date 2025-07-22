@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>SmartBox Admin Control - Wireless Interface</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/segoe-fluent-icons/font/SegoeFluentIcons.css">
+    <style>
+        /* Admin Control Interface Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Open Sans', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            color: #ffffff;
+            overflow: hidden;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+        }
+
+        .admin-container {
+            display: grid;
+            grid-template-areas: 
+                "header header header header"
+                "live-view controls status queue"
+                "system-monitor controls recording-controls diagnostics";
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            grid-template-rows: 80px 1fr 1fr;
+            height: 100vh;
+            gap: 8px;
+            padding: 8px;
+        }
+
+        /* Header */
+        .admin-header {
+            grid-area: header;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .admin-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ef4444;
+            transition: background 0.3s ease;
+        }
+
+        .status-indicator.connected {
+            background: #10b981;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+        }
+
+        .status-text {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* Live View Panel */
+        .live-view-panel {
+            grid-area: live-view;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .live-stream {
+            flex: 1;
+            background: #000;
+            border-radius: 8px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #6b7280;
+            min-height: 200px;
+        }
+
+        .stream-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .recording-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Control Panels */
+        .control-panel, .status-panel, .queue-panel, .monitor-panel, .recording-panel, .diagnostics-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls-panel {
+            grid-area: controls;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .status-panel {
+            grid-area: status;
+        }
+
+        .queue-panel {
+            grid-area: queue;
+        }
+
+        .monitor-panel {
+            grid-area: system-monitor;
+        }
+
+        .recording-panel {
+            grid-area: recording-controls;
+        }
+
+        .diagnostics-panel {
+            grid-area: diagnostics;
+        }
+
+        /* Buttons */
+        .admin-button {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 48px;
+        }
+
+        .admin-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .admin-button:active {
+            transform: translateY(0);
+        }
+
+        .admin-button.danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .admin-button.danger:hover {
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+        }
+
+        .admin-button.success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .admin-button.success:hover {
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+        }
+
+        .admin-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .admin-button:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Patient Selection */
+        .patient-selector {
+            margin-bottom: 16px;
+        }
+
+        .patient-list {
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .patient-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-size: 12px;
+        }
+
+        .patient-item:last-child {
+            border-bottom: none;
+        }
+
+        .patient-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .patient-item.selected {
+            background: rgba(59, 130, 246, 0.3);
+        }
+
+        /* Status Cards */
+        .status-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .status-label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+
+        .status-value {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .status-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .status-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #3b82f6);
+            transition: width 0.3s ease;
+        }
+
+        /* Queue Items */
+        .queue-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .queue-status {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .queue-status.pending {
+            background: rgba(245, 158, 11, 0.3);
+            color: #fbbf24;
+        }
+
+        .queue-status.processing {
+            background: rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+        }
+
+        .queue-status.completed {
+            background: rgba(16, 185, 129, 0.3);
+            color: #34d399;
+        }
+
+        /* Quality Settings */
+        .quality-setting {
+            margin-bottom: 12px;
+        }
+
+        .quality-label {
+            font-size: 12px;
+            margin-bottom: 4px;
+            opacity: 0.9;
+        }
+
+        .quality-slider {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .quality-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .quality-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .quality-value {
+            font-size: 11px;
+            color: #60a5fa;
+            margin-top: 2px;
+        }
+
+        /* Responsive Design for Tablets */
+        @media (max-width: 1024px) {
+            .admin-container {
+                grid-template-areas: 
+                    "header header"
+                    "live-view live-view"
+                    "controls status"
+                    "recording-controls queue"
+                    "system-monitor diagnostics";
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: 60px 1fr 1fr 1fr 1fr;
+            }
+
+            .admin-title {
+                font-size: 20px;
+            }
+
+            .panel-title {
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .admin-container {
+                grid-template-areas: 
+                    "header"
+                    "live-view"
+                    "controls"
+                    "recording-controls"
+                    "status"
+                    "queue";
+                grid-template-columns: 1fr;
+                grid-template-rows: 60px repeat(5, minmax(200px, 1fr));
+            }
+        }
+
+        .emergency-controls {
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            margin-top: 16px;
+            padding-top: 16px;
+        }
+
+        .emergency-button {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white;
+            border: 2px solid #ef4444;
+            animation: emergency-glow 2s infinite;
+        }
+
+        @keyframes emergency-glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.8); }
+        }
+
+        .icon {
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Header -->
+        <header class="admin-header">
+            <h1 class="admin-title">SmartBox Admin Control</h1>
+            <div class="connection-status">
+                <div class="status-indicator" id="connectionIndicator"></div>
+                <span class="status-text" id="connectionText">Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Live View Panel -->
+        <section class="live-view-panel">
+            <h2 class="panel-title">
+                <i class="ms-Icon ms-Icon--Video icon"></i>
+                Live Stream
+            </h2>
+            <div class="live-stream" id="liveStream">
+                <div class="stream-overlay" id="streamOverlay">
+                    <div class="recording-indicator" id="recordingIndicator" style="display: none;"></div>
+                    <span id="streamStatus">No Stream</span>
+                </div>
+                <span>Live video feed will appear here</span>
+            </div>
+        </section>
+
+        <!-- Controls Panel -->
+        <section class="controls-panel">
+            <h2 class="panel-title">
+                <i class="ms-Icon ms-Icon--Settings icon"></i>
+                Patient & Controls
+            </h2>
+            
+            <div class="patient-selector">
+                <div class="quality-label">Active Patient</div>
+                <div class="patient-list" id="patientList">
+                    <div class="patient-item">No patients available</div>
+                </div>
+            </div>
+
+            <button class="admin-button" id="refreshPatientsBtn">
+                <i class="ms-Icon ms-Icon--Refresh icon"></i>
+                Refresh Patients
+            </button>
+
+            <button class="admin-button success" id="capturePhotoBtn">
+                <i class="ms-Icon ms-Icon--Camera icon"></i>
+                Capture Photo
+            </button>
+
+            <button class="admin-button" id="markCriticalBtn">
+                <i class="ms-Icon ms-Icon--Important icon"></i>
+                Mark Critical
+            </button>
+
+            <div class="emergency-controls">
+                <button class="admin-button emergency-button" id="emergencyStopBtn">
+                    <i class="ms-Icon ms-Icon--StatusErrorFull icon"></i>
+                    Emergency Stop
+                </button>
+            </div>
+        </section>
+
+        <!-- Status Panel -->
+        <section class="status-panel">
+            <h2 class="panel-title">
+                <i class="ms-Icon ms-Icon--SystemHealth icon"></i>
+                System Status
+            </h2>
+            
+            <div class="status-card">
+                <div class="status-label">CPU Usage</div>
+                <div class="status-value" id="cpuUsage">0%</div>
+                <div class="status-bar">
+                    <div class="status-bar-fill" id="cpuBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="status-card">
+                <div class="status-label">Memory</div>
+                <div class="status-value" id="memoryUsage">0 MB</div>
+                <div class="status-bar">
+                    <div class="status-bar-fill" id="memoryBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="status-card">
+                <div class="status-label">Storage</div>
+                <div class="status-value" id="storageUsage">0% used</div>
+                <div class="status-bar">
+                    <div class="status-bar-fill" id="storageBar" style="width: 0%"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Queue Panel -->
+        <section class="queue-panel">
+            <h2 class="panel-title">
+                <i class="ms-Icon ms-Icon--Queue icon"></i>
+                Export Queue
+            </h2>
+            
+            <div id="queueList">
+                <div class="queue-item">
+                    <div>Queue empty</div>
+                </div>
+            </div>
+
+            <button class="admin-button" id="processQueueBtn">
+                <i class="ms-Icon ms-Icon--Play icon"></i>
+                Process Queue
+            </button>
+        </section>
+
+        <!-- System Monitor Panel -->
+        <section class="monitor-panel">
+            <h2 class="panel-title">
+                <i class="ms-Icon ms-Icon--Diagnostic icon"></i>
+                System Monitor
+            </h2>
+            
+            <div class="status-card">
+                <div class="status-label">Recording Time</div>
+                <div class="status-value" id="recordingTime">00:00:00</div>
+            </div>
+
+            <div class="status-card">
+                <div class="status-label">File Size</div>
+                <div class="status-value" id="fileSize">0 MB</div>
+            </div>
+
+            <div class="status-card">
+                <div class="status-label">Frame Rate</div>
+                <div class="status-value" id="frameRate">0 fps</div>
+            </div>
+
+            <button class="admin-button" id="diagnosticsBtn">
+                <i class="ms-Icon ms-Icon--Health icon"></i>
+                Run Diagnostics
+            </button>
+        </section>
+
+        <!-- Recording Controls Panel -->
+        <section class="recording-panel">
+            <h2 class="panel-title">
+                <i class="ms-Icon ms-Icon--Record2 icon"></i>
+                Recording
+            </h2>
+            
+            <button class="admin-button success" id="startRecordingBtn">
+                <i class="ms-Icon ms-Icon--Record2 icon"></i>
+                Start Recording
+            </button>
+
+            <button class="admin-button danger" id="stopRecordingBtn" disabled>
+                <i class="ms-Icon ms-Icon--Stop icon"></i>
+                Stop Recording
+            </button>
+
+            <div class="quality-setting">
+                <div class="quality-label">Video Quality</div>
+                <input type="range" class="quality-slider" id="qualitySlider" min="1" max="100" value="80">
+                <div class="quality-value" id="qualityValue">80%</div>
+            </div>
+
+            <div class="quality-setting">
+                <div class="quality-label">Audio Level</div>
+                <input type="range" class="quality-slider" id="audioSlider" min="0" max="100" value="75">
+                <div class="quality-value" id="audioValue">75%</div>
+            </div>
+        </section>
+
+        <!-- Diagnostics Panel -->
+        <section class="diagnostics-panel">
+            <h2 class="panel-title">
+                <i class="ms-Icon ms-Icon--Repair icon"></i>
+                Quick Actions
+            </h2>
+            
+            <button class="admin-button" id="exportCurrentBtn">
+                <i class="ms-Icon ms-Icon--Export icon"></i>
+                Export Current
+            </button>
+
+            <button class="admin-button" id="clearCacheBtn">
+                <i class="ms-Icon ms-Icon--Delete icon"></i>
+                Clear Cache
+            </button>
+
+            <button class="admin-button" id="restartServiceBtn">
+                <i class="ms-Icon ms-Icon--Refresh icon"></i>
+                Restart Service
+            </button>
+
+            <button class="admin-button danger" id="shutdownBtn">
+                <i class="ms-Icon ms-Icon--PowerButton icon"></i>
+                Shutdown System
+            </button>
+        </section>
+    </div>
+
+    <script src="js/admin-control.js"></script>
+</body>
+</html>

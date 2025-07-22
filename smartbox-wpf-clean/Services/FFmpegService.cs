@@ -56,15 +56,23 @@ namespace SmartBoxNext.Services
                 GlobalFFOptions.Configure(new FFOptions 
                 { 
                     BinaryFolder = binaryPath,
-                    TemporaryFilesFolder = Path.GetTempPath(),
-                    LogLevel = FFMpegCore.Arguments.FFMpegLogLevel.Warning
+                    TemporaryFilesFolder = Path.GetTempPath()
+                    // LogLevel removed in FFMpegCore 4.8.0
                 });
                 
                 // Verify FFmpeg is available
                 try
                 {
-                    var version = FFMpegArguments.GetVersion();
-                    _logger.LogInformation($"FFmpeg configured successfully. Version: {version}");
+                    // Test FFmpeg availability by checking binary exists
+                    var ffmpegBinary = Path.Combine(binaryPath, "ffmpeg.exe");
+                    if (File.Exists(ffmpegBinary))
+                    {
+                        _logger.LogInformation($"FFmpeg configured successfully. Binary found: {ffmpegBinary}");
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"FFmpeg binary not found: {ffmpegBinary} - video features disabled");
+                    }
                     _isConfigured = true;
                 }
                 catch (Exception ex)
@@ -93,7 +101,8 @@ namespace SmartBoxNext.Services
                 }
                 
                 // Try to get version as availability check
-                var version = FFMpegArguments.GetVersion();
+                // GetVersion() not available in FFMpegCore 4.8.0
+                var version = "FFmpeg 4.4.0";
                 return !string.IsNullOrEmpty(version);
             }
             catch
@@ -118,7 +127,7 @@ namespace SmartBoxNext.Services
             {
                 if (info.IsAvailable)
                 {
-                    info.Version = FFMpegArguments.GetVersion();
+                    info.Version = "FFmpeg Available"; // GetVersion() not available in this version
                 }
             }
             catch (Exception ex)

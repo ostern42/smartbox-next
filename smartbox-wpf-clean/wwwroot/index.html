@@ -6,6 +6,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title>SmartBox Next - Touch Medical Imaging</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/segoe-fluent-icons/font/SegoeFluentIcons.css">
 </head>
@@ -16,7 +19,6 @@
             <div class="header-content">
                 <h1 class="app-title">SmartBox Next</h1>
                 <div class="patient-status" id="patientStatus">
-                    <i class="ms-Icon ms-Icon--Contact"></i>
                     <span id="patientStatusText">Kein Patient</span>
                 </div>
                 <div class="header-buttons">
@@ -43,49 +45,73 @@
                     <span class="pull-text">Ziehen zum Aktualisieren</span>
                 </div>
 
-                <!-- MWL Cards Container -->
+                <!-- MWL Table Container -->
                 <div class="mwl-container" id="mwlContainer">
                     <div class="mwl-header">
-                        <h2>Patienten auswählen</h2>
-                        <div class="mwl-filter">
-                            <input type="text" 
-                                   id="mwlFilter" 
-                                   placeholder="Suchen..." 
-                                   class="filter-input">
+                        <h2>Patientenliste</h2>
+                        <div class="mwl-controls">
+                            <div class="mwl-filter">
+                                <input type="text" 
+                                       id="mwlFilter" 
+                                       placeholder="Suchen..." 
+                                       class="filter-input">
+                            </div>
+                            <div class="mwl-date-selector">
+                                <select id="mwlDateRange" class="date-range-select">
+                                    <option value="today">Heute</option>
+                                    <option value="3days" selected>3 Tage (Gestern - Morgen)</option>
+                                    <option value="week">Diese Woche</option>
+                                    <option value="custom">Benutzerdefiniert...</option>
+                                </select>
+                                <input type="date" id="mwlDateFrom" class="date-input hidden" />
+                                <input type="date" id="mwlDateTo" class="date-input hidden" />
+                            </div>
+                            <div class="theme-selector">
+                                <button class="theme-button active" data-theme="medical-blue">Blau</button>
+                                <button class="theme-button" data-theme="medical-teal">Türkis</button>
+                                <button class="theme-button" data-theme="dark">Dunkel</button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="mwl-scroll-container" id="mwlScrollContainer">
-                        <div class="mwl-cards" id="mwlCards">
-                            <!-- Patient cards will be dynamically inserted here -->
-                            <!-- Example structure:
-                            <div class="patient-card" data-patient-id="12345">
-                                <div class="patient-info">
-                                    <div class="patient-name">
-                                        <i class="ms-Icon ms-Icon--Contact"></i>
-                                        <span>Müller, Hans</span>
-                                    </div>
-                                    <div class="patient-details">
-                                        <span class="patient-birth">
-                                            <i class="ms-Icon ms-Icon--Cake"></i>
-                                            12.05.1965
-                                        </span>
-                                        <span class="patient-study">
-                                            <i class="ms-Icon ms-Icon--Medical"></i>
-                                            Endoskopie
-                                        </span>
-                                        <span class="patient-time">
-                                            <i class="ms-Icon ms-Icon--Clock"></i>
-                                            14:00 Uhr
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="card-action">
-                                    <span>Antippen zum Auswählen</span>
-                                </div>
-                            </div>
-                            -->
-                        </div>
+                    <div class="mwl-table-container" id="mwlTableContainer">
+                        <table class="mwl-table" id="mwlTable">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="name">
+                                        <span>Name</span>
+                                        <span class="sort-indicator">▲</span>
+                                    </th>
+                                    <th class="sortable" data-sort="firstName">
+                                        <span>Vorname</span>
+                                        <span class="sort-indicator"></span>
+                                    </th>
+                                    <th class="sortable" data-sort="birthDate">
+                                        <span>Geburtsdatum</span>
+                                        <span class="sort-indicator"></span>
+                                    </th>
+                                    <th data-sort="gender">
+                                        <span>Geschlecht</span>
+                                    </th>
+                                    <th class="sortable" data-sort="studyDate">
+                                        <span>Untersuchungsdatum</span>
+                                        <span class="sort-indicator"></span>
+                                    </th>
+                                    <th data-sort="studyType">
+                                        <span>Untersuchungsart</span>
+                                    </th>
+                                    <th data-sort="location">
+                                        <span>Geplanter Ort</span>
+                                    </th>
+                                    <th data-sort="comment">
+                                        <span>Kommentar</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="mwlTableBody">
+                                <!-- Table rows will be dynamically inserted here -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -153,6 +179,13 @@
                         <video id="webcamPreviewLarge" autoplay playsinline muted></video>
                         <canvas id="captureCanvas" style="display: none;"></canvas>
                         
+                        <!-- Prerecording Buttons Overlay -->
+                        <div class="prerecording-overlay" id="prerecordingOverlay">
+                            <button class="prerecording-btn" id="prerecord60" data-duration="60" title="60 Sekunden Voraufzeichnung">60s</button>
+                            <button class="prerecording-btn" id="prerecord30" data-duration="30" title="30 Sekunden Voraufzeichnung">30s</button>
+                            <button class="prerecording-btn" id="prerecord10" data-duration="10" title="10 Sekunden Voraufzeichnung">10s</button>
+                        </div>
+                        
                         <!-- Capture Overlay -->
                         <div class="capture-overlay">
                             <div class="capture-hint" id="captureHint">
@@ -168,11 +201,30 @@
                                 <span id="recordingTime">00:00</span>
                             </div>
                         </div>
+                        
+                        <!-- Video Recording Controls -->
+                        <div class="recording-controls">
+                            <button class="control-button" id="capturePhotoButton" data-action="capturephoto" aria-label="Foto aufnehmen">
+                                <i class="ms-Icon ms-Icon--Camera"></i>
+                                <span>Foto</span>
+                            </button>
+                            <button class="control-button toggle-video" id="toggleVideoButton" data-action="togglevideo" aria-label="Video aufnehmen">
+                                <i class="ms-Icon ms-Icon--Video"></i>
+                                <span>Video starten</span>
+                            </button>
+                            <button class="control-button mark-critical hidden" id="markCriticalMomentButton" data-action="markcritical" aria-label="Kritischen Moment markieren">
+                                <i class="ms-Icon ms-Icon--Flag"></i>
+                                <span>Markieren</span>
+                            </button>
+                        </div>
 
                         <!-- Touch Feedback -->
                         <div class="touch-feedback" id="touchFeedback"></div>
                     </div>
                 </div>
+
+                <!-- Professional Video Timeline -->
+                <div id="videoTimeline" class="video-timeline-container" style="display: none;"></div>
 
                 <!-- Thumbnail Strip -->
                 <div class="thumbnail-strip-container">
@@ -242,7 +294,10 @@
     </div>
 
     <!-- Scripts -->
+    <script src="js/timeline-component.js"></script>
+    <script src="js/timeline-integration.js"></script>
     <script src="js/actions.js"></script>
+    <script src="js/button-actions.js"></script>
     <script src="js/touch_gestures.js"></script>
     <script src="js/touch_dialogs.js"></script>
     <script src="js/mode_manager.js"></script>

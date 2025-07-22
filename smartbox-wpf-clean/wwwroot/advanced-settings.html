@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBox-Next Advanced Settings</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Advanced Settings Specific Styles */
+        .advanced-settings-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .settings-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .settings-header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .settings-header p {
+            margin: 10px 0 0 0;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .settings-navigation {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .nav-tab {
+            background: white;
+            border: 2px solid #e9ecef;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            text-decoration: none;
+            color: #495057;
+        }
+
+        .nav-tab:hover {
+            border-color: #667eea;
+            color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .nav-tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .settings-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+            display: none;
+        }
+
+        .settings-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .section-icon {
+            font-size: 2em;
+            margin-right: 15px;
+        }
+
+        .section-title {
+            flex: 1;
+        }
+
+        .section-title h2 {
+            margin: 0;
+            color: #495057;
+            font-size: 1.8em;
+        }
+
+        .section-title p {
+            margin: 5px 0 0 0;
+            color: #6c757d;
+            font-size: 0.95em;
+        }
+
+        .setting-group {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+
+        .setting-group h3 {
+            margin: 0 0 15px 0;
+            color: #495057;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+        }
+
+        .setting-group h3::before {
+            content: "⚙️";
+            margin-right: 8px;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .setting-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .setting-label {
+            flex: 1;
+            margin-right: 20px;
+        }
+
+        .setting-label h4 {
+            margin: 0 0 5px 0;
+            color: #495057;
+            font-size: 1em;
+        }
+
+        .setting-label p {
+            margin: 0;
+            color: #6c757d;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        .setting-control {
+            min-width: 200px;
+            text-align: right;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #ccc;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #4CAF50;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(30px);
+        }
+
+        .range-slider {
+            width: 150px;
+            margin: 5px 0;
+        }
+
+        .select-dropdown, .text-input {
+            width: 180px;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            background: white;
+            font-size: 0.9em;
+        }
+
+        .select-dropdown:focus, .text-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+
+        .number-input {
+            width: 80px;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .status-connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .info-box h4 {
+            margin: 0 0 8px 0;
+            color: #004085;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: #004085;
+            font-size: 0.9em;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .warning-box h4 {
+            margin: 0 0 8px 0;
+            color: #856404;
+        }
+
+        .device-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .device-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .device-item:last-child {
+            border-bottom: none;
+        }
+
+        .device-info {
+            flex: 1;
+        }
+
+        .device-name {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .device-details {
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            background: #dc3545;
+        }
+
+        @media (max-width: 768px) {
+            .advanced-settings-container {
+                padding: 10px;
+            }
+            
+            .settings-header {
+                padding: 20px;
+            }
+            
+            .settings-header h1 {
+                font-size: 2em;
+            }
+            
+            .settings-navigation {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .setting-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .setting-control {
+                width: 100%;
+                text-align: left;
+                margin-top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="advanced-settings-container">
+        <!-- Header -->
+        <div class="settings-header">
+            <h1>🚀 SmartBox-Next Advanced Settings</h1>
+            <p>Configure revolutionary medical video capture features</p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="settings-navigation">
+            <a href="#ai-workflow" class="nav-tab active" data-section="ai-workflow">🧠 AI Workflow</a>
+            <a href="#audio-processing" class="nav-tab" data-section="audio-processing">🎵 Audio Processing</a>
+            <a href="#video-enhancement" class="nav-tab" data-section="video-enhancement">📹 Video Enhancement</a>
+            <a href="#automation" class="nav-tab" data-section="automation">🤖 Smart Automation</a>
+            <a href="#hl7-integration" class="nav-tab" data-section="hl7-integration">🏥 HL7 Integration</a>
+            <a href="#system" class="nav-tab" data-section="system">⚙️ System Settings</a>
+        </div>
+
+        <!-- AI Workflow Settings -->
+        <div id="ai-workflow" class="settings-section active">
+            <div class="section-header">
+                <div class="section-icon">🧠</div>
+                <div class="section-title">
+                    <h2>AI-Enhanced Workflow Settings</h2>
+                    <p>Configure automatic procedure phase detection, voice-to-text transcription, and intelligent analysis</p>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Core AI Features</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Enable AI Workflow</h4>
+                        <p>Activate AI-powered procedure analysis and automatic phase detection</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="ai-workflow-enabled"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Voice-to-Text Transcription</h4>
+                        <p>Enable real-time medical transcription with specialized terminology</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="voice-transcription-enabled"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Critical Moment Detection</h4>
+                        <p>Automatically detect and mark critical moments during procedures</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="critical-moment-detection"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Voice Commands</h4>
+                        <p>Enable hands-free operation with medical voice commands</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch" data-setting="voice-commands-enabled"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Transcription Settings</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Language</h4>
+                        <p>Primary language for speech recognition</p>
+                    </div>
+                    <div class="setting-control">
+                        <select class="select-dropdown" data-setting="transcription-language">
+                            <option value="en-US">English (US)</option>
+                            <option value="de-DE">German (Germany)</option>
+                            <option value="fr-FR">French (France)</option>
+                            <option value="es-ES">Spanish (Spain)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Confidence Threshold</h4>
+                        <p>Minimum confidence level for accepting transcriptions (0.1 - 1.0)</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="range" class="range-slider" min="0.1" max="1.0" step="0.1" value="0.7" data-setting="transcription-confidence">
+                        <span class="range-value">0.7</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Medical Terminology Dictionary</h4>
+                        <p>Specialized medical vocabulary for enhanced recognition</p>
+                    </div>
+                    <div class="setting-control">
+                        <select class="select-dropdown" data-setting="medical-dictionary">
+                            <option value="general">General Medical</option>
+                            <option value="gastroenterology">Gastroenterology</option>
+                            <option value="cardiology">Cardiology</option>
+                            <option value="orthopedics">Orthopedics</option>
+                            <option value="neurology">Neurology</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <h4>🔬 AI Enhancement Notice</h4>
+                <p>All AI suggestions are supplementary to clinical judgment. Final medical decisions remain with healthcare professionals. AI confidence levels are provided for transparency.</p>
+            </div>
+        </div>
+
+        <!-- Audio Processing Settings -->
+        <div id="audio-processing" class="settings-section">
+            <div class="section-header">
+                <div class="section-icon">🎵</div>
+                <div class="section-title">
+                    <h2>Advanced Audio Processing Settings</h2>
+                    <p>Configure multiple microphones, Schluckdiagnostik analysis, and medical-grade audio enhancement</p>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Audio Capture</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Enable Multi-Microphone Capture</h4>
+                        <p>Support for simultaneous recording from multiple microphones</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="multi-mic-enabled"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Sample Rate</h4>
+                        <p>Audio sample rate for medical-grade recording</p>
+                    </div>
+                    <div class="setting-control">
+                        <select class="select-dropdown" data-setting="audio-sample-rate">
+                            <option value="44100">44.1 kHz (CD Quality)</option>
+                            <option value="48000" selected>48 kHz (Professional)</option>
+                            <option value="96000">96 kHz (High Resolution)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Bit Depth</h4>
+                        <p>Audio bit depth for high-fidelity capture</p>
+                    </div>
+                    <div class="setting-control">
+                        <select class="select-dropdown" data-setting="audio-bit-depth">
+                            <option value="16">16-bit (Standard)</option>
+                            <option value="24" selected>24-bit (Professional)</option>
+                            <option value="32">32-bit (Studio)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Schluckdiagnostik (Swallowing Diagnostics)</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Enable Schluckdiagnostik Analysis</h4>
+                        <p>Specialized analysis for swallowing sounds and respiratory patterns</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="schluckdiagnostik-enabled"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Frequency Range Optimization</h4>
+                        <p>Optimize frequency filtering for swallowing analysis (20Hz-2000Hz)</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="frequency-optimization"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Noise Reduction Strength</h4>
+                        <p>Level of background noise reduction (0.0 - 1.0)</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="range" class="range-slider" min="0.0" max="1.0" step="0.1" value="0.3" data-setting="noise-reduction">
+                        <span class="range-value">0.3</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Active Audio Devices</h3>
+                <div class="device-list" id="audio-devices-list">
+                    <div class="device-item">
+                        <div class="device-info">
+                            <div class="device-name">Primary Microphone</div>
+                            <div class="device-details">USB Audio Device - 48kHz, 24-bit, Stereo</div>
+                        </div>
+                        <div class="status-badge status-connected">Connected</div>
+                    </div>
+                    <div class="device-item">
+                        <div class="device-info">
+                            <div class="device-name">Secondary Microphone</div>
+                            <div class="device-details">Bluetooth Audio - 44.1kHz, 16-bit, Mono</div>
+                        </div>
+                        <div class="status-badge status-warning">Low Quality</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Enhancement Settings -->
+        <div id="video-enhancement" class="settings-section">
+            <div class="section-header">
+                <div class="section-icon">📹</div>
+                <div class="section-title">
+                    <h2>4K HDR Video Enhancement Settings</h2>
+                    <p>Configure advanced video processing, multi-camera synchronization, and real-time enhancement</p>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Video Quality</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Enable 4K HDR Processing</h4>
+                        <p>High Dynamic Range processing for enhanced image quality</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch" data-setting="4k-hdr-enabled"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Target Resolution</h4>
+                        <p>Maximum resolution for video capture and processing</p>
+                    </div>
+                    <div class="setting-control">
+                        <select class="select-dropdown" data-setting="target-resolution">
+                            <option value="1920x1080" selected>1080p (Full HD)</option>
+                            <option value="2560x1440">1440p (2K)</option>
+                            <option value="3840x2160">2160p (4K UHD)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Frame Rate</h4>
+                        <p>Target frame rate for smooth video capture</p>
+                    </div>
+                    <div class="setting-control">
+                        <select class="select-dropdown" data-setting="frame-rate">
+                            <option value="30">30 FPS</option>
+                            <option value="60" selected>60 FPS</option>
+                            <option value="120">120 FPS</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Real-time Enhancement</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Auto Brightness/Contrast</h4>
+                        <p>Automatically adjust brightness and contrast for optimal visibility</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="auto-brightness-contrast"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Medical Color Enhancement</h4>
+                        <p>Color correction optimized for medical imaging</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="medical-color-enhancement"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Sharpening Level</h4>
+                        <p>Image sharpening strength for enhanced detail visibility</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="range" class="range-slider" min="0.0" max="1.0" step="0.1" value="0.3" data-setting="sharpening-level">
+                        <span class="range-value">0.3</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Digital Stabilization</h4>
+                        <p>Electronic image stabilization for handheld recording</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="digital-stabilization"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Multi-Camera Synchronization</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Enable Multi-Camera Sync</h4>
+                        <p>Synchronize up to 4 cameras for multi-angle recording</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch" data-setting="multi-camera-sync"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Sync Tolerance</h4>
+                        <p>Maximum allowed time offset between cameras (milliseconds)</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" class="number-input" min="10" max="100" value="33" data-setting="sync-tolerance">
+                        <span>ms</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Smart Automation Settings -->
+        <div id="automation" class="settings-section">
+            <div class="section-header">
+                <div class="section-icon">🤖</div>
+                <div class="section-title">
+                    <h2>Smart Automation Settings</h2>
+                    <p>Configure intelligent workflow automation, buffer management, and quality validation</p>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Automatic Recording</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Enable Room Occupancy Detection</h4>
+                        <p>Automatically detect when the room is occupied for recording</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="occupancy-detection"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Auto-Start Recording</h4>
+                        <p>Automatically start recording when occupancy is detected</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="auto-start-recording"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Auto-Stop on Vacancy</h4>
+                        <p>Automatically stop recording when room becomes vacant</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch" data-setting="auto-stop-recording"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Vacancy Delay</h4>
+                        <p>Minutes to wait before stopping recording after vacancy detected</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" class="number-input" min="1" max="30" value="5" data-setting="vacancy-delay">
+                        <span>min</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Buffer Management</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Intelligent Buffer Sizing</h4>
+                        <p>Automatically optimize memory buffers based on activity</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="intelligent-buffering"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Maximum Buffer Size</h4>
+                        <p>Maximum memory to allocate for video/audio buffers (MB)</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" class="number-input" min="100" max="2000" value="500" data-setting="max-buffer-size">
+                        <span>MB</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Buffer Optimization Interval</h4>
+                        <p>How often to optimize buffer usage (seconds)</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" class="number-input" min="10" max="300" value="30" data-setting="buffer-optimization-interval">
+                        <span>sec</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Export Automation</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Auto-Export to PACS</h4>
+                        <p>Automatically export recordings to PACS after completion</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="auto-export-pacs"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Export Delay</h4>
+                        <p>Minutes to wait after recording before auto-export</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" class="number-input" min="0" max="60" value="2" data-setting="export-delay">
+                        <span>min</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Quality Validation Before Export</h4>
+                        <p>Validate recording quality before automatic export</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="quality-validation-export"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HL7 Integration Settings -->
+        <div id="hl7-integration" class="settings-section">
+            <div class="section-header">
+                <div class="section-icon">🏥</div>
+                <div class="section-title">
+                    <h2>HL7 FHIR Integration Settings</h2>
+                    <p>Configure modern healthcare system integration and remote streaming capabilities</p>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>FHIR Server Connection</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>FHIR Server URL</h4>
+                        <p>Base URL for FHIR R4 server connection</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="text" class="text-input" placeholder="https://fhir.hospital.com/r4" data-setting="fhir-server-url">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Authentication Token</h4>
+                        <p>Bearer token for FHIR server authentication</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="password" class="text-input" placeholder="Bearer token..." data-setting="fhir-auth-token">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Connection Status</h4>
+                        <p>Current FHIR server connection status</p>
+                    </div>
+                    <div class="setting-control">
+                        <span class="status-badge status-disconnected" id="fhir-connection-status">Disconnected</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>EHR System Integration</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Enable Epic Integration</h4>
+                        <p>Connect to Epic electronic health records system</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch" data-setting="epic-integration"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Enable Cerner Integration</h4>
+                        <p>Connect to Cerner electronic health records system</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch" data-setting="cerner-integration"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>OR Scheduling System</h4>
+                        <p>Integration with operating room scheduling system</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch" data-setting="or-scheduling-integration"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Remote Streaming</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Enable Remote Streaming</h4>
+                        <p>Allow real-time streaming to remote specialists</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch" data-setting="remote-streaming"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Streaming Server URL</h4>
+                        <p>URL for remote streaming service</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="text" class="text-input" placeholder="https://stream.hospital.com" data-setting="streaming-server-url">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Default Video Quality</h4>
+                        <p>Default quality for remote streaming sessions</p>
+                    </div>
+                    <div class="setting-control">
+                        <select class="select-dropdown" data-setting="streaming-quality">
+                            <option value="720p">720p (HD)</option>
+                            <option value="1080p" selected>1080p (Full HD)</option>
+                            <option value="1440p">1440p (2K)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <h4>🔐 Security Notice</h4>
+                <p>All HL7 FHIR integrations maintain strict HIPAA compliance. Patient data is encrypted in transit and at rest. Remote streaming sessions use end-to-end encryption.</p>
+            </div>
+        </div>
+
+        <!-- System Settings -->
+        <div id="system" class="settings-section">
+            <div class="section-header">
+                <div class="section-icon">⚙️</div>
+                <div class="section-title">
+                    <h2>System Settings</h2>
+                    <p>Configure system-wide preferences, logging, and performance options</p>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>General Settings</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Enable Debug Logging</h4>
+                        <p>Enable detailed logging for troubleshooting and development</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch" data-setting="debug-logging"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Log Level</h4>
+                        <p>Minimum level for system logging</p>
+                    </div>
+                    <div class="setting-control">
+                        <select class="select-dropdown" data-setting="log-level">
+                            <option value="Error">Error</option>
+                            <option value="Warning">Warning</option>
+                            <option value="Information" selected>Information</option>
+                            <option value="Debug">Debug</option>
+                            <option value="Trace">Trace</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Performance Monitoring</h4>
+                        <p>Enable real-time performance metrics collection</p>
+                    </div>
+                    <div class="setting-control">
+                        <div class="toggle-switch active" data-setting="performance-monitoring"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Storage Settings</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Temporary Files Directory</h4>
+                        <p>Location for temporary recording files</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="text" class="text-input" value="C:\SmartBox\Temp" data-setting="temp-directory">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Maximum Log File Size</h4>
+                        <p>Maximum size of individual log files (MB)</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" class="number-input" min="10" max="1000" value="100" data-setting="max-log-size">
+                        <span>MB</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Log Retention Days</h4>
+                        <p>Number of days to keep log files</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" class="number-input" min="7" max="365" value="30" data-setting="log-retention-days">
+                        <span>days</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Network Settings</h3>
+                
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Connection Timeout</h4>
+                        <p>Network connection timeout (seconds)</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" class="number-input" min="5" max="120" value="30" data-setting="connection-timeout">
+                        <span>sec</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <h4>Retry Attempts</h4>
+                        <p>Number of retry attempts for failed network operations</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" class="number-input" min="1" max="10" value="3" data-setting="retry-attempts">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="saveSettings()">
+                💾 Save All Settings
+            </button>
+            <button class="btn btn-secondary" onclick="resetToDefaults()">
+                🔄 Reset to Defaults
+            </button>
+            <button class="btn btn-success" onclick="testConnections()">
+                🔍 Test Connections
+            </button>
+            <button class="btn btn-warning" onclick="exportSettings()">
+                📤 Export Configuration
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Include the main app functionality -->
+    <script src="js/advanced-features.js"></script>
+    
+    <script>
+        // Advanced Settings JavaScript
+        class AdvancedSettingsManager {
+            constructor() {
+                this.settings = {};
+                this.initialize();
+            }
+
+            initialize() {
+                this.setupNavigation();
+                this.setupToggleSwitches();
+                this.setupRangeSliders();
+                this.loadSettings();
+                console.log('🔧 Advanced Settings Manager initialized');
+            }
+
+            setupNavigation() {
+                const navTabs = document.querySelectorAll('.nav-tab');
+                const sections = document.querySelectorAll('.settings-section');
+
+                navTabs.forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        
+                        // Remove active class from all tabs and sections
+                        navTabs.forEach(t => t.classList.remove('active'));
+                        sections.forEach(s => s.classList.remove('active'));
+                        
+                        // Add active class to clicked tab
+                        tab.classList.add('active');
+                        
+                        // Show corresponding section
+                        const sectionId = tab.dataset.section;
+                        document.getElementById(sectionId).classList.add('active');
+                    });
+                });
+            }
+
+            setupToggleSwitches() {
+                const toggleSwitches = document.querySelectorAll('.toggle-switch');
+                
+                toggleSwitches.forEach(toggle => {
+                    toggle.addEventListener('click', () => {
+                        toggle.classList.toggle('active');
+                        const setting = toggle.dataset.setting;
+                        const value = toggle.classList.contains('active');
+                        this.updateSetting(setting, value);
+                    });
+                });
+            }
+
+            setupRangeSliders() {
+                const rangeSliders = document.querySelectorAll('.range-slider');
+                
+                rangeSliders.forEach(slider => {
+                    const valueSpan = slider.nextElementSibling;
+                    
+                    slider.addEventListener('input', () => {
+                        valueSpan.textContent = slider.value;
+                        const setting = slider.dataset.setting;
+                        this.updateSetting(setting, parseFloat(slider.value));
+                    });
+                });
+            }
+
+            updateSetting(key, value) {
+                this.settings[key] = value;
+                console.log(`Setting updated: ${key} = ${value}`);
+            }
+
+            async loadSettings() {
+                try {
+                    const response = await fetch('/api/settings/advanced');
+                    if (response.ok) {
+                        const loadedSettings = await response.json();
+                        this.applySettings(loadedSettings);
+                        this.showToast('Settings loaded successfully', 'success');
+                    }
+                } catch (error) {
+                    console.error('Failed to load settings:', error);
+                    this.showToast('Failed to load settings', 'error');
+                }
+            }
+
+            applySettings(settings) {
+                Object.entries(settings).forEach(([key, value]) => {
+                    const element = document.querySelector(`[data-setting="${key}"]`);
+                    if (element) {
+                        if (element.classList.contains('toggle-switch')) {
+                            element.classList.toggle('active', value);
+                        } else if (element.type === 'range') {
+                            element.value = value;
+                            const valueSpan = element.nextElementSibling;
+                            if (valueSpan) valueSpan.textContent = value;
+                        } else if (element.tagName === 'SELECT' || element.tagName === 'INPUT') {
+                            element.value = value;
+                        }
+                    }
+                });
+                this.settings = { ...settings };
+            }
+
+            showToast(message, type = 'success') {
+                const toast = document.getElementById('toast');
+                toast.textContent = message;
+                toast.className = `toast ${type} show`;
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Global functions for buttons
+        async function saveSettings() {
+            const manager = window.advancedSettingsManager;
+            
+            try {
+                const response = await fetch('/api/settings/advanced', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(manager.settings)
+                });
+                
+                if (response.ok) {
+                    manager.showToast('✅ Settings saved successfully', 'success');
+                } else {
+                    manager.showToast('❌ Failed to save settings', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                manager.showToast('❌ Error saving settings', 'error');
+            }
+        }
+
+        async function resetToDefaults() {
+            if (confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
+                const manager = window.advancedSettingsManager;
+                
+                try {
+                    const response = await fetch('/api/settings/advanced/reset', {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        location.reload(); // Reload to apply defaults
+                    } else {
+                        manager.showToast('❌ Failed to reset settings', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error resetting settings:', error);
+                    manager.showToast('❌ Error resetting settings', 'error');
+                }
+            }
+        }
+
+        async function testConnections() {
+            const manager = window.advancedSettingsManager;
+            manager.showToast('🔍 Testing connections...', 'info');
+            
+            try {
+                const response = await fetch('/api/settings/test-connections', {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const results = await response.json();
+                    manager.showToast('✅ Connection tests completed', 'success');
+                    
+                    // Update connection status indicators
+                    if (results.fhir) {
+                        document.getElementById('fhir-connection-status').className = 
+                            `status-badge ${results.fhir.connected ? 'status-connected' : 'status-disconnected'}`;
+                        document.getElementById('fhir-connection-status').textContent = 
+                            results.fhir.connected ? 'Connected' : 'Disconnected';
+                    }
+                } else {
+                    manager.showToast('❌ Connection tests failed', 'error');
+                }
+            } catch (error) {
+                console.error('Error testing connections:', error);
+                manager.showToast('❌ Error testing connections', 'error');
+            }
+        }
+
+        async function exportSettings() {
+            const manager = window.advancedSettingsManager;
+            
+            try {
+                const blob = new Blob([JSON.stringify(manager.settings, null, 2)], 
+                    { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `smartbox-advanced-settings-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                
+                URL.revokeObjectURL(url);
+                manager.showToast('📤 Settings exported successfully', 'success');
+            } catch (error) {
+                console.error('Error exporting settings:', error);
+                manager.showToast('❌ Error exporting settings', 'error');
+            }
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            window.advancedSettingsManager = new AdvancedSettingsManager();
+        });
+    </script>
+</body>
+</html>

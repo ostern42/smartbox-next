@@ -11,8 +11,9 @@ namespace SmartBoxNext.Services
 {
     /// <summary>
     /// Unified capture manager for Yuan + WebRTC sources
+    /// MEDICAL SAFETY: Implements IAsyncDisposable for proper resource cleanup
     /// </summary>
-    public class UnifiedCaptureManager : IDisposable
+    public class UnifiedCaptureManager : IAsyncDisposable, IDisposable
     {
         private readonly ILogger<UnifiedCaptureManager> _logger;
         private readonly SharedMemoryClient _sharedMemoryClient;
@@ -27,9 +28,11 @@ namespace SmartBoxNext.Services
         private CaptureSource _activeSource = CaptureSource.WebRTC;
         private bool _isYuanConnected = false;
         private bool _isWebRTCActive = false;
+        private bool _disposed = false;
 
         // Events
         public event EventHandler<FrameUpdatedEventArgs>? FrameUpdated;
+        public event EventHandler<FrameCapturedEventArgs>? FrameCaptured;
         public event EventHandler<CaptureSource>? ActiveSourceChanged;
         public event EventHandler<bool>? YuanConnectionChanged;
 
@@ -232,6 +235,37 @@ namespace SmartBoxNext.Services
             }
         }
 
+        public void UpdateWebRTCFrameWithRawData(BitmapSource frame, byte[] rawData, int width, int height, string pixelFormat = "RGB24")
+        {
+            _currentWebRTCFrame = frame;
+            _lastWebRTCFrameTime = DateTime.UtcNow;
+            _isWebRTCActive = true;
+
+            // Fire raw frame captured event for continuous recording
+            FrameCaptured?.Invoke(this, new FrameCapturedEventArgs
+            {
+                FrameData = rawData,
+                Width = width,
+                Height = height,
+                PixelFormat = pixelFormat,
+                Timestamp = _lastWebRTCFrameTime,
+                FrameNumber = 0, // WebRTC doesn't provide frame numbers
+                IsKeyFrame = true, // WebRTC frames are typically all keyframes
+                Source = CaptureSource.WebRTC
+            });
+
+            // If WebRTC is the active source, emit the frame
+            if (_activeSource == CaptureSource.WebRTC)
+            {
+                FrameUpdated?.Invoke(this, new FrameUpdatedEventArgs
+                {
+                    Frame = frame,
+                    Source = CaptureSource.WebRTC,
+                    Timestamp = _lastWebRTCFrameTime
+                });
+            }
+        }
+
         public void SetWebRTCActive(bool active)
         {
             if (_isWebRTCActive != active)
@@ -256,6 +290,19 @@ namespace SmartBoxNext.Services
         {
             try
             {
+                // Fire raw frame captured event for continuous recording
+                FrameCaptured?.Invoke(this, new FrameCapturedEventArgs
+                {
+                    FrameData = e.FrameData,
+                    Width = e.Header.Width,
+                    Height = e.Header.Height,
+                    PixelFormat = "YUY2",
+                    Timestamp = e.ReceivedAt,
+                    FrameNumber = e.Header.FrameNumber,
+                    IsKeyFrame = e.Header.IsKeyFrame,
+                    Source = CaptureSource.Yuan
+                });
+                
                 // Convert YUY2 frame to BitmapSource
                 var bitmapSource = ConvertYUY2ToBitmapSource(e.FrameData, e.Header.Width, e.Header.Height);
                 
@@ -360,9 +407,44 @@ namespace SmartBoxNext.Services
             };
         }
 
+        /// <summary>
+        /// MEDICAL SAFETY: Async disposal pattern for proper resource cleanup
+        /// </summary>
+        public async ValueTask DisposeAsync()
+        {
+            if (_disposed) return;
+            
+            _logger.LogInformation("Disposing Unified Capture Manager (async)...");
+            
+            try
+            {
+                // Properly dispose SharedMemoryClient using async pattern
+                if (_sharedMemoryClient != null)
+                {
+                    await _sharedMemoryClient.DisposeAsync();
+                }
+                
+                _currentYuanFrame = null;
+                _currentWebRTCFrame = null;
+                
+                _disposed = true;
+                _logger.LogInformation("Unified Capture Manager disposed (async)");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during async disposal of Unified Capture Manager");
+            }
+        }
+
+        /// <summary>
+        /// Synchronous disposal for IDisposable compatibility
+        /// MEDICAL SAFETY: Logs warning about potential deadlock risk
+        /// </summary>
         public void Dispose()
         {
-            _logger.LogInformation("Disposing Unified Capture Manager...");
+            if (_disposed) return;
+            
+            _logger.LogWarning("[MEDICAL SAFETY] Synchronous disposal used - prefer DisposeAsync() to avoid deadlocks");
             
             try
             {
@@ -370,6 +452,7 @@ namespace SmartBoxNext.Services
                 _currentYuanFrame = null;
                 _currentWebRTCFrame = null;
                 
+                _disposed = true;
                 _logger.LogInformation("Unified Capture Manager disposed");
             }
             catch (Exception ex)
@@ -396,6 +479,21 @@ namespace SmartBoxNext.Services
         public BitmapSource Frame { get; set; } = null!;
         public CaptureSource Source { get; set; }
         public DateTime Timestamp { get; set; }
+    }
+
+    /// <summary>
+    /// Frame captured event arguments for raw frame data
+    /// </summary>
+    public class FrameCapturedEventArgs : EventArgs
+    {
+        public byte[] FrameData { get; set; } = Array.Empty<byte>();
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public string PixelFormat { get; set; } = "YUY2";
+        public DateTime Timestamp { get; set; }
+        public int FrameNumber { get; set; }
+        public bool IsKeyFrame { get; set; }
+        public CaptureSource Source { get; set; }
     }
 
     /// <summary>

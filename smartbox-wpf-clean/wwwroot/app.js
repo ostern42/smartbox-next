@@ -16,10 +16,14 @@ class SmartBoxTouchApp {
         this.gestureManager = null;
         this.dialogManager = null;
         this.modeManager = null;
+        this.timelineManager = null;
         
         // MWL data
         this.mwlData = [];
         this.filteredMwlData = [];
+        
+        // Sort state
+        this.sortState = { column: 'name', ascending: true };
         
         console.log('SmartBoxTouchApp: Starting initialization...');
         this.initialize();
@@ -31,6 +35,7 @@ class SmartBoxTouchApp {
             this.gestureManager = new TouchGestureManager();
             this.dialogManager = new TouchDialogManager();
             this.modeManager = new ModeManager();
+            this.timelineManager = new TimelineIntegrationManager(this);
             
             // Make dialog manager globally available
             window.touchDialogManager = this.dialogManager;
@@ -41,8 +46,8 @@ class SmartBoxTouchApp {
             // Initialize webcam
             await this.initializeWebcam();
             
-            // Load initial MWL data
-            await this.loadMWLData();
+            // Load initial MWL data with saved default period
+            await this.loadDefaultMWLData();
             
             // Set up periodic refresh
             this.setupPeriodicRefresh();
@@ -71,6 +76,9 @@ class SmartBoxTouchApp {
         document.addEventListener('stopVideoRecording', () => this.onStopVideoRecording());
         document.addEventListener('confirmDeleteThumbnail', (e) => this.onConfirmDeleteThumbnail(e));
         
+        // Critical moment marking
+        document.addEventListener('criticalMomentMarked', (e) => this.onCriticalMomentMarked(e));
+        
         // Mode change events
         document.addEventListener('modeChanged', (e) => this.onModeChanged(e));
         document.addEventListener('initializeRecordingWebcam', (e) => this.onInitializeRecordingWebcam(e));
@@ -88,8 +96,36 @@ class SmartBoxTouchApp {
             mwlFilter.addEventListener('input', (e) => this.onMWLFilterChange(e));
         }
         
+        // Date range selector
+        const dateRangeSelect = document.getElementById('mwlDateRange');
+        if (dateRangeSelect) {
+            dateRangeSelect.addEventListener('change', (e) => this.onDateRangeChange(e));
+        }
+        
+        // Custom date inputs
+        const dateFrom = document.getElementById('mwlDateFrom');
+        const dateTo = document.getElementById('mwlDateTo');
+        if (dateFrom) {
+            dateFrom.addEventListener('change', () => this.onCustomDateChange());
+        }
+        if (dateTo) {
+            dateTo.addEventListener('change', () => this.onCustomDateChange());
+        }
+        
         // MIGRATED TO ACTION SYSTEM - Old event listeners disabled
         // Export, Settings, and Exit buttons now use data-action attributes
+        
+        // Video recording toggle handler
+        document.addEventListener('toggleVideoRecording', () => {
+            if (window.buttonActionManager) {
+                const state = window.buttonActionManager.getRecordingState();
+                if (state.isRecording) {
+                    this.onStopVideoRecording();
+                } else {
+                    this.onStartVideoRecording();
+                }
+            }
+        });
         
         // // Export button
         // const exportButton = document.getElementById('exportButton');
@@ -131,11 +167,23 @@ class SmartBoxTouchApp {
             backButton.addEventListener('click', () => this.onBackToPatientSelection());
         }
         
-        // Patient card clicks
+        // Patient row clicks
         document.addEventListener('click', (e) => {
-            const patientCard = e.target.closest('.patient-card');
-            if (patientCard) {
-                this.onPatientCardClick(patientCard);
+            const patientRow = e.target.closest('.mwl-table tbody tr');
+            if (patientRow) {
+                this.onPatientRowClick(patientRow);
+            }
+            
+            // Theme button clicks
+            const themeButton = e.target.closest('.theme-button');
+            if (themeButton) {
+                this.onThemeChange(themeButton.dataset.theme);
+            }
+            
+            // Sort header clicks
+            const sortHeader = e.target.closest('.mwl-table th.sortable');
+            if (sortHeader) {
+                this.onSortColumn(sortHeader.dataset.sort);
             }
         });
     }
@@ -203,18 +251,81 @@ class SmartBoxTouchApp {
         }
     }
 
-    async loadMWLData() {
+    async loadDefaultMWLData() {
+        // Request settings from backend to get default query period
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage(JSON.stringify({
+                type: 'getSettings',
+                data: {}
+            }));
+            
+            // Wait a bit for settings, then load with default
+            setTimeout(() => {
+                this.loadMWLData();
+            }, 500);
+        } else {
+            // No backend, just load with default
+            this.loadMWLData();
+        }
+    }
+
+    async loadMWLData(dateRange = null) {
         try {
             console.log('SmartBoxTouchApp: Loading MWL data...');
             
             // Always show demo data first for immediate UI feedback
             this.onMWLDataReceived(this.getDemoMWLData());
             
+            // Determine date range
+            if (!dateRange) {
+                const dateRangeSelect = document.getElementById('mwlDateRange');
+                dateRange = dateRangeSelect ? dateRangeSelect.value : '3days';
+            }
+            
+            // Calculate dates based on selection
+            let fromDate, toDate;
+            const today = new Date();
+            
+            switch (dateRange) {
+                case 'today':
+                    fromDate = toDate = today;
+                    break;
+                case '3days':
+                    fromDate = new Date(today);
+                    fromDate.setDate(today.getDate() - 1); // Yesterday
+                    toDate = new Date(today);
+                    toDate.setDate(today.getDate() + 1); // Tomorrow
+                    break;
+                case 'week':
+                    fromDate = new Date(today);
+                    fromDate.setDate(today.getDate() - today.getDay()); // Start of week
+                    toDate = new Date(fromDate);
+                    toDate.setDate(fromDate.getDate() + 6); // End of week
+                    break;
+                case 'custom':
+                    const dateFromInput = document.getElementById('mwlDateFrom');
+                    const dateToInput = document.getElementById('mwlDateTo');
+                    if (dateFromInput.value && dateToInput.value) {
+                        fromDate = new Date(dateFromInput.value);
+                        toDate = new Date(dateToInput.value);
+                    } else {
+                        // Default to 3 days if custom dates not set
+                        fromDate = new Date(today);
+                        fromDate.setDate(today.getDate() - 1);
+                        toDate = new Date(today);
+                        toDate.setDate(today.getDate() + 1);
+                    }
+                    break;
+            }
+            
             // Send request to WebView2 host for real data
             if (window.chrome && window.chrome.webview) {
                 window.chrome.webview.postMessage(JSON.stringify({
                     type: 'loadMWL',
-                    data: {}
+                    data: {
+                        fromDate: fromDate.toISOString().split('T')[0],
+                        toDate: toDate.toISOString().split('T')[0]
+                    }
                 }));
                 
                 // Set timeout to ensure demo data shows if no response
@@ -231,80 +342,188 @@ class SmartBoxTouchApp {
             this.onMWLDataReceived(this.getDemoMWLData());
         }
     }
+    
+    onCriticalMomentMarked(event) {
+        console.log('SmartBoxTouchApp: Critical moment marked:', event.detail);
+        
+        // Store critical moment with current capture session
+        if (this.isRecording && this.mediaRecorder) {
+            if (!this.currentRecordingMetadata) {
+                this.currentRecordingMetadata = { criticalMoments: [] };
+            }
+            this.currentRecordingMetadata.criticalMoments.push(event.detail);
+            
+            // Visual feedback
+            if (this.dialogManager) {
+                this.dialogManager.showToast('Kritischer Moment markiert', 'success');
+            }
+        }
+    }
 
     onMWLDataReceived(mwlData) {
         console.log('SmartBoxTouchApp: MWL data received:', mwlData.length, 'entries');
         
         this.mwlData = mwlData;
         this.filteredMwlData = [...mwlData];
-        this.renderMWLCards();
+        
+        // Apply default sorting by name
+        this.onSortColumn('name');
     }
 
     renderMWLCards() {
-        const mwlCards = document.getElementById('mwlCards');
-        if (!mwlCards) return;
+        const mwlTableBody = document.getElementById('mwlTableBody');
+        if (!mwlTableBody) return;
         
-        // Clear existing cards
-        mwlCards.innerHTML = '';
+        // Clear existing rows
+        mwlTableBody.innerHTML = '';
         
-        // Render filtered cards
+        // Render filtered rows
         this.filteredMwlData.forEach(patient => {
-            const card = this.createPatientCard(patient);
-            mwlCards.appendChild(card);
+            const row = this.createPatientRow(patient);
+            mwlTableBody.appendChild(row);
         });
         
-        console.log('SmartBoxTouchApp: Rendered', this.filteredMwlData.length, 'patient cards');
+        console.log('SmartBoxTouchApp: Rendered', this.filteredMwlData.length, 'patient rows');
     }
 
-    createPatientCard(patient) {
-        const card = document.createElement('div');
-        card.className = 'patient-card';
-        card.dataset.patientId = patient.id;
+    createPatientRow(patient) {
+        const row = document.createElement('tr');
+        row.dataset.patientId = patient.id;
         
-        card.innerHTML = `
-            <div class="patient-info">
-                <div class="patient-name">
-                    <i class="ms-Icon ms-Icon--Contact"></i>
-                    <span>${patient.name}</span>
-                </div>
-                <div class="patient-details">
-                    <span class="patient-birth">
-                        <i class="ms-Icon ms-Icon--Cake"></i>
-                        ${patient.birthDate}
-                    </span>
-                    <span class="patient-study">
-                        <i class="ms-Icon ms-Icon--Medical"></i>
-                        ${patient.studyType}
-                    </span>
-                    <span class="patient-time">
-                        <i class="ms-Icon ms-Icon--Clock"></i>
-                        ${patient.scheduledTime}
-                    </span>
-                </div>
-            </div>
-            <div class="card-action">
-                <span>Antippen zum Auswählen</span>
-            </div>
+        // Parse name to separate last and first name
+        const nameParts = patient.name.split(', ');
+        const lastName = nameParts[0] || '';
+        const firstName = nameParts[1] || '';
+        
+        // Determine gender (would normally come from data)
+        const gender = patient.gender || 'M'; // Default to M if not provided
+        
+        // Format study date (using scheduled time for now)
+        const today = new Date().toLocaleDateString('de-DE');
+        const studyDate = today + ' ' + patient.scheduledTime;
+        
+        row.innerHTML = `
+            <td>${lastName}</td>
+            <td>${firstName}</td>
+            <td>${patient.birthDate}</td>
+            <td>${gender}</td>
+            <td>${studyDate}</td>
+            <td>${patient.studyType}</td>
+            <td>${patient.location || 'OP 1'}</td>
+            <td>${patient.comment || ''}</td>
         `;
         
-        return card;
+        return row;
     }
 
-    onPatientCardClick(card) {
-        const patientId = card.dataset.patientId;
+    onPatientRowClick(row) {
+        const patientId = row.dataset.patientId;
         const patient = this.mwlData.find(p => p.id === patientId);
         
         if (patient) {
             console.log('SmartBoxTouchApp: Patient selected:', patient.name);
             
+            // Remove previous selection
+            document.querySelectorAll('.mwl-table tbody tr.selected').forEach(r => {
+                r.classList.remove('selected');
+            });
+            
             // Add visual feedback
-            card.classList.add('selected');
+            row.classList.add('selected');
             
             // Emit patient selection event
             document.dispatchEvent(new CustomEvent('patientSelected', {
                 detail: patient
             }));
         }
+    }
+    
+    onThemeChange(theme) {
+        // Update root element theme
+        document.documentElement.setAttribute('data-theme', theme);
+        
+        // Update active button
+        document.querySelectorAll('.theme-button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === theme);
+        });
+        
+        console.log('SmartBoxTouchApp: Theme changed to:', theme);
+    }
+    
+    onSortColumn(columnKey) {
+        // Track sort direction
+        if (!this.sortState) {
+            this.sortState = { column: null, ascending: true };
+        }
+        
+        // Toggle direction if same column
+        if (this.sortState.column === columnKey) {
+            this.sortState.ascending = !this.sortState.ascending;
+        } else {
+            this.sortState.column = columnKey;
+            this.sortState.ascending = true;
+        }
+        
+        // Sort the data
+        this.filteredMwlData.sort((a, b) => {
+            let aVal, bVal;
+            
+            switch (columnKey) {
+                case 'name':
+                    const aName = a.name.split(', ')[0] || '';
+                    const bName = b.name.split(', ')[0] || '';
+                    aVal = aName.toLowerCase();
+                    bVal = bName.toLowerCase();
+                    break;
+                case 'firstName':
+                    const aFirst = a.name.split(', ')[1] || '';
+                    const bFirst = b.name.split(', ')[1] || '';
+                    aVal = aFirst.toLowerCase();
+                    bVal = bFirst.toLowerCase();
+                    break;
+                case 'birthDate':
+                    // Parse German date format DD.MM.YYYY
+                    const parseDate = (dateStr) => {
+                        const parts = dateStr.split('.');
+                        return new Date(parts[2], parts[1] - 1, parts[0]);
+                    };
+                    aVal = parseDate(a.birthDate).getTime();
+                    bVal = parseDate(b.birthDate).getTime();
+                    break;
+                case 'studyDate':
+                    aVal = a.scheduledTime;
+                    bVal = b.scheduledTime;
+                    break;
+                default:
+                    aVal = a[columnKey] || '';
+                    bVal = b[columnKey] || '';
+            }
+            
+            if (aVal < bVal) return this.sortState.ascending ? -1 : 1;
+            if (aVal > bVal) return this.sortState.ascending ? 1 : -1;
+            return 0;
+        });
+        
+        // Update sort indicators
+        document.querySelectorAll('.mwl-table th').forEach(th => {
+            const indicator = th.querySelector('.sort-indicator');
+            if (indicator) {
+                th.classList.remove('sorted');
+                indicator.textContent = '';
+            }
+        });
+        
+        const currentHeader = document.querySelector(`[data-sort="${columnKey}"]`);
+        if (currentHeader) {
+            currentHeader.classList.add('sorted');
+            const indicator = currentHeader.querySelector('.sort-indicator');
+            if (indicator) {
+                indicator.textContent = this.sortState.ascending ? '▲' : '▼';
+            }
+        }
+        
+        // Re-render the table
+        this.renderMWLCards();
     }
 
     onEmergencyPatientSelected(event) {
@@ -354,9 +573,20 @@ class SmartBoxTouchApp {
                 throw new Error('Capture elements not found');
             }
             
-            // Set canvas size to video size
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            // Set canvas size to video size - VERIFIED PROPERTIES ONLY!
+            // Session 87 Prevention: using videoWidth/videoHeight, NOT width/height
+            const videoWidth = video.videoWidth;
+            const videoHeight = video.videoHeight;
+            
+            if (!videoWidth || !videoHeight) {
+                console.error('SmartBoxTouchApp: Video dimensions not available');
+                throw new Error('Video not ready for capture');
+            }
+            
+            canvas.width = videoWidth;
+            canvas.height = videoHeight;
+            
+            console.log(`SmartBoxTouchApp: Canvas sized to ${videoWidth}x${videoHeight}`);
             
             // Draw video frame to canvas
             const ctx = canvas.getContext('2d');
@@ -379,6 +609,11 @@ class SmartBoxTouchApp {
                 data: imageData,
                 thumbnail: thumbnail
             });
+            
+            // Add photo thumbnail to timeline
+            if (this.timelineManager) {
+                this.timelineManager.addPhotoThumbnail(thumbnail);
+            }
             
             // Send to WebView2 host for processing
             if (window.chrome && window.chrome.webview) {
@@ -436,6 +671,24 @@ class SmartBoxTouchApp {
             this.updateRecordingUI();
             this.startRecordingTimer();
             
+            // Show critical moment button
+            const criticalButton = document.getElementById('markCriticalMomentButton');
+            if (criticalButton) {
+                criticalButton.classList.remove('hidden');
+            }
+            
+            // Add recording class to container
+            const captureArea = document.getElementById('captureArea');
+            if (captureArea) {
+                captureArea.classList.add('recording-active');
+            }
+            
+            // Update video button state
+            const videoButton = document.getElementById('toggleVideoButton');
+            if (videoButton) {
+                videoButton.classList.add('recording');
+            }
+            
             console.log('SmartBoxTouchApp: Video recording started');
             
         } catch (error) {
@@ -453,6 +706,24 @@ class SmartBoxTouchApp {
         this.isRecording = false;
         this.stopRecordingTimer();
         this.updateRecordingUI();
+        
+        // Hide critical moment button
+        const criticalButton = document.getElementById('markCriticalMomentButton');
+        if (criticalButton) {
+            criticalButton.classList.add('hidden');
+        }
+        
+        // Remove recording class from container
+        const captureArea = document.getElementById('captureArea');
+        if (captureArea) {
+            captureArea.classList.remove('recording-active');
+        }
+        
+        // Update video button state
+        const videoButton = document.getElementById('toggleVideoButton');
+        if (videoButton) {
+            videoButton.classList.remove('recording');
+        }
     }
 
     onVideoRecordingComplete() {
@@ -469,8 +740,12 @@ class SmartBoxTouchApp {
                     type: 'video',
                     data: videoUrl,
                     thumbnail: thumbnail,
-                    duration: duration
+                    duration: duration,
+                    criticalMoments: this.currentRecordingMetadata?.criticalMoments || []
                 });
+                
+                // Reset metadata
+                this.currentRecordingMetadata = null;
                 
                 // Send to WebView2 host for processing
                 if (window.chrome && window.chrome.webview) {
@@ -676,50 +951,28 @@ class SmartBoxTouchApp {
     
     openSettings() {
         console.log('Settings button clicked - openSettings called');
-        if (window.chrome && window.chrome.webview) {
-            console.log('Sending openSettings message to WebView2');
-            window.chrome.webview.postMessage(JSON.stringify({
-                type: 'openSettings',
-                data: {}
-            }));
-        } else {
-            console.warn('WebView2 not available - cannot open settings');
-            alert('Settings können nicht geöffnet werden - WebView2 nicht verfügbar');
-        }
+        
+        // Navigate to settings page
+        window.location.href = './settings.html';
     }
     
     onExitRequested() {
         console.log('Exit requested - app.js onExitRequested called');
         
-        // Delegate to mode manager which handles the exit logic including
-        // checking for unsaved captures
+        // Always delegate to mode manager which handles the exit logic including
+        // checking for unsaved captures and showing confirmation dialogs
         if (this.modeManager && this.modeManager.onExitRequested) {
             console.log('Delegating to mode manager exit handler');
             this.modeManager.onExitRequested();
         } else {
-            // Fallback if mode manager not available
-            console.log('Mode manager not available, using fallback exit');
-            if (!this.dialogManager) {
-                console.error('DialogManager not available!');
-                return;
+            // If mode manager not available, exit directly without dialog
+            console.log('Mode manager not available, exiting directly');
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage(JSON.stringify({
+                    type: 'exitApp',
+                    data: {}
+                }));
             }
-            
-            this.dialogManager.showConfirmation({
-                title: 'Anwendung beenden',
-                message: 'Möchten Sie SmartBox wirklich beenden?',
-                confirmText: 'Beenden',
-                cancelText: 'Abbrechen',
-                confirmStyle: 'danger',
-                onConfirm: () => {
-                    console.log('Exit confirmed - sending exitApp message');
-                    if (window.chrome && window.chrome.webview) {
-                        window.chrome.webview.postMessage(JSON.stringify({
-                            type: 'exitApp',
-                            data: {}
-                        }));
-                    }
-                }
-            });
         }
     }
     
@@ -793,8 +1046,11 @@ class SmartBoxTouchApp {
                 id: '12345678',
                 name: 'Müller, Hans',
                 birthDate: '12.05.1965',
+                gender: 'M',
                 studyType: 'Endoskopie',
-                scheduledTime: '14:00 Uhr',
+                scheduledTime: '14:00',
+                location: 'OP 1',
+                comment: 'Nüchtern',
                 accessionNumber: 'ACC-001',
                 studyDescription: 'Gastroskopie'
             },
@@ -802,8 +1058,11 @@ class SmartBoxTouchApp {
                 id: '23456789',
                 name: 'Schmidt, Maria',
                 birthDate: '23.08.1978',
+                gender: 'W',
                 studyType: 'Radiographie',
-                scheduledTime: '14:30 Uhr',
+                scheduledTime: '14:30',
+                location: 'Röntgen 2',
+                comment: '',
                 accessionNumber: 'ACC-002',
                 studyDescription: 'Thorax-Röntgen'
             },
@@ -811,12 +1070,202 @@ class SmartBoxTouchApp {
                 id: '34567890',
                 name: 'Weber, Klaus',
                 birthDate: '01.01.1990',
+                gender: 'M',
                 studyType: 'Sonographie',
-                scheduledTime: '15:00 Uhr',
+                scheduledTime: '15:00',
+                location: 'Sono 1',
+                comment: 'Kontrastmittel vorbereitet',
                 accessionNumber: 'ACC-003',
                 studyDescription: 'Abdomen-Ultraschall'
+            },
+            {
+                id: '45678901',
+                name: 'Meyer, Anna',
+                birthDate: '15.03.1955',
+                gender: 'W',
+                studyType: 'MRT',
+                scheduledTime: '15:30',
+                location: 'MRT 1',
+                comment: 'Platzangst',
+                accessionNumber: 'ACC-004',
+                studyDescription: 'Kopf-MRT'
+            },
+            {
+                id: '56789012',
+                name: 'Fischer, Thomas',
+                birthDate: '07.11.1972',
+                gender: 'M',
+                studyType: 'CT',
+                scheduledTime: '16:00',
+                location: 'CT 2',
+                comment: '',
+                accessionNumber: 'ACC-005',
+                studyDescription: 'Thorax-CT'
+            },
+            {
+                id: '67890123',
+                name: 'Wagner, Lisa',
+                birthDate: '20.06.1985',
+                gender: 'W',
+                studyType: 'Endoskopie',
+                scheduledTime: '16:30',
+                location: 'OP 2',
+                comment: 'Sedierung erwünscht',
+                accessionNumber: 'ACC-006',
+                studyDescription: 'Koloskopie'
+            },
+            {
+                id: '78901234',
+                name: 'Becker, Frank',
+                birthDate: '18.09.1960',
+                gender: 'M',
+                studyType: 'Radiographie',
+                scheduledTime: '17:00',
+                location: 'Röntgen 1',
+                comment: '',
+                accessionNumber: 'ACC-007',
+                studyDescription: 'Abdomen-Röntgen'
+            },
+            {
+                id: '89012345',
+                name: 'Schulz, Emma',
+                birthDate: '25.12.1995',
+                gender: 'W',
+                studyType: 'Sonographie',
+                scheduledTime: '17:30',
+                location: 'Sono 2',
+                comment: 'Schwanger',
+                accessionNumber: 'ACC-008',
+                studyDescription: 'Gynäkologische Sonographie'
+            },
+            {
+                id: '90123456',
+                name: 'Koch, Michael',
+                birthDate: '03.04.1948',
+                gender: 'M',
+                studyType: 'CT',
+                scheduledTime: '18:00',
+                location: 'CT 1',
+                comment: 'Niereninsuffizienz',
+                accessionNumber: 'ACC-009',
+                studyDescription: 'Abdomen-CT'
+            },
+            {
+                id: '01234567',
+                name: 'Hofmann, Sarah',
+                birthDate: '14.07.1982',
+                gender: 'W',
+                studyType: 'MRT',
+                scheduledTime: '18:30',
+                location: 'MRT 2',
+                comment: '',
+                accessionNumber: 'ACC-010',
+                studyDescription: 'Knie-MRT'
+            },
+            {
+                id: '11234567',
+                name: 'Richter, Peter',
+                birthDate: '29.02.1956',
+                gender: 'M',
+                studyType: 'Endoskopie',
+                scheduledTime: '19:00',
+                location: 'OP 3',
+                comment: 'Blutverdünner',
+                accessionNumber: 'ACC-011',
+                studyDescription: 'ERCP'
+            },
+            {
+                id: '21234567',
+                name: 'Klein, Julia',
+                birthDate: '11.10.1988',
+                gender: 'W',
+                studyType: 'Radiographie',
+                scheduledTime: '19:30',
+                location: 'Röntgen 3',
+                comment: '',
+                accessionNumber: 'ACC-012',
+                studyDescription: 'Hand-Röntgen'
+            },
+            {
+                id: '31234567',
+                name: 'Wolf, Andreas',
+                birthDate: '22.01.1970',
+                gender: 'M',
+                studyType: 'Sonographie',
+                scheduledTime: '20:00',
+                location: 'Sono 1',
+                comment: 'Notfall',
+                accessionNumber: 'ACC-013',
+                studyDescription: 'Notfall-Sonographie'
+            },
+            {
+                id: '41234567',
+                name: 'Neumann, Claudia',
+                birthDate: '05.05.1975',
+                gender: 'W',
+                studyType: 'CT',
+                scheduledTime: '20:30',
+                location: 'CT 2',
+                comment: 'Allergie gegen Kontrastmittel',
+                accessionNumber: 'ACC-014',
+                studyDescription: 'Schädel-CT'
+            },
+            {
+                id: '51234567',
+                name: 'Zimmermann, Robert',
+                birthDate: '17.08.1992',
+                gender: 'M',
+                studyType: 'MRT',
+                scheduledTime: '21:00',
+                location: 'MRT 1',
+                comment: '',
+                accessionNumber: 'ACC-015',
+                studyDescription: 'Wirbelsäulen-MRT'
             }
         ];
+    }
+
+    onDateRangeChange(event) {
+        const value = event.target.value;
+        console.log('SmartBoxTouchApp: Date range changed to:', value);
+        
+        const dateFrom = document.getElementById('mwlDateFrom');
+        const dateTo = document.getElementById('mwlDateTo');
+        
+        if (value === 'custom') {
+            // Show custom date inputs
+            dateFrom.classList.remove('hidden');
+            dateTo.classList.remove('hidden');
+            
+            // Set default values if empty
+            if (!dateFrom.value || !dateTo.value) {
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(today.getDate() - 1);
+                const tomorrow = new Date(today);
+                tomorrow.setDate(today.getDate() + 1);
+                
+                dateFrom.value = yesterday.toISOString().split('T')[0];
+                dateTo.value = tomorrow.toISOString().split('T')[0];
+            }
+        } else {
+            // Hide custom date inputs
+            dateFrom.classList.add('hidden');
+            dateTo.classList.add('hidden');
+            
+            // Reload MWL data with new date range
+            this.loadMWLData(value);
+        }
+    }
+
+    onCustomDateChange() {
+        const dateFrom = document.getElementById('mwlDateFrom');
+        const dateTo = document.getElementById('mwlDateTo');
+        
+        if (dateFrom.value && dateTo.value) {
+            console.log('SmartBoxTouchApp: Custom date range:', dateFrom.value, 'to', dateTo.value);
+            this.loadMWLData('custom');
+        }
     }
 }
 
@@ -835,6 +1284,18 @@ if (window.chrome && window.chrome.webview) {
             case 'exportComplete':
                 if (window.smartBoxApp) {
                     window.smartBoxApp.onExportComplete(data.captureIds);
+                }
+                break;
+                
+            case 'settingsLoaded':
+                if (window.smartBoxApp && data && data.MwlSettings) {
+                    // Set the default query period in the date selector
+                    const dateRangeSelect = document.getElementById('mwlDateRange');
+                    if (dateRangeSelect && data.MwlSettings.DefaultQueryPeriod) {
+                        dateRangeSelect.value = data.MwlSettings.DefaultQueryPeriod;
+                        // Trigger change event to update UI if needed
+                        dateRangeSelect.dispatchEvent(new Event('change'));
+                    }
                 }
                 break;
                 

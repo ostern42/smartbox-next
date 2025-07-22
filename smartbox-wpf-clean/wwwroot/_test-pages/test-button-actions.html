@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Actions Test - Session 87 Safe</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/segoe-fluent-icons/font/SegoeFluentIcons.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-video {
+            width: 100%;
+            max-width: 640px;
+            height: 360px;
+            background: #000;
+            margin: 20px 0;
+            position: relative;
+        }
+        #testCanvas {
+            border: 2px dashed #ccc;
+            margin: 10px 0;
+        }
+        .property-test {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .log-output {
+            background: #222;
+            color: #0f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>SmartBox Button Actions Test - Session 87 Prevention</h1>
+    
+    <div class="test-section">
+        <h2>Property Verification Test</h2>
+        <p>Testing video element properties to prevent Session 87 trauma (Width vs videoWidth)</p>
+        
+        <video id="testVideo" class="test-video" autoplay muted></video>
+        <canvas id="testCanvas" width="320" height="240"></canvas>
+        
+        <div id="propertyTest" class="property-test">
+            Click "Test Properties" to verify DOM properties
+        </div>
+        
+        <button onclick="testVideoProperties()" class="control-button">
+            Test Properties
+        </button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Button Action System Test</h2>
+        
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0;">
+            <button id="settingsButton" data-action="opensettings" class="control-button">
+                <span>⚙</span>
+                <span>Settings</span>
+            </button>
+            
+            <button id="capturePhotoButton" data-action="capturephoto" class="control-button">
+                <i class="ms-Icon ms-Icon--Camera"></i>
+                <span>Photo</span>
+            </button>
+            
+            <button id="toggleVideoButton" data-action="togglevideo" class="control-button toggle-video">
+                <i class="ms-Icon ms-Icon--Video"></i>
+                <span>Video starten</span>
+            </button>
+            
+            <button id="markCriticalMomentButton" data-action="markcritical" class="control-button mark-critical hidden">
+                <i class="ms-Icon ms-Icon--Flag"></i>
+                <span>Markieren</span>
+            </button>
+            
+            <button id="exportButton" data-action="exportcaptures" class="control-button">
+                <i class="ms-Icon ms-Icon--Export"></i>
+                <span>Export</span>
+            </button>
+        </div>
+        
+        <button onclick="listRegisteredButtons()" class="control-button">
+            List All Registered Buttons
+        </button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Debug Log</h2>
+        <div id="logOutput" class="log-output">
+            Console output will appear here...
+        </div>
+    </div>
+    
+    <script src="../js/button-actions.js"></script>
+    <script>
+        // Override console.log to show in page
+        const originalLog = console.log;
+        const logOutput = document.getElementById('logOutput');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+            ).join(' ');
+            logOutput.innerHTML += message + '\n';
+            logOutput.scrollTop = logOutput.scrollHeight;
+        };
+        
+        // Test video properties
+        async function testVideoProperties() {
+            const video = document.getElementById('testVideo');
+            const canvas = document.getElementById('testCanvas');
+            const output = document.getElementById('propertyTest');
+            
+            output.innerHTML = '<h3>Testing Video Element Properties:</h3>';
+            
+            // Test getting webcam
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                
+                // Wait for video to load
+                video.onloadedmetadata = () => {
+                    // Test properties
+                    const tests = [
+                        { prop: 'width', value: video.width, desc: 'HTML attribute width' },
+                        { prop: 'height', value: video.height, desc: 'HTML attribute height' },
+                        { prop: 'videoWidth', value: video.videoWidth, desc: 'Actual video width (Session 87 correct!)' },
+                        { prop: 'videoHeight', value: video.videoHeight, desc: 'Actual video height (Session 87 correct!)' },
+                        { prop: 'clientWidth', value: video.clientWidth, desc: 'CSS width' },
+                        { prop: 'clientHeight', value: video.clientHeight, desc: 'CSS height' }
+                    ];
+                    
+                    tests.forEach(test => {
+                        const status = test.value ? 'success' : 'error';
+                        output.innerHTML += `
+                            <div class="${status}">
+                                ${test.prop}: ${test.value || 'undefined'} - ${test.desc}
+                            </div>
+                        `;
+                    });
+                    
+                    // Test canvas sizing
+                    output.innerHTML += '<h3>Canvas Property Test:</h3>';
+                    output.innerHTML += `
+                        <div class="success">
+                            canvas.width: ${canvas.width} (Canvas uses 'width', not 'videoWidth')
+                        </div>
+                        <div class="success">
+                            canvas.height: ${canvas.height} (Canvas uses 'height', not 'videoHeight')
+                        </div>
+                    `;
+                    
+                    // Demonstrate correct usage
+                    output.innerHTML += '<h3>Correct Usage Example:</h3>';
+                    output.innerHTML += `
+                        <div class="success">
+                            ✓ canvas.width = video.videoWidth; // CORRECT<br>
+                            ✗ canvas.width = video.width; // WRONG - Session 87 trauma!
+                        </div>
+                    `;
+                    
+                    // Actually set canvas size correctly
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    // Draw frame to canvas
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0);
+                    
+                    console.log('Property test completed successfully!');
+                };
+                
+            } catch (error) {
+                output.innerHTML += `<div class="error">Error: ${error.message}</div>`;
+                console.error('Failed to access webcam:', error);
+            }
+        }
+        
+        // List registered buttons
+        function listRegisteredButtons() {
+            if (window.buttonActionManager) {
+                window.buttonActionManager.listRegisteredButtons();
+            } else {
+                console.error('Button Action Manager not loaded!');
+            }
+        }
+        
+        // Test WebView2 communication
+        if (window.chrome && window.chrome.webview) {
+            console.log('✓ WebView2 is available');
+        } else {
+            console.log('✗ WebView2 not available - running in browser mode');
+        }
+        
+        // Listen for button action events
+        document.addEventListener('capturePhoto', () => {
+            console.log('📸 Photo capture event triggered!');
+        });
+        
+        document.addEventListener('startVideoRecording', () => {
+            console.log('🎥 Video recording started!');
+        });
+        
+        document.addEventListener('stopVideoRecording', () => {
+            console.log('⏹️ Video recording stopped!');
+        });
+        
+        document.addEventListener('criticalMomentMarked', (e) => {
+            console.log('🚩 Critical moment marked:', e.detail);
+        });
+        
+        console.log('Test page loaded - Session 87 safe button system ready!');
+    </script>
+</body>
+</html>

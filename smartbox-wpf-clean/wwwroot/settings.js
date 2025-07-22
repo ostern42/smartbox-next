@@ -44,11 +44,21 @@ class SettingsManager {
             });
         });
 
-        // Back button
+        // Back button - auto-save on exit
         if (this.backButton) {
             this.backButton.addEventListener('click', () => {
-                console.log('Back button clicked');
-                window.location.href = 'index.html';
+                console.log('Back button clicked - triggering auto-save');
+                // Use the action system to save
+                if (window.actionHandler) {
+                    const saveButton = document.querySelector('[data-action="savesettings"]');
+                    if (saveButton) {
+                        saveButton.click();
+                    }
+                }
+                // Small delay to ensure save completes
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 300);
             });
         }
 
@@ -79,11 +89,21 @@ class SettingsManager {
         //     btn.addEventListener('click', (e) => this.browseFolder(e.currentTarget));
         // });
 
-        // Keyboard shortcut for back (ESC key)
+        // Keyboard shortcut for back (ESC key) - auto-save
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                console.log('ESC key pressed');
-                window.location.href = 'index.html';
+                console.log('ESC key pressed - triggering auto-save');
+                // Use the action system to save
+                if (window.actionHandler) {
+                    const saveButton = document.querySelector('[data-action="savesettings"]');
+                    if (saveButton) {
+                        saveButton.click();
+                    }
+                }
+                // Small delay to ensure save completes
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 300);
             }
         });
 
@@ -237,13 +257,18 @@ class SettingsManager {
             // The standard checkbox handling below will work
 
             const value = sectionConfig[property];
-            if (value === undefined) return;
+            if (value === undefined) {
+                console.warn(`[SettingsManager] No value found for ${section}.${property}`);
+                return;
+            }
 
             // Set value based on input type
             if (input.type === 'checkbox') {
-                input.checked = value;
+                input.checked = Boolean(value);
+                console.log(`[SettingsManager] Set checkbox ${input.id} = ${value} (${Boolean(value)})`);
             } else {
                 input.value = value;
+                console.log(`[SettingsManager] Set input ${input.id} = ${value}`);
             }
         });
     }
