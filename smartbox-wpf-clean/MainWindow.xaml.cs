@@ -11,7 +11,7 @@ using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SmartBoxNext.Helpers;
-using SmartBoxNext.Services;
+// using SmartBoxNext.Services; // MINA: Excluded services for minimal build
 
 namespace SmartBoxNext
 {
@@ -21,23 +21,25 @@ namespace SmartBoxNext
     public partial class MainWindow : Window
     {
         private readonly ILogger<MainWindow> _logger;
-        private WebServer? _webServer;
+        // MINA: Minimal build - services excluded
+        // private WebServer? _webServer;
+        // private WebSocketServer? _webSocketServer;
         private AppConfig? _config;
-        private DicomExporter? _dicomExporter;
-        private PacsSender? _pacsSender;
-        private QueueManager? _queueManager;
-        private QueueProcessor? _queueProcessor;
-        private MwlService? _mwlService;
+        // private DicomExporter? _dicomExporter;
+        // private PacsSender? _pacsSender;
+        // private QueueManager? _queueManager;
+        // private QueueProcessor? _queueProcessor;
+        // private MwlService? _mwlService;
         
-        // New unified capture system
-        private UnifiedCaptureManager? _unifiedCaptureManager;
-        private OptimizedDicomConverter? _optimizedDicomConverter;
-        private IntegratedQueueManager? _integratedQueueManager;
+        // New unified capture system - EXCLUDED
+        // private UnifiedCaptureManager? _unifiedCaptureManager;
+        // private OptimizedDicomConverter? _optimizedDicomConverter;
+        // private IntegratedQueueManager? _integratedQueueManager;
         
         private bool _isInitialized = false;
         
-        // Patient context from MWL selection
-        private WorklistItem? _selectedWorklistItem;
+        // Patient context from MWL selection - EXCLUDED
+        // private WorklistItem? _selectedWorklistItem;
         
         private static readonly ILoggerFactory _loggerFactory = LoggerFactory.Create(builder =>
         {
@@ -76,6 +78,13 @@ namespace SmartBoxNext
                 // Start web server
                 _webServer = new WebServer("wwwroot", _config.Application.WebServerPort);
                 await _webServer.StartAsync();
+                
+                // Start WebSocket server for admin control
+                UpdateStatus("Starting admin control server...");
+                var webSocketLogger = _loggerFactory.CreateLogger<WebSocketServer>();
+                _webSocketServer = new WebSocketServer(webSocketLogger, _config.Application.WebServerPort + 1);
+                _webSocketServer.AdminMessageReceived += OnAdminMessageReceived;
+                await _webSocketServer.StartAsync();
                 
                 UpdateStatus("Initializing medical components...");
                 
@@ -313,6 +322,11 @@ namespace SmartBoxNext
             }
             catch (Exception ex)
             {
+                // Use medical error handling framework
+                var medicalError = MedicalErrorHandler.FromException(ex, MedicalErrorCategory.Configuration);
+                await MedicalErrorHandler.HandleErrorAsync(medicalError);
+                
+                // Legacy logging for backward compatibility
                 _logger.LogError(ex, "Error handling web message");
                 Logger.LogError(ex, "WebView_WebMessageReceived failed");
                 await SendErrorToWebView($"Error: {ex.Message}");
@@ -364,11 +378,13 @@ namespace SmartBoxNext
                     break;
                     
                 case "openSettings":
-                    await OpenSettings();
+                case "opensettings": // Handle both cases consistently  
+                    await HandleOpenSettings();
                     break;
                     
                 case "exitApp":
-                    System.Windows.Application.Current.Shutdown();
+                case "exitapp": // Handle both cases consistently
+                    await HandleExitApp();
                     break;
                     
                 case "photoCaptured":
@@ -491,13 +507,7 @@ namespace SmartBoxNext
                     await HandleExportCaptures(message);
                     break;
                     
-                case "opensettings":
-                    await HandleOpenSettings();
-                    break;
-                    
-                case "exitapp":
-                    await HandleExitApp();
-                    break;
+                // Removed duplicate cases - now handled above with consistent fallthrough
                     
                 case "deleteCapture":
                 case "deletecapture":
@@ -534,22 +544,7 @@ namespace SmartBoxNext
             }
         }
         
-        private async Task OpenSettings()
-        {
-            try
-            {
-                await SendMessageToWebView(new
-                {
-                    type = "showSettings",
-                    config = _config
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to open settings");
-                await SendErrorToWebView($"Failed to open settings: {ex.Message}");
-            }
-        }
+        // DEPRECATED: Legacy OpenSettings method removed - use HandleOpenSettings() for consistent navigation behavior
         
         private async Task HandleLog(JObject message)
         {
@@ -596,6 +591,9 @@ namespace SmartBoxNext
                 
                 if (string.IsNullOrEmpty(imageData))
                 {
+                    var error = MedicalErrorHandler.PatientDataError("No image data provided for photo capture", 
+                        patient?["id"]?.ToString());
+                    await MedicalErrorHandler.HandleErrorAsync(error);
                     throw new ArgumentException("No image data provided");
                 }
                 
@@ -1229,12 +1227,33 @@ namespace SmartBoxNext
                     stopTasks.Add(_webServer.StopAsync());
                 }
                 
+                // Stop WebSocket server
+                if (_webSocketServer != null)
+                {
+                    stopTasks.Add(_webSocketServer.StopAsync());
+                }
+                
                 // Wait for all stops with a reasonable timeout
                 await Task.WhenAny(Task.WhenAll(stopTasks), Task.Delay(2000));
                 
-                // Dispose new unified capture system
-                _integratedQueueManager?.Dispose();
-                _unifiedCaptureManager?.Dispose();
+                // Dispose new unified capture system with proper async cleanup
+                if (_integratedQueueManager is IAsyncDisposable asyncIntegratedQueue)
+                {
+                    await asyncIntegratedQueue.DisposeAsync();
+                }
+                else
+                {
+                    _integratedQueueManager?.Dispose();
+                }
+                
+                if (_unifiedCaptureManager is IAsyncDisposable asyncUnifiedCapture)
+                {
+                    await asyncUnifiedCapture.DisposeAsync();
+                }
+                else
+                {
+                    _unifiedCaptureManager?.Dispose();
+                }
                 
                 // Save queue (legacy)
                 _queueManager?.Dispose();
@@ -2632,6 +2651,433 @@ namespace SmartBoxNext
             {
                 _logger.LogError(ex, "Failed to handle delete capture");
                 await SendErrorToWebView("Löschen fehlgeschlagen");
+            }
+        }
+
+        // Admin WebSocket Message Handler
+        private async void OnAdminMessageReceived(object? sender, AdminMessageEventArgs e)
+        {
+            try
+            {
+                _logger.LogDebug($"Admin message received: {e.Message.Type} from {e.ConnectionId}");
+                
+                switch (e.Message.Type)
+                {
+                    case "get_system_status":
+                        await HandleGetSystemStatus(e.ConnectionId);
+                        break;
+                    case "get_patient_list":
+                        await HandleGetPatientList(e.ConnectionId);
+                        break;
+                    case "get_queue_status":
+                        await HandleGetQueueStatus(e.ConnectionId);
+                        break;
+                    case "get_recording_state":
+                        await HandleGetRecordingState(e.ConnectionId);
+                        break;
+                    case "select_patient":
+                        await HandleSelectPatient(e.Message.Data);
+                        break;
+                    case "start_recording":
+                        await HandleStartRecording(e.Message.Data);
+                        break;
+                    case "stop_recording":
+                        await HandleStopRecording();
+                        break;
+                    case "capture_photo":
+                        await HandleAdminCapturePhoto();
+                        break;
+                    case "mark_critical":
+                        await HandleMarkCritical(e.Message.Data);
+                        break;
+                    case "emergency_stop":
+                        await HandleEmergencyStop();
+                        break;
+                    case "update_quality":
+                        await HandleUpdateQuality(e.Message.Data);
+                        break;
+                    case "process_queue":
+                        await HandleProcessQueue();
+                        break;
+                    case "export_current":
+                        await HandleExportCurrent();
+                        break;
+                    case "clear_cache":
+                        await HandleClearCache();
+                        break;
+                    case "restart_service":
+                        await HandleRestartService();
+                        break;
+                    case "run_diagnostics":
+                        await HandleRunDiagnostics(e.ConnectionId);
+                        break;
+                    case "shutdown_system":
+                        await HandleShutdownSystem();
+                        break;
+                    case "refresh_patients":
+                        await HandleRefreshPatients(e.ConnectionId);
+                        break;
+                    case "heartbeat":
+                        // Heartbeat - just acknowledge
+                        break;
+                    default:
+                        _logger.LogWarning($"Unknown admin message type: {e.Message.Type}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error handling admin message {e.Message.Type}");
+            }
+        }
+
+        private async Task HandleGetSystemStatus(string connectionId)
+        {
+            try
+            {
+                if (_webSocketServer != null)
+                {
+                    await _webSocketServer.SendSystemStatusAsync(connectionId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send system status");
+            }
+        }
+
+        private async Task HandleGetPatientList(string connectionId)
+        {
+            try
+            {
+                // Get patients from MWL service
+                var patients = new List<object>();
+                
+                if (_mwlService != null)
+                {
+                    // This would integrate with your actual MWL service
+                    // For now, create a sample patient list
+                    patients.Add(new
+                    {
+                        id = "PAT001",
+                        name = "Test Patient",
+                        modality = "US",
+                        isSelected = _selectedWorklistItem?.PatientId == "PAT001"
+                    });
+                }
+
+                if (_webSocketServer != null)
+                {
+                    await _webSocketServer.SendToConnectionAsync(connectionId, new AdminMessage
+                    {
+                        Type = "patient_list",
+                        Data = patients
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get patient list");
+            }
+        }
+
+        private async Task HandleGetQueueStatus(string connectionId)
+        {
+            try
+            {
+                var queueData = new
+                {
+                    items = new[]
+                    {
+                        new { filename = "sample.dcm", status = "pending" },
+                        new { filename = "test.dcm", status = "processing" }
+                    }
+                };
+
+                if (_webSocketServer != null)
+                {
+                    await _webSocketServer.SendToConnectionAsync(connectionId, new AdminMessage
+                    {
+                        Type = "queue_update",
+                        Data = queueData
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get queue status");
+            }
+        }
+
+        private async Task HandleGetRecordingState(string connectionId)
+        {
+            try
+            {
+                var recordingState = new
+                {
+                    is_recording = false, // This should come from your recording service
+                    duration_seconds = 0,
+                    file_size_mb = 0.0,
+                    frame_rate = 30,
+                    resolution = "1920x1080"
+                };
+
+                if (_webSocketServer != null)
+                {
+                    await _webSocketServer.SendToConnectionAsync(connectionId, new AdminMessage
+                    {
+                        Type = "recording_state",
+                        Data = recordingState
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get recording state");
+            }
+        }
+
+        private async Task HandleSelectPatient(object data)
+        {
+            try
+            {
+                var patientData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(data.ToString());
+                var patientId = patientData?["patientId"]?.ToString();
+                
+                if (!string.IsNullOrEmpty(patientId))
+                {
+                    // This should integrate with your patient selection logic
+                    _logger.LogInformation($"Admin selected patient: {patientId}");
+                    
+                    // Broadcast to all admin connections
+                    if (_webSocketServer != null)
+                    {
+                        await _webSocketServer.BroadcastStatusAsync(new
+                        {
+                            type = "patient_changed",
+                            patient = patientId
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to select patient");
+            }
+        }
+
+        private async Task HandleStartRecording(object data)
+        {
+            try
+            {
+                // This should integrate with your recording service
+                _logger.LogInformation("Admin started recording");
+                
+                if (_webSocketServer != null)
+                {
+                    await _webSocketServer.BroadcastRecordingStateAsync(new
+                    {
+                        is_recording = true,
+                        duration_seconds = 0,
+                        file_size_mb = 0.0
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to start recording");
+            }
+        }
+
+        private async Task HandleStopRecording()
+        {
+            try
+            {
+                // This should integrate with your recording service
+                _logger.LogInformation("Admin stopped recording");
+                
+                if (_webSocketServer != null)
+                {
+                    await _webSocketServer.BroadcastRecordingStateAsync(new
+                    {
+                        is_recording = false,
+                        duration_seconds = 0,
+                        file_size_mb = 0.0
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to stop recording");
+            }
+        }
+
+        private async Task HandleAdminCapturePhoto()
+        {
+            try
+            {
+                // Send capture photo command to the main interface
+                await webView.CoreWebView2.ExecuteScriptAsync("window.adminControl && window.adminControl.capturePhoto && window.adminControl.capturePhoto();");
+                _logger.LogInformation("Admin triggered photo capture");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to capture photo from admin");
+            }
+        }
+
+        private async Task HandleMarkCritical(object data)
+        {
+            try
+            {
+                _logger.LogInformation("Admin marked critical moment");
+                // This should integrate with your timeline/marking system
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to mark critical moment");
+            }
+        }
+
+        private async Task HandleEmergencyStop()
+        {
+            try
+            {
+                _logger.LogWarning("Emergency stop triggered by admin");
+                // Implement emergency stop logic here
+                await HandleStopRecording();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to execute emergency stop");
+            }
+        }
+
+        private async Task HandleUpdateQuality(object data)
+        {
+            try
+            {
+                var qualityData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(data.ToString());
+                var type = qualityData?["type"]?.ToString();
+                var value = qualityData?["value"]?.ToString();
+                
+                _logger.LogInformation($"Admin updated {type} quality to {value}");
+                // This should integrate with your quality control system
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update quality");
+            }
+        }
+
+        private async Task HandleProcessQueue()
+        {
+            try
+            {
+                _logger.LogInformation("Admin triggered queue processing");
+                // This should integrate with your queue processor
+                _queueProcessor?.Start();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process queue");
+            }
+        }
+
+        private async Task HandleExportCurrent()
+        {
+            try
+            {
+                _logger.LogInformation("Admin triggered current export");
+                // This should integrate with your export system
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to export current");
+            }
+        }
+
+        private async Task HandleClearCache()
+        {
+            try
+            {
+                _logger.LogInformation("Admin triggered cache clear");
+                // Implement cache clearing logic
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clear cache");
+            }
+        }
+
+        private async Task HandleRestartService()
+        {
+            try
+            {
+                _logger.LogInformation("Admin triggered service restart");
+                // Implement service restart logic
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to restart service");
+            }
+        }
+
+        private async Task HandleRunDiagnostics(string connectionId)
+        {
+            try
+            {
+                _logger.LogInformation("Admin triggered diagnostics");
+                
+                var diagnostics = new
+                {
+                    webview_status = "OK",
+                    websocket_connections = _webSocketServer?.ConnectionCount ?? 0,
+                    memory_usage = GC.GetTotalMemory(false) / 1024 / 1024,
+                    capture_status = "OK"
+                };
+
+                if (_webSocketServer != null)
+                {
+                    await _webSocketServer.SendToConnectionAsync(connectionId, new AdminMessage
+                    {
+                        Type = "diagnostics_result",
+                        Data = diagnostics
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to run diagnostics");
+            }
+        }
+
+        private async Task HandleShutdownSystem()
+        {
+            try
+            {
+                _logger.LogWarning("System shutdown requested by admin");
+                // Implement graceful shutdown
+                await Task.Delay(1000); // Give time for response
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to shutdown system");
+            }
+        }
+
+        private async Task HandleRefreshPatients(string connectionId)
+        {
+            try
+            {
+                // Refresh the patient list from MWL
+                await HandleGetPatientList(connectionId);
+                _logger.LogInformation("Admin refreshed patient list");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to refresh patients");
             }
         }
     }

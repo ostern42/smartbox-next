@@ -1,0 +1,505 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SmartBox Mobile Integration Configuration",
+  "description": "Mobile device integration settings for iOS and Android platforms",
+  "version": "2.0.0",
+
+  "MobileIntegration": {
+    "HttpListenerPort": 8080,
+    "WebSocketPort": 8081,
+    "DiscoveryPort": 9999,
+    "EnableBluetoothDiscovery": true,
+    "EnableWiFiDirectDiscovery": false,
+    "EnableNFCPairing": true,
+    "EnableQRCodePairing": true,
+    "MinimumSecurityScore": 85.0,
+    "MaxConnectedDevices": 10,
+    "ConnectionTimeoutSeconds": 30,
+    "EnableEncryption": true,
+    "RequireDeviceAuthentication": true,
+    "DeviceDiscoveryIntervalMinutes": 2,
+    "SessionTimeoutMinutes": 30
+  },
+
+  "SupportedPlatforms": {
+    "Android": {
+      "MinimumAPILevel": 26,
+      "TargetAPILevel": 34,
+      "MinimumAppVersion": "2.0.0",
+      "RequiredPermissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.NFC"
+      ],
+      "SecurityFeatures": [
+        "BiometricAuthentication",
+        "DeviceEncryption",
+        "NetworkSecurityConfig",
+        "AppPinning",
+        "TrustStore"
+      ],
+      "SupportedArchitectures": [
+        "arm64-v8a",
+        "armeabi-v7a",
+        "x86_64"
+      ],
+      "RequiredHardware": [
+        "Camera",
+        "Microphone",
+        "WiFi",
+        "Bluetooth"
+      ]
+    },
+
+    "iOS": {
+      "MinimumVersion": "13.0",
+      "MinimumAppVersion": "2.0.0",
+      "RequiredFrameworks": [
+        "AVFoundation",
+        "CoreMedia",
+        "Security",
+        "LocalAuthentication",
+        "NetworkExtension",
+        "CoreBluetooth",
+        "CoreNFC"
+      ],
+      "RequiredCapabilities": [
+        "camera",
+        "microphone",
+        "wifi",
+        "bluetooth",
+        "nfc"
+      ],
+      "SecurityFeatures": [
+        "FaceID",
+        "TouchID",
+        "AppTransportSecurity",
+        "DataProtection",
+        "KeychainAccess",
+        "CertificatePinning"
+      ],
+      "SupportedArchitectures": [
+        "arm64",
+        "x86_64"
+      ],
+      "RequiredHardware": [
+        "Camera",
+        "Microphone",
+        "WiFi",
+        "Bluetooth"
+      ]
+    }
+  },
+
+  "DeviceDiscovery": {
+    "Methods": {
+      "UDP_Broadcast": {
+        "Enabled": true,
+        "Port": 9999,
+        "BroadcastInterval": 30,
+        "ResponseTimeout": 5,
+        "MaxRetries": 3
+      },
+      "Bluetooth": {
+        "Enabled": true,
+        "ServiceUUID": "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+        "ScanDuration": 10,
+        "ScanInterval": 30,
+        "RequirePairing": true
+      },
+      "WiFi_Direct": {
+        "Enabled": false,
+        "GroupName": "SmartBox-Medical",
+        "Password": "SmartBox2024!",
+        "MaxPeers": 8
+      },
+      "NFC": {
+        "Enabled": true,
+        "ApplicationId": "SmartBoxMedical",
+        "PairingTimeout": 30
+      },
+      "QR_Code": {
+        "Enabled": true,
+        "EncryptionEnabled": true,
+        "ExpirationMinutes": 5,
+        "RefreshInterval": 60
+      }
+    },
+
+    "DeviceValidation": {
+      "RequireCertificate": true,
+      "ValidateDeviceId": true,
+      "ValidateAppSignature": true,
+      "ValidateAppVersion": true,
+      "BlacklistEnabled": true,
+      "WhitelistEnabled": false,
+      "RequireNetworkSecurity": true
+    }
+  },
+
+  "Authentication": {
+    "Methods": [
+      "Certificate",
+      "Biometric",
+      "PIN",
+      "Password"
+    ],
+    "RequireMultiFactor": true,
+    "CertificateValidation": {
+      "ValidateChain": true,
+      "RequireClientCert": true,
+      "AllowSelfSigned": false,
+      "ValidateRevocation": true,
+      "TrustedIssuers": [
+        "SmartBox Medical CA",
+        "Healthcare Device CA"
+      ]
+    },
+    "BiometricSettings": {
+      "AllowFaceID": true,
+      "AllowTouchID": true,
+      "AllowFingerprint": true,
+      "FallbackToPasscode": true,
+      "MaxFailedAttempts": 3
+    },
+    "SessionManagement": {
+      "SessionTimeout": 30,
+      "IdleTimeout": 15,
+      "MaxConcurrentSessions": 1,
+      "RequireReauth": true,
+      "TokenRefreshInterval": 60
+    }
+  },
+
+  "DataSynchronization": {
+    "SyncMethods": [
+      "HTTP",
+      "WebSocket",
+      "Bluetooth"
+    ],
+    "DefaultMethod": "HTTP",
+    "AutoSync": true,
+    "SyncOnConnect": true,
+    "SyncOnDisconnect": false,
+    "SyncInterval": 300,
+    "ConflictResolution": "ServerWins",
+    
+    "SyncTypes": {
+      "DICOM": {
+        "Enabled": true,
+        "Priority": "High",
+        "RequireEncryption": true,
+        "CompressionLevel": "High",
+        "MaxFileSize": 52428800,
+        "ChunkSize": 1048576
+      },
+      "Images": {
+        "Enabled": true,
+        "Priority": "Medium",
+        "RequireEncryption": true,
+        "CompressionLevel": "Medium",
+        "MaxFileSize": 10485760,
+        "ChunkSize": 524288
+      },
+      "Videos": {
+        "Enabled": true,
+        "Priority": "Medium",
+        "RequireEncryption": true,
+        "CompressionLevel": "Low",
+        "MaxFileSize": 104857600,
+        "ChunkSize": 1048576
+      },
+      "PatientData": {
+        "Enabled": true,
+        "Priority": "High",
+        "RequireEncryption": true,
+        "CompressionLevel": "High",
+        "MaxFileSize": 1048576,
+        "ChunkSize": 4096
+      },
+      "Configuration": {
+        "Enabled": true,
+        "Priority": "High",
+        "RequireEncryption": true,
+        "CompressionLevel": "High",
+        "MaxFileSize": 1048576,
+        "ChunkSize": 4096
+      }
+    }
+  },
+
+  "Communication": {
+    "Protocols": {
+      "HTTP": {
+        "Enabled": true,
+        "Port": 8080,
+        "SSL": true,
+        "Certificate": "./Data/Security/server.crt",
+        "PrivateKey": "./Data/Security/server.key",
+        "MaxRequestSize": 104857600,
+        "Timeout": 300,
+        "KeepAlive": true
+      },
+      "WebSocket": {
+        "Enabled": true,
+        "Port": 8081,
+        "SSL": true,
+        "MaxConnections": 50,
+        "MessageSize": 1048576,
+        "HeartbeatInterval": 30,
+        "CompressionEnabled": true
+      },
+      "Bluetooth": {
+        "Enabled": true,
+        "ServiceUUID": "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+        "CharacteristicUUID": "6E400002-B5A3-F393-E0A9-E50E24DCCA9E",
+        "MTU": 244,
+        "ConnectionInterval": 15,
+        "SupplementalAdvertising": true
+      }
+    },
+
+    "MessageFormat": {
+      "Encoding": "JSON",
+      "Compression": "GZIP",
+      "Encryption": "AES-256-GCM",
+      "DigitalSignature": true,
+      "TimestampRequired": true,
+      "SequenceNumbering": true
+    },
+
+    "QueueManagement": {
+      "MaxQueueSize": 1000,
+      "PriorityLevels": 5,
+      "RetryAttempts": 3,
+      "RetryDelay": 5,
+      "DeadLetterQueue": true,
+      "PersistentQueue": true
+    }
+  },
+
+  "Security": {
+    "NetworkSecurity": {
+      "RequireTLS": true,
+      "MinimumTLSVersion": "1.2",
+      "CipherSuites": [
+        "ECDHE-RSA-AES256-GCM-SHA384",
+        "ECDHE-RSA-AES128-GCM-SHA256",
+        "DHE-RSA-AES256-GCM-SHA384",
+        "DHE-RSA-AES128-GCM-SHA256"
+      ],
+      "EnableHSTS": true,
+      "CertificatePinning": true,
+      "ValidateCertificate": true,
+      "RequireClientCert": true
+    },
+
+    "DataProtection": {
+      "EncryptionAtRest": true,
+      "EncryptionInTransit": true,
+      "KeyManagement": {
+        "Algorithm": "AES-256-GCM",
+        "KeyDerivation": "PBKDF2",
+        "KeyRotation": 90,
+        "KeyEscrow": false,
+        "HardwareSecurityModule": false
+      },
+      "DataClassification": "Sensitive",
+      "DataMasking": true,
+      "TokenizedFields": [
+        "PatientID",
+        "SSN",
+        "DateOfBirth"
+      ]
+    },
+
+    "AccessControl": {
+      "RoleBasedAccess": true,
+      "PrincipleOfLeastPrivilege": true,
+      "AuditLogging": true,
+      "SessionMonitoring": true,
+      "GeoFencing": false,
+      "DeviceFingerprinting": true,
+      "AnomalyDetection": true
+    },
+
+    "ThreatProtection": {
+      "IntrusionDetection": true,
+      "RateLimiting": true,
+      "DDoSProtection": true,
+      "MalwareScanning": true,
+      "DataLeakPrevention": true,
+      "SecurityHeaders": true,
+      "InputValidation": true,
+      "OutputEncoding": true
+    }
+  },
+
+  "Performance": {
+    "ConnectionPooling": {
+      "MaxConnections": 20,
+      "MinConnections": 2,
+      "ConnectionTimeout": 30,
+      "IdleTimeout": 300,
+      "ValidateConnections": true
+    },
+
+    "Caching": {
+      "EnableCache": true,
+      "CacheSize": 67108864,
+      "CacheExpiration": 3600,
+      "CacheLocation": "./Data/Cache/Mobile",
+      "DistributedCache": false
+    },
+
+    "OptimizationSettings": {
+      "EnableCompression": true,
+      "CompressionLevel": 6,
+      "EnablePipelining": true,
+      "EnableKeepAlive": true,
+      "BufferSize": 65536,
+      "MaxConcurrentRequests": 10
+    }
+  },
+
+  "Monitoring": {
+    "HealthChecks": {
+      "Enabled": true,
+      "Interval": 60,
+      "Timeout": 10,
+      "FailureThreshold": 3,
+      "SuccessThreshold": 1
+    },
+
+    "Metrics": {
+      "Enabled": true,
+      "CollectionInterval": 30,
+      "RetentionDays": 30,
+      "MetricsEndpoint": "/metrics",
+      "IncludeSystemMetrics": true,
+      "IncludeApplicationMetrics": true
+    },
+
+    "Alerting": {
+      "Enabled": true,
+      "AlertThresholds": {
+        "ConnectionFailureRate": 10,
+        "ResponseTime": 5000,
+        "MemoryUsage": 80,
+        "CPUUsage": 75,
+        "DiskUsage": 85,
+        "ActiveConnections": 45
+      },
+      "NotificationChannels": [
+        "Email",
+        "SMS",
+        "Webhook"
+      ]
+    },
+
+    "Logging": {
+      "LogLevel": "Information",
+      "EnableStructuredLogging": true,
+      "LogRetentionDays": 90,
+      "SensitiveDataMasking": true,
+      "PerformanceLogging": true,
+      "SecurityEventLogging": true
+    }
+  },
+
+  "Compliance": {
+    "HIPAA": {
+      "EncryptionRequired": true,
+      "AccessControlRequired": true,
+      "AuditTrailRequired": true,
+      "DataMinimization": true,
+      "BusinessAssociateAgreement": true,
+      "BreachNotificationProcedure": true,
+      "DataRetentionPolicy": true
+    },
+
+    "FDA": {
+      "SoftwareClassification": "Class II",
+      "QualitySystemRegulation": "21 CFR 820",
+      "SoftwareLifecycleProcess": "IEC 62304",
+      "RiskManagement": "ISO 14971",
+      "ClinicalEvaluation": true,
+      "PostMarketSurveillance": true,
+      "AdverseEventReporting": true
+    },
+
+    "GDPR": {
+      "ConsentManagement": true,
+      "DataSubjectRights": true,
+      "DataPortability": true,
+      "RightToErasure": true,
+      "DataProtectionImpactAssessment": true,
+      "PrivacyByDesign": true,
+      "DataProcessingAgreement": true
+    },
+
+    "DICOM": {
+      "ConformanceStatement": "DICOM PS3.x",
+      "SecurityProfiles": [
+        "Basic TLS",
+        "AES TLS"
+      ],
+      "AuditMessages": "IHE ATNA",
+      "PatientPrivacy": true,
+      "ImageIntegrity": true
+    }
+  },
+
+  "Testing": {
+    "EnableTestMode": false,
+    "MockDevices": false,
+    "SimulateNetworkConditions": false,
+    "TestDataDirectory": "./TestData/Mobile",
+    "TestDevices": [
+      {
+        "DeviceId": "TEST_ANDROID_001",
+        "Platform": "Android",
+        "Version": "12.0",
+        "AppVersion": "2.0.0"
+      },
+      {
+        "DeviceId": "TEST_IOS_001",
+        "Platform": "iOS",
+        "Version": "15.0",
+        "AppVersion": "2.0.0"
+      }
+    ],
+    "LoadTesting": {
+      "MaxConcurrentDevices": 50,
+      "TestDuration": 300,
+      "MessageRate": 10
+    }
+  },
+
+  "Deployment": {
+    "DistributionMethods": [
+      "Enterprise",
+      "AppStore",
+      "TestFlight",
+      "Internal"
+    ],
+    "CodeSigning": {
+      "AndroidKeystore": "./Security/android.keystore",
+      "iOSCertificate": "./Security/ios_distribution.p12",
+      "SigningAlgorithm": "SHA256withRSA"
+    },
+    "AppConfiguration": {
+      "ConfigurationProfile": "Production",
+      "RemoteConfiguration": true,
+      "FeatureFlags": true,
+      "A_B_Testing": false
+    }
+  }
+}

@@ -1,7 +1,7 @@
 # SmartBoxNext Complete UI/JS/C# Mapping
 **Project**: smartbox-next/smartbox-wpf-clean
-**Updated**: 2025-07-11
-**Status**: MWL FULLY IMPLEMENTED ✅
+**Updated**: 2025-07-14
+**Status**: MWL FULLY IMPLEMENTED WITH DATE SELECTOR ✅
 
 ## ✅ CONFIRMED WORKING FEATURES
 
@@ -21,6 +21,9 @@
 | Cache Hours | `mwlsettings-cache-expiry-hours` | `_config.MwlSettings.CacheExpiryHours` | ✅ |
 | Auto Refresh | `mwlsettings-auto-refresh-seconds` | `_config.MwlSettings.AutoRefreshSeconds` | ✅ |
 | Emergency First | `mwlsettings-show-emergency-first` | `_config.MwlSettings.ShowEmergencyFirst` | ✅ |
+| Default Query Period | `mwlsettings-default-query-period` | `_config.MwlSettings.DefaultQueryPeriod` | ✅ |
+| Query Days Before | `mwlsettings-query-days-before` | `_config.MwlSettings.QueryDaysBefore` | ✅ |
+| Query Days After | `mwlsettings-query-days-after` | `_config.MwlSettings.QueryDaysAfter` | ✅ |
 | Test MWL Button | `test-mwl` | Handler: `HandleTestMwlConnection()` | ✅ |
 
 ### PACS Settings Fields

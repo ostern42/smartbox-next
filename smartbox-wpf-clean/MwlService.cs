@@ -25,7 +25,7 @@ namespace SmartBoxNext
             _config = config;
             
             // Ensure cache directory exists
-            var cacheDir = Path.Combine(_config.StoragePath, "Cache");
+            var cacheDir = Path.Combine(_config.Storage.TempPath, "Cache");
             Directory.CreateDirectory(cacheDir);
             
             _cacheFilePath = Path.Combine(cacheDir, "mwl_cache.json");

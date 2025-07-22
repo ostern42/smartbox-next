@@ -10,6 +10,7 @@ using FellowOakDicom;
 using FellowOakDicom.Network;
 using FellowOakDicom.Network.Client;
 using Microsoft.Extensions.Logging;
+using SmartBoxNext.Medical;
 using Color = System.Windows.Media.Color;
 using Orientation = System.Windows.Controls.Orientation;
 
@@ -117,7 +118,7 @@ namespace SmartBoxNext
                         using (var tcpClient = new System.Net.Sockets.TcpClient())
                         {
                             var connectTask = tcpClient.ConnectAsync(_host, _port);
-                            if (await Task.WhenAny(connectTask, Task.Delay(5000)) == connectTask)
+                            if (await Task.WhenAny(connectTask, Task.Delay(MedicalConstants.PACS_CONNECTION_TIMEOUT_S * 1000)) == connectTask)
                             {
                                 return new TestResult { Success = true, Message = "Connection successful" };
                             }
@@ -264,9 +265,9 @@ namespace SmartBoxNext
                 {
                     Margin = new Thickness(0, 0, 0, 10),
                     Padding = new Thickness(15),
-                    Background = new SolidColorBrush(result.Success ? Color.FromRgb(242, 250, 242) : Color.FromRgb(253, 242, 242)),
-                    BorderBrush = new SolidColorBrush(result.Success ? Color.FromRgb(16, 124, 16) : Color.FromRgb(216, 59, 1)),
-                    BorderThickness = new Thickness(1),
+                    Background = System.Windows.Media.Brushes.White,
+                    BorderBrush = new SolidColorBrush(result.Success ? MedicalConstants.SUCCESS_GREEN : MedicalConstants.EMERGENCY_RED),
+                    BorderThickness = new Thickness(2),
                     CornerRadius = new CornerRadius(4)
                 };
                 
@@ -277,7 +278,7 @@ namespace SmartBoxNext
                 headerPanel.Children.Add(new TextBlock
                 {
                     Text = result.Success ? "✓ " : "✗ ",
-                    Foreground = new SolidColorBrush(result.Success ? Color.FromRgb(16, 124, 16) : Color.FromRgb(216, 59, 1)),
+                    Foreground = new SolidColorBrush(result.Success ? MedicalConstants.SUCCESS_GREEN : MedicalConstants.EMERGENCY_RED),
                     FontWeight = FontWeights.Bold,
                     FontSize = 16
                 });
@@ -285,7 +286,8 @@ namespace SmartBoxNext
                 {
                     Text = testName,
                     FontWeight = FontWeights.Bold,
-                    FontSize = 14
+                    FontSize = 14,
+                    Foreground = new SolidColorBrush(MedicalConstants.PRIMARY_TEXT)
                 });
                 panel.Children.Add(headerPanel);
                 
@@ -293,7 +295,7 @@ namespace SmartBoxNext
                 panel.Children.Add(new TextBlock
                 {
                     Text = description,
-                    Foreground = new SolidColorBrush(Color.FromRgb(96, 94, 92)),
+                    Foreground = new SolidColorBrush(MedicalConstants.SECONDARY_TEXT),
                     Margin = new Thickness(20, 5, 0, 5)
                 });
                 
@@ -301,9 +303,9 @@ namespace SmartBoxNext
                 panel.Children.Add(new TextBlock
                 {
                     Text = result.Message,
-                    Foreground = new SolidColorBrush(result.Success ? Color.FromRgb(16, 124, 16) : Color.FromRgb(216, 59, 1)),
+                    Foreground = new SolidColorBrush(MedicalConstants.PRIMARY_TEXT),
                     Margin = new Thickness(20, 0, 0, 0),
-                    FontStyle = FontStyles.Italic
+                    FontWeight = result.Success ? FontWeights.Normal : FontWeights.SemiBold
                 });
                 
                 container.Child = panel;
@@ -319,7 +321,8 @@ namespace SmartBoxNext
             Dispatcher.Invoke(() =>
             {
                 SummaryText.Text = message;
-                SummaryText.Foreground = new SolidColorBrush(success ? Color.FromRgb(16, 124, 16) : Color.FromRgb(216, 59, 1));
+                SummaryText.Foreground = new SolidColorBrush(MedicalConstants.PRIMARY_TEXT);
+                SummaryText.FontWeight = FontWeights.Bold;
                 OkButton.IsEnabled = true;
                 
                 if (!success)
@@ -328,7 +331,7 @@ namespace SmartBoxNext
                     var helpText = new TextBlock
                     {
                         Text = GetHelpText(),
-                        Foreground = new SolidColorBrush(Color.FromRgb(96, 94, 92)),
+                        Foreground = new SolidColorBrush(MedicalConstants.SECONDARY_TEXT),
                         Margin = new Thickness(0, 20, 0, 0),
                         TextWrapping = TextWrapping.Wrap,
                         FontStyle = FontStyles.Italic

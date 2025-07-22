@@ -1,0 +1,360 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SmartBox Cloud Synchronization Configuration",
+  "description": "HIPAA-compliant cloud synchronization settings for medical device data",
+  "version": "2.0.0",
+
+  "CloudSync": {
+    "EnableAWSS3": true,
+    "EnableAzureBlob": true,
+    "EnableGoogleCloud": false,
+    "EncryptionEnabled": true,
+    "CompressionEnabled": true,
+    "MaxFileSize": 104857600,
+    "RetryAttempts": 3,
+    "TimeoutSeconds": 300,
+    "ConcurrentUploads": 4,
+    "BandwidthLimitMbps": 50,
+    "EnableDeduplication": true,
+    "EnableIntegrityChecks": true
+  },
+
+  "CloudProviders": {
+    "AWS_S3": {
+      "Enabled": true,
+      "BucketName": "smartbox-medical-data-${ENVIRONMENT}",
+      "Region": "us-east-1",
+      "ServerSideEncryption": "AES256",
+      "StorageClass": "STANDARD_IA",
+      "EnableVersioning": true,
+      "EnableLogging": true,
+      "EnableCrossRegionReplication": true,
+      "BackupRegion": "us-west-2",
+      "AccessControl": {
+        "PublicAccessBlock": true,
+        "BucketPolicy": "MedicalDataPolicy",
+        "IAMRole": "SmartBoxMedicalDataRole"
+      },
+      "Lifecycle": {
+        "TransitionToIA": 30,
+        "TransitionToGlacier": 90,
+        "TransitionToDeepArchive": 365,
+        "DeleteAfterDays": 2555
+      },
+      "Security": {
+        "EnableKMSEncryption": true,
+        "KMSKeyId": "alias/smartbox-medical-data",
+        "EnableMFA": true,
+        "RequireSSL": true
+      }
+    },
+
+    "Azure_Blob": {
+      "Enabled": true,
+      "StorageAccount": "smartboxmedical${ENVIRONMENT}",
+      "ContainerName": "medical-data",
+      "AccessTier": "Cool",
+      "EnableEncryption": true,
+      "EnableVersioning": true,
+      "EnableLogging": true,
+      "EnableCors": false,
+      "Security": {
+        "AuthenticationMethod": "AAD",
+        "EnableRBAC": true,
+        "NetworkAccess": "Private",
+        "EnableFirewall": true,
+        "AllowedIPs": []
+      },
+      "Lifecycle": {
+        "TransitionToCool": 30,
+        "TransitionToArchive": 90,
+        "DeleteAfterDays": 2555
+      },
+      "Compliance": {
+        "EnableAuditLogging": true,
+        "EnableThreatProtection": true,
+        "DataClassification": "HighlySensitive"
+      }
+    },
+
+    "Google_Cloud": {
+      "Enabled": false,
+      "BucketName": "smartbox-medical-data-${ENVIRONMENT}",
+      "Region": "us-central1",
+      "StorageClass": "NEARLINE",
+      "EnableEncryption": true,
+      "EnableVersioning": true,
+      "EnableLogging": true,
+      "Security": {
+        "AuthenticationMethod": "ServiceAccount",
+        "IAMPolicy": "MedicalDataPolicy",
+        "EnableUniformBucketLevelAccess": true
+      },
+      "Lifecycle": {
+        "TransitionToNearline": 30,
+        "TransitionToColdline": 90,
+        "TransitionToArchive": 365,
+        "DeleteAfterDays": 2555
+      }
+    }
+  },
+
+  "SyncPolicies": {
+    "DICOM": {
+      "Priority": "Critical",
+      "RequireEncryption": true,
+      "RequireDigitalSignature": true,
+      "RequireIntegrityCheck": true,
+      "RetentionDays": 2555,
+      "EnableAuditTrail": true,
+      "SyncFrequency": "Immediate",
+      "BackupCopies": 3,
+      "CompressionLevel": "High",
+      "EncryptionAlgorithm": "AES-256-GCM",
+      "AllowedProviders": ["AWS_S3", "Azure_Blob"],
+      "RequireMFA": true
+    },
+
+    "Images": {
+      "Priority": "High",
+      "RequireEncryption": true,
+      "RequireDigitalSignature": false,
+      "RequireIntegrityCheck": true,
+      "RetentionDays": 1095,
+      "EnableAuditTrail": true,
+      "SyncFrequency": "Scheduled",
+      "BackupCopies": 2,
+      "CompressionLevel": "Medium",
+      "EncryptionAlgorithm": "AES-256-GCM",
+      "AllowedProviders": ["AWS_S3", "Azure_Blob"],
+      "RequireMFA": false
+    },
+
+    "Videos": {
+      "Priority": "High",
+      "RequireEncryption": true,
+      "RequireDigitalSignature": false,
+      "RequireIntegrityCheck": true,
+      "RetentionDays": 1095,
+      "EnableAuditTrail": true,
+      "SyncFrequency": "Scheduled",
+      "BackupCopies": 2,
+      "CompressionLevel": "Low",
+      "EncryptionAlgorithm": "AES-256-GCM",
+      "AllowedProviders": ["AWS_S3", "Azure_Blob"],
+      "RequireMFA": false
+    },
+
+    "AuditLogs": {
+      "Priority": "Critical",
+      "RequireEncryption": true,
+      "RequireDigitalSignature": true,
+      "RequireIntegrityCheck": true,
+      "RetentionDays": 2555,
+      "EnableAuditTrail": false,
+      "SyncFrequency": "Immediate",
+      "BackupCopies": 3,
+      "CompressionLevel": "High",
+      "EncryptionAlgorithm": "AES-256-GCM",
+      "AllowedProviders": ["AWS_S3", "Azure_Blob"],
+      "RequireMFA": true,
+      "ImmutableStorage": true
+    },
+
+    "Configuration": {
+      "Priority": "High",
+      "RequireEncryption": true,
+      "RequireDigitalSignature": true,
+      "RequireIntegrityCheck": true,
+      "RetentionDays": 1095,
+      "EnableAuditTrail": true,
+      "SyncFrequency": "OnChange",
+      "BackupCopies": 3,
+      "CompressionLevel": "High",
+      "EncryptionAlgorithm": "AES-256-GCM",
+      "AllowedProviders": ["AWS_S3", "Azure_Blob"],
+      "RequireMFA": true
+    }
+  },
+
+  "SyncSchedule": {
+    "AutoSyncEnabled": true,
+    "ScheduledSyncTimes": [
+      "02:00",
+      "08:00",
+      "14:00",
+      "20:00"
+    ],
+    "MaxSyncDurationMinutes": 60,
+    "SyncOnStartup": true,
+    "SyncOnShutdown": true,
+    "SyncOnNetworkReconnect": true,
+    "MaintenanceWindow": {
+      "Start": "01:00",
+      "End": "05:00",
+      "AllowSyncDuringMaintenance": false
+    }
+  },
+
+  "Security": {
+    "EncryptionSettings": {
+      "Algorithm": "AES-256-GCM",
+      "KeyDerivation": "PBKDF2",
+      "KeyIterations": 100000,
+      "SaltLength": 32,
+      "IVLength": 16,
+      "KeyRotationDays": 90,
+      "EnableKeyEscrow": false
+    },
+    
+    "AccessControl": {
+      "RequireAuthentication": true,
+      "AuthenticationMethod": "Certificate",
+      "CertificateValidation": "Strict",
+      "AllowedCertificateIssuers": [
+        "SmartBox Medical CA",
+        "Healthcare Device CA"
+      ],
+      "EnableWhitelist": true,
+      "AllowedIPs": [],
+      "DenyByDefault": true
+    },
+
+    "NetworkSecurity": {
+      "RequireTLS": true,
+      "MinimumTLSVersion": "1.2",
+      "PreferredTLSVersion": "1.3",
+      "EnableCertificatePinning": true,
+      "ValidateCertificateChain": true,
+      "AllowSelfSignedCertificates": false,
+      "EnableHSTS": true,
+      "HSTSMaxAge": 31536000
+    },
+
+    "IntegrityProtection": {
+      "EnableChecksums": true,
+      "ChecksumAlgorithm": "SHA-256",
+      "EnableDigitalSignatures": true,
+      "SignatureAlgorithm": "RSA-SHA256",
+      "KeySize": 4096,
+      "ValidateOnDownload": true,
+      "ValidateOnStorage": true
+    }
+  },
+
+  "Performance": {
+    "ConnectionPooling": {
+      "MaxConnections": 10,
+      "ConnectionTimeout": 30,
+      "KeepAliveTimeout": 300,
+      "RetryPolicy": "ExponentialBackoff"
+    },
+
+    "TransferOptimization": {
+      "ChunkSize": 8388608,
+      "ParallelTransfers": 4,
+      "UseCompression": true,
+      "CompressionLevel": 6,
+      "EnableDelta": true,
+      "UseMultipartUpload": true,
+      "MultipartThreshold": 104857600
+    },
+
+    "Caching": {
+      "EnableMetadataCache": true,
+      "CacheExpirationMinutes": 60,
+      "MaxCacheSize": 268435456,
+      "CacheLocation": "./Data/Cache/CloudSync"
+    }
+  },
+
+  "Monitoring": {
+    "EnableMetrics": true,
+    "MetricsInterval": 60,
+    "EnableHealthChecks": true,
+    "HealthCheckInterval": 300,
+    "EnableAlerts": true,
+    
+    "AlertThresholds": {
+      "UploadFailureRate": 5,
+      "DownloadFailureRate": 5,
+      "AverageResponseTime": 10000,
+      "StorageQuotaUsage": 90,
+      "SyncLagMinutes": 30
+    },
+
+    "LoggingSettings": {
+      "LogLevel": "Information",
+      "EnableDetailedLogging": true,
+      "LogRetentionDays": 90,
+      "SensitiveDataMasking": true,
+      "StructuredLogging": true
+    }
+  },
+
+  "Compliance": {
+    "HIPAA": {
+      "RequireBAA": true,
+      "EncryptionInTransit": true,
+      "EncryptionAtRest": true,
+      "AccessLogging": true,
+      "DataMinimization": true,
+      "RetentionPolicy": true,
+      "BreachNotification": true
+    },
+
+    "GDPR": {
+      "ConsentRequired": true,
+      "DataProcessingPurpose": "Medical Device Operations",
+      "DataSubjectRights": true,
+      "DataPortability": true,
+      "RightToErasure": true,
+      "DataProtectionOfficer": "dpo@smartbox-medical.com"
+    },
+
+    "FDA": {
+      "DeviceIdentification": "SmartBox Next v2.0",
+      "SoftwareValidation": true,
+      "QualitySystem": "ISO 13485",
+      "RiskManagement": "ISO 14971",
+      "ClinicalEvaluation": true,
+      "PostMarketSurveillance": true
+    }
+  },
+
+  "DisasterRecovery": {
+    "EnableBackup": true,
+    "BackupFrequency": "Daily",
+    "BackupRetentionDays": 30,
+    "EnableCrossRegionReplication": true,
+    "AutoFailover": true,
+    "RecoveryTimeObjective": 4,
+    "RecoveryPointObjective": 1,
+    
+    "BackupLocations": [
+      {
+        "Provider": "AWS_S3",
+        "Region": "us-west-2",
+        "Bucket": "smartbox-backup-west"
+      },
+      {
+        "Provider": "Azure_Blob",
+        "Region": "westus2",
+        "Container": "smartbox-backup"
+      }
+    ]
+  },
+
+  "Testing": {
+    "EnableTestMode": false,
+    "TestEndpoints": {
+      "AWS_S3": "https://s3-test.amazonaws.com",
+      "Azure_Blob": "https://test.blob.core.windows.net",
+      "Google_Cloud": "https://storage-test.googleapis.com"
+    },
+    "MockResponses": false,
+    "SimulateLatency": false,
+    "SimulateErrors": false,
+    "TestDataDirectory": "./TestData/CloudSync"
+  }
+}

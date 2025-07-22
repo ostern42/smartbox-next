@@ -1,0 +1,48 @@
+<Window x:Class="SmartBoxNext.MainWindowMinimal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="SmartBox Next - Medical Image Capture System"
+        Width="1280" Height="800"
+        WindowState="Maximized">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#0078D4" Padding="10">
+            <TextBlock Text="SmartBox Next - Medical Image Capture System" 
+                       Foreground="White" 
+                       FontSize="16" 
+                       FontWeight="Bold"/>
+        </Border>
+        
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1">
+            <!-- WebView2 for medical interface -->
+            <wv2:WebView2 x:Name="webView" 
+                          Visibility="Collapsed"/>
+            
+            <!-- Loading/Status Display -->
+            <StackPanel x:Name="statusPanel" 
+                        VerticalAlignment="Center" 
+                        HorizontalAlignment="Center">
+                <TextBlock x:Name="statusText" 
+                           Text="Initializing SmartBox medical capture system..." 
+                           FontSize="18" 
+                           HorizontalAlignment="Center" 
+                           Margin="0,0,0,20"/>
+            </StackPanel>
+        </Grid>
+        
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="2">
+            <StatusBarItem>
+                <TextBlock x:Name="statusBarText" Text="Ready"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>

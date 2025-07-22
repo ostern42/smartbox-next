@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using SmartBoxNext.Medical;
 
 namespace SmartBoxNext
 {
@@ -34,7 +35,7 @@ namespace SmartBoxNext
             { ".otf", "font/otf" }
         };
 
-        public WebServer(string rootPath, int port = 5000)
+        public WebServer(string rootPath, int port = MedicalConstants.SMARTBOX_WEB_PORT)
         {
             _rootPath = rootPath;
             _port = port;

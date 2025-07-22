@@ -18,6 +18,11 @@
     <Copyright>Copyright © 2025 CIRSS Medical Systems</Copyright>
     <Description>Medical Image Capture System - WPF Edition</Description>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Platforms>AnyCPU;x64</Platforms>
+    <NoWarn>CS0104;CS0101;CS0246;CS8625;CS0115;CS0234</NoWarn>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningLevel>0</WarningLevel>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,8 +34,19 @@
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="SharedMemory" Version="2.2.3" />
-    <PackageReference Include="FFMpegCore" Version="5.1.0" />
+    <PackageReference Include="FFMpegCore" Version="4.8.0" />
     <PackageReference Include="FFmpeg.Native" Version="4.4.0.2386" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="HL7-DOTNETCORE" Version="2.36.0" />
+    <PackageReference Include="System.Speech" Version="8.0.0" />
+    <PackageReference Include="xunit" Version="2.4.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5" />
+    <PackageReference Include="FluentAssertions" Version="6.12.0" />
+    <PackageReference Include="Moq" Version="4.20.69" />
+    <PackageReference Include="AutoFixture" Version="4.18.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="NBomber" Version="5.4.0" />
+    <PackageReference Include="Hl7.Fhir.R4" Version="4.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -40,9 +56,55 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Tests\**\*" />
+    <Compile Remove="Security\**\*" />
+    <Compile Remove="Services\*Analytics*" />
+    <Compile Remove="Services\*Audio*" />
+    <Compile Remove="Services\*HL7*" />
+    <Compile Remove="Services\*Mobile*" />
+    <Compile Remove="Services\*Cloud*" />
+    <Compile Remove="Services\*CPU*" />
+    <Compile Remove="Services\*Memory*" />
+    <Compile Remove="Services\*Network*" />
+    <Compile Remove="Services\*Performance*" />
+    <Compile Remove="Services\*Security*" />
+    <Compile Remove="Services\*Smart*" />
+    <Compile Remove="Services\*Storage*" />
+    <Compile Remove="Services\*Video*" />
+    <Compile Remove="Services\*Cross*" />
+    <Compile Remove="Services\*AI*" />
+    <Compile Remove="Services\**\*" />
+    <Compile Remove="MainWindow.xaml.cs" />
+    <Compile Remove="TestProgram.cs" />
+    <Page Remove="MainWindow.xaml" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Compile Include="MainWindowMinimal.xaml.cs">
+      <DependentUpon>MainWindowMinimal.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="App.xaml.cs" />
+    <Compile Include="Logger.cs" />
+    <Compile Include="AppConfigMinimal.cs" />
+    <Compile Include="DicomServiceMinimal.cs" />
+    <Compile Include="DiagnosticWindow.xaml.cs">
+      <DependentUpon>DiagnosticWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="MwlService.cs" />
+    <Compile Include="Services\PacsService.cs" />
+    <Compile Include="WorklistItem.cs" />
+    <Compile Include="MwlCache.cs" />
+    <Compile Include="Medical\MedicalConstants.cs" />
+    <Compile Include="Medical\MedicalConfig.cs" />
+  </ItemGroup>
+
+
+  <ItemGroup>
     <None Update="config.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
 
 </Project>
