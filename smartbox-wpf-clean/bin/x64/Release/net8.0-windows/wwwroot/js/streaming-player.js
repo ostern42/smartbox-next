@@ -1,0 +1,1391 @@
+/**
+ * SmartBox Medical Streaming Player
+ * Advanced HLS player with DVR, marking, and export capabilities
+ */
+
+class StreamingPlayer {
+    constructor() {
+        // Use centralized configuration
+        this.config = window.StreamingConfig;
+        this.authManager = window.AuthManager;
+        this.exportManager = window.MedicalExportManager;
+        
+        // Initialize properties
+        this.currentSessionId = null;
+        this.primaryPlayer = null;
+        this.freezePlayer = null;
+        this.primaryHLS = null;
+        this.freezeHLS = null;
+        this.ws = null;
+        this.isDvrMode = false;
+        this.marks = [];
+        this.currentMark = { in: null, out: null };
+        this.playbackRate = 1;
+        this.frameRate = this.config.get('medical.frameRate', 30);
+        this.highContrastMode = false;
+        
+        // WebSocket reconnection
+        this.wsReconnectAttempts = 0;
+        this.wsReconnectTimer = null;
+        
+        this.init();
+    }
+    
+    init() {
+        this.setupEventListeners();
+        this.checkAuthentication();
+    }
+    
+    setupEventListeners() {
+        // Login form
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleLogin();
+        });
+        
+        // Logout
+        document.getElementById('logoutButton').addEventListener('click', () => {
+            this.logout();
+        });
+        
+        // Stream controls
+        document.getElementById('startStreamBtn').addEventListener('click', () => {
+            this.startStream();
+        });
+        
+        document.getElementById('stopStreamBtn').addEventListener('click', () => {
+            this.stopStream();
+        });
+        
+        document.getElementById('toggleDvrBtn').addEventListener('click', () => {
+            this.toggleDvrMode();
+        });
+        
+        document.getElementById('goLiveBtn').addEventListener('click', () => {
+            this.goLive();
+        });
+        
+        // Navigation controls
+        document.getElementById('jumpBack30').addEventListener('click', () => {
+            this.jump(-30);
+        });
+        
+        document.getElementById('jumpBack10').addEventListener('click', () => {
+            this.jump(-10);
+        });
+        
+        document.getElementById('frameBack').addEventListener('click', () => {
+            this.stepFrame(-1);
+        });
+        
+        document.getElementById('playPauseBtn').addEventListener('click', () => {
+            this.togglePlayPause();
+        });
+        
+        document.getElementById('frameForward').addEventListener('click', () => {
+            this.stepFrame(1);
+        });
+        
+        document.getElementById('jumpForward10').addEventListener('click', () => {
+            this.jump(10);
+        });
+        
+        document.getElementById('jumpForward30').addEventListener('click', () => {
+            this.jump(30);
+        });
+        
+        // Marking controls
+        document.getElementById('markInBtn').addEventListener('click', () => {
+            this.markIn();
+        });
+        
+        document.getElementById('markOutBtn').addEventListener('click', () => {
+            this.markOut();
+        });
+        
+        document.getElementById('clearMarksBtn').addEventListener('click', () => {
+            this.clearMarks();
+        });
+        
+        document.getElementById('exportRangeBtn').addEventListener('click', () => {
+            this.showExportModal();
+        });
+        
+        // Advanced controls
+        document.getElementById('freezeFrameBtn').addEventListener('click', () => {
+            this.toggleFreezeFrame();
+        });
+        
+        // Speed controls
+        const speedButtons = ['speed05x', 'speed1x', 'speed2x', 'speed4x'];
+        const speeds = [0.5, 1, 2, 4];
+        
+        speedButtons.forEach((id, index) => {
+            document.getElementById(id).addEventListener('click', (e) => {
+                this.setPlaybackSpeed(speeds[index]);
+                document.querySelectorAll('.control-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                e.target.classList.add('active');
+            });
+        });
+        
+        // Timeline interaction
+        const timeline = document.getElementById('timeline');
+        timeline.addEventListener('click', (e) => {
+            this.seekToPosition(e);
+        });
+        
+        // Export modal
+        document.getElementById('cancelExportBtn').addEventListener('click', () => {
+            this.hideExportModal();
+        });
+        
+        document.getElementById('confirmExportBtn').addEventListener('click', () => {
+            this.exportRange();
+        });
+    }
+    
+    // Authentication methods
+    
+    async checkAuthentication() {
+        // Use AuthManager for authentication check
+        if (this.authManager.isAuthenticated()) {
+            this.showPlayer();
+            this.connectWebSocket();
+        } else {
+            // Try to load stored credentials
+            if (this.authManager.loadStoredCredentials()) {
+                this.showPlayer();
+                this.connectWebSocket();
+            } else {
+                this.showLogin();
+            }
+        }
+        
+        // Listen for auth expiry
+        window.addEventListener('authExpired', () => {
+            this.handleAuthExpired();
+        });
+    }
+    
+    async handleLogin() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const loginButton = document.getElementById('loginButton');
+        const loginError = document.getElementById('loginError');
+        
+        loginButton.disabled = true;
+        loginError.textContent = '';
+        
+        try {
+            // Use AuthManager for login
+            const result = await this.authManager.login(username, password);
+            
+            if (result.success) {
+                this.showPlayer();
+                this.connectWebSocket();
+            } else {
+                loginError.textContent = result.error || 'Login failed';
+            }
+        } catch (error) {
+            loginError.textContent = 'Connection error';
+            console.error('Login error:', error);
+        } finally {
+            loginButton.disabled = false;
+        }
+    }
+    
+    async logout() {
+        try {
+            // Stop any active streams
+            if (this.currentSessionId) {
+                await this.stopStream();
+            }
+            
+            // Close WebSocket
+            if (this.ws) {
+                this.ws.close();
+            }
+            
+            // Use AuthManager for logout
+            await this.authManager.logout();
+            
+            // Clean up players
+            if (this.primaryHLS) {
+                this.primaryHLS.destroy();
+                this.primaryHLS = null;
+            }
+            if (this.freezeHLS) {
+                this.freezeHLS.destroy();
+                this.freezeHLS = null;
+            }
+            
+            this.showLogin();
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Show login anyway
+            this.showLogin();
+        }
+    }
+    
+    showLogin() {
+        document.getElementById('loginContainer').style.display = 'flex';
+        document.getElementById('playerContainer').style.display = 'none';
+    }
+    
+    showPlayer() {
+        document.getElementById('loginContainer').style.display = 'none';
+        document.getElementById('playerContainer').style.display = 'flex';
+        
+        const user = this.authManager.getCurrentUser();
+        if (user) {
+            document.getElementById('userDisplay').textContent = `${user.displayName} (${user.role})`;
+        }
+        
+        // Initialize video players
+        this.initializePlayers();
+        
+        // Apply medical UI compliance
+        this.applyMedicalUICompliance();
+    }
+    
+    // WebSocket connection
+    
+    connectWebSocket() {
+        const wsUrl = this.config.get('wsUrl');
+        
+        try {
+            this.ws = new WebSocket(wsUrl);
+            
+            this.ws.onopen = () => {
+                console.log('WebSocket connected');
+                this.wsReconnectAttempts = 0;
+                
+                // Send authentication
+                this.ws.send(JSON.stringify({
+                    type: 'auth',
+                    token: this.authManager.authToken
+                }));
+            };
+            
+            this.ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    this.handleWebSocketMessage(message);
+                } catch (e) {
+                    console.error('Failed to parse WebSocket message:', e);
+                }
+            };
+            
+            this.ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            
+            this.ws.onclose = (event) => {
+                console.log('WebSocket disconnected:', event.code, event.reason);
+                
+                // Reconnect with exponential backoff
+                if (this.authManager.isAuthenticated() && 
+                    this.wsReconnectAttempts < this.config.get('maxReconnectAttempts', 10)) {
+                    
+                    const delay = Math.min(
+                        this.config.get('reconnectDelay', 5000) * Math.pow(2, this.wsReconnectAttempts),
+                        30000 // Max 30 seconds
+                    );
+                    
+                    this.wsReconnectAttempts++;
+                    console.log(`Reconnecting WebSocket in ${delay}ms (attempt ${this.wsReconnectAttempts})`);
+                    
+                    this.wsReconnectTimer = setTimeout(() => {
+                        this.connectWebSocket();
+                    }, delay);
+                }
+            };
+        } catch (error) {
+            console.error('Failed to create WebSocket:', error);
+        }
+    }
+    
+    handleWebSocketMessage(message) {
+        switch (message.type) {
+            case 'streamUpdate':
+                this.updateStreamStatus(message.data);
+                break;
+            case 'segmentCreated':
+                this.onSegmentCreated(message.data);
+                break;
+            case 'error':
+                console.error('WebSocket error:', message.data);
+                break;
+        }
+    }
+    
+    // Video player initialization
+    
+    initializePlayers() {
+        // Initialize VideoJS players with medical-grade settings
+        const videojsOptions = {
+            ...this.config.get('videojs'),
+            // Medical compliance additions
+            userActions: {
+                hotkeys: true,
+                doubleClick: false // Prevent accidental actions
+            },
+            playbackRates: [0.25, 0.5, 1, 2, 4, 8],
+            controlBar: {
+                volumePanel: {
+                    inline: false
+                },
+                pictureInPictureToggle: false // Disable for medical compliance
+            }
+        };
+        
+        // Primary player
+        this.primaryPlayer = videojs('primaryVideo', videojsOptions);
+        
+        // Initialize HLS manager for primary player
+        const primaryVideo = document.getElementById('primaryVideo');
+        this.primaryHLS = new HLSManager(primaryVideo, this.config);
+        
+        // Set up HLS event handlers
+        this.primaryHLS.onError = (error) => {
+            console.error('HLS Error:', error);
+            this.showError('Streaming error occurred. Please try again.');
+        };
+        
+        this.primaryHLS.onManifestLoaded = (data) => {
+            // Update UI with stream info
+            this.updateStreamInfo(data);
+        };
+        
+        // Freeze frame player
+        this.freezePlayer = videojs('freezeVideo', videojsOptions);
+        const freezeVideo = document.getElementById('freezeVideo');
+        this.freezeHLS = new HLSManager(freezeVideo, this.config);
+        
+        // Player event listeners
+        this.primaryPlayer.on('timeupdate', () => {
+            this.updateTimeline();
+        });
+        
+        this.primaryPlayer.on('loadedmetadata', () => {
+            this.updateTimeDisplay();
+            // Extract accurate frame rate
+            if (this.primaryHLS) {
+                this.frameRate = this.primaryHLS.frameRate || 30;
+            }
+        });
+        
+        this.primaryPlayer.on('progress', () => {
+            this.updateBufferedRange();
+        });
+        
+        // Keyboard shortcuts for medical use
+        this.setupKeyboardShortcuts();
+    }
+    
+    // Streaming methods
+    
+    async startStream() {
+        const startBtn = document.getElementById('startStreamBtn');
+        const stopBtn = document.getElementById('stopStreamBtn');
+        
+        startBtn.disabled = true;
+        this.showLoading(true);
+        
+        try {
+            // Use authenticated fetch
+            const response = await this.authManager.authenticatedFetch(
+                `${this.config.apiUrl}/stream/start`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        inputType: 0, // Device
+                        deviceName: 'Integrated Camera', // Default camera
+                        enableDVR: this.isDvrMode,
+                        includeAudio: true,
+                        videoBitrate: '4000k', // Higher quality for medical
+                        framerate: this.frameRate,
+                        resolution: '1920x1080', // Full HD for medical clarity
+                        options: {
+                            preserveFrameAccuracy: true,
+                            lowLatency: true,
+                            medicalGrade: true
+                        }
+                    })
+                }
+            );
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.currentSessionId = data.sessionId;
+                const streamUrl = `${this.config.apiUrl}${data.streamUrl}`;
+                
+                // Load stream using HLS manager
+                this.primaryHLS.loadStream(streamUrl);
+                
+                // Auto-play
+                this.primaryPlayer.play().catch(e => {
+                    console.warn('Autoplay blocked:', e);
+                    // Show play button overlay
+                    this.primaryPlayer.bigPlayButton.show();
+                });
+                
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                
+                // Enable controls
+                this.enableStreamControls(true);
+                
+                // Update UI
+                this.updateStreamStatus('live');
+            } else {
+                this.showError('Failed to start stream: ' + (data.error || 'Unknown error'));
+                startBtn.disabled = false;
+            }
+        } catch (error) {
+            console.error('Start stream error:', error);
+            this.showError('Failed to start stream: ' + error.message);
+            startBtn.disabled = false;
+        } finally {
+            this.showLoading(false);
+        }
+    }
+    
+    async stopStream() {
+        if (!this.currentSessionId) return;
+        
+        const stopBtn = document.getElementById('stopStreamBtn');
+        stopBtn.disabled = true;
+        
+        try {
+            await this.authManager.authenticatedFetch(
+                `${this.config.apiUrl}/stream/stop`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: this.currentSessionId
+                    })
+                }
+            );
+            
+            // Stop playback
+            this.primaryPlayer.pause();
+            
+            // Destroy HLS instance
+            if (this.primaryHLS) {
+                this.primaryHLS.destroy();
+                this.primaryHLS = new HLSManager(document.getElementById('primaryVideo'), this.config);
+            }
+            
+            this.currentSessionId = null;
+            
+            document.getElementById('startStreamBtn').disabled = false;
+            document.getElementById('stopStreamBtn').disabled = true;
+            
+            this.enableStreamControls(false);
+            this.updateStreamStatus('stopped');
+            
+        } catch (error) {
+            console.error('Stop stream error:', error);
+            stopBtn.disabled = false;
+        }
+    }
+    
+    toggleDvrMode() {
+        this.isDvrMode = !this.isDvrMode;
+        const btn = document.getElementById('toggleDvrBtn');
+        btn.classList.toggle('active', this.isDvrMode);
+        
+        // Update HLS manager DVR mode
+        if (this.primaryHLS) {
+            this.primaryHLS.setDVRMode(this.isDvrMode);
+        }
+        
+        // Update UI to show DVR indicator
+        this.updateDVRIndicator();
+    }
+    
+    goLive() {
+        if (this.primaryHLS) {
+            this.primaryHLS.goToLive();
+            this.updateLiveIndicator(true);
+        }
+    }
+    
+    // Navigation methods
+    
+    jump(seconds) {
+        if (!this.primaryPlayer) return;
+        
+        const currentTime = this.primaryPlayer.currentTime();
+        const newTime = Math.max(0, currentTime + seconds);
+        this.primaryPlayer.currentTime(newTime);
+    }
+    
+    stepFrame(direction) {
+        if (!this.primaryHLS) return;
+        
+        // Pause if playing
+        if (!this.primaryPlayer.paused()) {
+            this.primaryPlayer.pause();
+        }
+        
+        // Use HLS manager for frame-accurate stepping
+        this.primaryHLS.stepFrame(direction);
+        
+        // Update frame indicator
+        this.updateFrameIndicator();
+    }
+    
+    togglePlayPause() {
+        if (!this.primaryPlayer) return;
+        
+        if (this.primaryPlayer.paused()) {
+            this.primaryPlayer.play();
+        } else {
+            this.primaryPlayer.pause();
+        }
+    }
+    
+    setPlaybackSpeed(speed) {
+        if (!this.primaryPlayer) return;
+        
+        this.playbackRate = speed;
+        this.primaryPlayer.playbackRate(speed);
+        
+        if (this.freezePlayer && !this.freezePlayer.paused()) {
+            this.freezePlayer.playbackRate(speed);
+        }
+    }
+    
+    // Marking methods
+    
+    async markIn() {
+        if (!this.primaryPlayer) return;
+        
+        const currentTime = this.primaryPlayer.currentTime();
+        this.currentMark.in = currentTime;
+        
+        // Send to server
+        if (this.currentSessionId) {
+            try {
+                await fetch(`${this.apiUrl}/stream/mark/${this.currentSessionId}/in`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        timestamp: currentTime
+                    })
+                });
+                
+                this.addTimelineMarker(currentTime, 'in');
+            } catch (error) {
+                console.error('Mark in error:', error);
+            }
+        }
+        
+        // Enable mark out button
+        document.getElementById('markOutBtn').disabled = false;
+    }
+    
+    async markOut() {
+        if (!this.primaryPlayer || this.currentMark.in === null) return;
+        
+        const currentTime = this.primaryPlayer.currentTime();
+        
+        if (currentTime <= this.currentMark.in) {
+            alert('Out point must be after in point');
+            return;
+        }
+        
+        this.currentMark.out = currentTime;
+        
+        // Send to server
+        if (this.currentSessionId) {
+            try {
+                await fetch(`${this.apiUrl}/stream/mark/${this.currentSessionId}/out`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        timestamp: currentTime
+                    })
+                });
+                
+                this.addTimelineMarker(currentTime, 'out');
+                
+                // Add to marks list
+                this.marks.push({
+                    in: this.currentMark.in,
+                    out: this.currentMark.out
+                });
+                
+                // Reset current mark
+                this.currentMark = { in: null, out: null };
+                document.getElementById('markOutBtn').disabled = true;
+                
+                // Enable export button
+                document.getElementById('exportRangeBtn').disabled = false;
+            } catch (error) {
+                console.error('Mark out error:', error);
+            }
+        }
+    }
+    
+    clearMarks() {
+        this.marks = [];
+        this.currentMark = { in: null, out: null };
+        
+        // Clear timeline markers
+        const markersContainer = document.getElementById('timelineMarkers');
+        markersContainer.innerHTML = '';
+        
+        // Disable buttons
+        document.getElementById('markOutBtn').disabled = true;
+        document.getElementById('exportRangeBtn').disabled = true;
+    }
+    
+    addTimelineMarker(time, type) {
+        const timeline = document.getElementById('timeline');
+        const markersContainer = document.getElementById('timelineMarkers');
+        const duration = this.primaryPlayer.duration();
+        
+        if (!duration || duration === Infinity) return;
+        
+        const position = (time / duration) * 100;
+        
+        const marker = document.createElement('div');
+        marker.className = `timeline-marker ${type}`;
+        marker.style.left = `${position}%`;
+        marker.title = `${type.toUpperCase()}: ${this.formatTime(time)}`;
+        
+        marker.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.primaryPlayer.currentTime(time);
+        });
+        
+        markersContainer.appendChild(marker);
+    }
+    
+    // Freeze frame functionality
+    
+    toggleFreezeFrame() {
+        const secondaryVideo = document.getElementById('secondaryVideo');
+        const btn = document.getElementById('freezeFrameBtn');
+        
+        if (secondaryVideo.classList.contains('active')) {
+            // Close freeze frame
+            secondaryVideo.classList.remove('active');
+            btn.classList.remove('active');
+            this.freezePlayer.pause();
+        } else {
+            // Create freeze frame
+            if (!this.primaryPlayer || !this.primaryPlayer.src()) return;
+            
+            secondaryVideo.classList.add('active');
+            btn.classList.add('active');
+            
+            // Clone current video state
+            const currentTime = this.primaryPlayer.currentTime();
+            const currentSrc = this.primaryPlayer.src();
+            
+            this.freezePlayer.src(currentSrc);
+            this.freezePlayer.currentTime(currentTime);
+            
+            // Sync playback rate
+            this.freezePlayer.playbackRate(this.playbackRate);
+        }
+    }
+    
+    // Timeline methods
+    
+    updateTimeline() {
+        if (!this.primaryPlayer) return;
+        
+        const currentTime = this.primaryPlayer.currentTime();
+        const duration = this.primaryPlayer.duration();
+        
+        if (!duration || duration === Infinity) return;
+        
+        const percentage = (currentTime / duration) * 100;
+        
+        document.getElementById('timelinePlayed').style.width = `${percentage}%`;
+        document.getElementById('timelinePlayhead').style.left = `${percentage}%`;
+        document.getElementById('currentTime').textContent = this.formatTime(currentTime);
+    }
+    
+    updateTimeDisplay() {
+        if (!this.primaryPlayer) return;
+        
+        const duration = this.primaryPlayer.duration();
+        
+        if (duration && duration !== Infinity) {
+            document.getElementById('totalTime').textContent = this.formatTime(duration);
+        }
+    }
+    
+    updateBufferedRange() {
+        if (!this.primaryPlayer) return;
+        
+        const buffered = this.primaryPlayer.buffered();
+        const duration = this.primaryPlayer.duration();
+        
+        if (!buffered.length || !duration || duration === Infinity) return;
+        
+        // Show the furthest buffered point
+        let maxBuffered = 0;
+        for (let i = 0; i < buffered.length; i++) {
+            maxBuffered = Math.max(maxBuffered, buffered.end(i));
+        }
+        
+        const percentage = (maxBuffered / duration) * 100;
+        document.getElementById('timelineBuffered').style.width = `${percentage}%`;
+    }
+    
+    seekToPosition(event) {
+        if (!this.primaryPlayer) return;
+        
+        const timeline = document.getElementById('timeline');
+        const rect = timeline.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const percentage = x / rect.width;
+        const duration = this.primaryPlayer.duration();
+        
+        if (duration && duration !== Infinity) {
+            const time = percentage * duration;
+            this.primaryPlayer.currentTime(time);
+        }
+    }
+    
+    // Export functionality
+    
+    showExportModal() {
+        const modal = document.getElementById('exportModal');
+        const optionsContainer = document.getElementById('exportOptions');
+        
+        // Clear previous options
+        optionsContainer.innerHTML = '';
+        
+        // Add export options for each marked range
+        this.marks.forEach((mark, index) => {
+            const option = document.createElement('div');
+            option.className = 'export-option';
+            option.innerHTML = `
+                <span>Range ${index + 1}: ${this.formatTime(mark.in)} - ${this.formatTime(mark.out)}</span>
+                <input type="checkbox" checked data-index="${index}">
+            `;
+            optionsContainer.appendChild(option);
+        });
+        
+        modal.style.display = 'block';
+    }
+    
+    hideExportModal() {
+        document.getElementById('exportModal').style.display = 'none';
+    }
+    
+    async exportRange() {
+        // Get selected ranges
+        const checkboxes = document.querySelectorAll('#exportOptions input[type="checkbox"]:checked');
+        const selectedRanges = Array.from(checkboxes).map(cb => {
+            const index = parseInt(cb.dataset.index);
+            return this.marks[index];
+        });
+        
+        if (selectedRanges.length === 0) {
+            alert('Please select at least one range to export');
+            return;
+        }
+        
+        // In a real implementation, this would trigger server-side processing
+        // For client-side export, we would use MediaRecorder API
+        
+        try {
+            // Create a blob from the selected ranges
+            const exportBlob = await this.createExportBlob(selectedRanges);
+            
+            // Download the file
+            const url = URL.createObjectURL(exportBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `export_${Date.now()}.webm`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            
+            this.hideExportModal();
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Export failed: ' + error.message);
+        }
+    }
+    
+    async exportRange() {
+        // Get selected ranges
+        const checkboxes = document.querySelectorAll('#exportOptions input[type="checkbox"]:checked');
+        const selectedRanges = Array.from(checkboxes).map(cb => {
+            const index = parseInt(cb.dataset.index);
+            return this.marks[index];
+        });
+        
+        if (selectedRanges.length === 0) {
+            alert('Please select at least one range to export');
+            return;
+        }
+        
+        // Get export format
+        const format = document.querySelector('input[name="exportFormat"]:checked')?.value || 'mp4';
+        
+        this.hideExportModal();
+        this.showExportProgress(true);
+        
+        try {
+            // Use medical export manager
+            const exportId = await this.exportManager.exportRange({
+                sessionId: this.currentSessionId,
+                ranges: selectedRanges,
+                format: format,
+                quality: 'high',
+                includeMetadata: true,
+                frameRate: this.frameRate,
+                patientId: this.getPatientId(),
+                studyDescription: 'Medical Recording Export',
+                exportReason: 'Medical Record',
+                onProgress: (progress) => {
+                    this.updateExportProgress(progress);
+                },
+                onComplete: (result) => {
+                    this.showExportProgress(false);
+                    this.showSuccess('Export completed successfully');
+                },
+                onError: (error) => {
+                    this.showExportProgress(false);
+                    this.showError('Export failed: ' + error.message);
+                }
+            });
+            
+            console.log('Export started with ID:', exportId);
+            
+        } catch (error) {
+            console.error('Export error:', error);
+            this.showExportProgress(false);
+            this.showError('Export failed: ' + error.message);
+        }
+    }
+    
+    // Utility methods
+    
+    formatTime(seconds) {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = Math.floor(seconds % 60);
+        
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+    
+    enableStreamControls(enabled) {
+        const controls = [
+            'toggleDvrBtn', 'goLiveBtn', 'jumpBack30', 'jumpBack10',
+            'frameBack', 'playPauseBtn', 'frameForward', 'jumpForward10',
+            'jumpForward30', 'markInBtn', 'freezeFrameBtn'
+        ];
+        
+        controls.forEach(id => {
+            document.getElementById(id).disabled = !enabled;
+        });
+    }
+}
+
+    // New helper methods for medical UI compliance
+    
+    applyMedicalUICompliance() {
+        // Ensure minimum touch target sizes (44x44px)
+        const buttons = document.querySelectorAll('.control-button, button');
+        buttons.forEach(btn => {
+            const rect = btn.getBoundingClientRect();
+            if (rect.width < 44 || rect.height < 44) {
+                btn.style.minWidth = '44px';
+                btn.style.minHeight = '44px';
+            }
+        });
+        
+        // Add ARIA labels for accessibility
+        this.addAriaLabels();
+        
+        // Enable high contrast mode if needed
+        if (this.config.get('medical.enableHighContrast', false)) {
+            this.toggleHighContrast(true);
+        }
+        
+        // Add medical gestures support
+        this.setupMedicalGestures();
+    }
+    
+    addAriaLabels() {
+        const ariaLabels = {
+            'startStreamBtn': 'Start video stream',
+            'stopStreamBtn': 'Stop video stream',
+            'toggleDvrBtn': 'Toggle DVR recording mode',
+            'goLiveBtn': 'Go to live stream edge',
+            'jumpBack30': 'Jump back 30 seconds',
+            'jumpBack10': 'Jump back 10 seconds',
+            'frameBack': 'Step back one frame',
+            'playPauseBtn': 'Play or pause video',
+            'frameForward': 'Step forward one frame',
+            'jumpForward10': 'Jump forward 10 seconds',
+            'jumpForward30': 'Jump forward 30 seconds',
+            'markInBtn': 'Mark in point for export',
+            'markOutBtn': 'Mark out point for export',
+            'clearMarksBtn': 'Clear all marked points',
+            'exportRangeBtn': 'Export marked video ranges',
+            'freezeFrameBtn': 'Toggle freeze frame view',
+            'speed05x': 'Set playback speed to 0.5x',
+            'speed1x': 'Set playback speed to 1x',
+            'speed2x': 'Set playback speed to 2x',
+            'speed4x': 'Set playback speed to 4x'
+        };
+        
+        Object.entries(ariaLabels).forEach(([id, label]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.setAttribute('aria-label', label);
+                element.setAttribute('role', 'button');
+            }
+        });
+        
+        // Add ARIA live regions for status updates
+        const statusRegion = document.createElement('div');
+        statusRegion.id = 'statusRegion';
+        statusRegion.setAttribute('aria-live', 'polite');
+        statusRegion.setAttribute('aria-atomic', 'true');
+        statusRegion.className = 'sr-only';
+        document.body.appendChild(statusRegion);
+    }
+    
+    toggleHighContrast(enable) {
+        this.highContrastMode = enable;
+        document.body.classList.toggle('high-contrast', enable);
+        
+        // Store preference
+        this.config.set('medical.enableHighContrast', enable);
+    }
+    
+    setupMedicalGestures() {
+        // Two-finger tap for play/pause (medical glove friendly)
+        let touchCount = 0;
+        let touchTimer = null;
+        
+        const videoArea = document.querySelector('.video-area');
+        
+        videoArea.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                touchCount++;
+                
+                if (touchTimer) clearTimeout(touchTimer);
+                
+                touchTimer = setTimeout(() => {
+                    if (touchCount >= 2) {
+                        // Double two-finger tap
+                        this.togglePlayPause();
+                    }
+                    touchCount = 0;
+                }, 300);
+            }
+        });
+        
+        // Pinch to zoom for frame inspection
+        let initialDistance = 0;
+        let currentScale = 1;
+        
+        videoArea.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                initialDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            }
+        });
+        
+        videoArea.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                
+                const currentDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                
+                currentScale = Math.min(3, Math.max(1, currentDistance / initialDistance));
+                
+                if (this.primaryPlayer) {
+                    this.primaryPlayer.el().style.transform = `scale(${currentScale})`;
+                }
+            }
+        });
+        
+        videoArea.addEventListener('touchend', () => {
+            if (currentScale === 1 && this.primaryPlayer) {
+                this.primaryPlayer.el().style.transform = '';
+            }
+        });
+    }
+    
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Only handle shortcuts when not typing
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            switch(e.key) {
+                case ' ':
+                    e.preventDefault();
+                    this.togglePlayPause();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        this.stepFrame(-1);
+                    } else {
+                        this.jump(-10);
+                    }
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        this.stepFrame(1);
+                    } else {
+                        this.jump(10);
+                    }
+                    break;
+                case 'i':
+                case 'I':
+                    e.preventDefault();
+                    this.markIn();
+                    break;
+                case 'o':
+                case 'O':
+                    e.preventDefault();
+                    this.markOut();
+                    break;
+                case 'l':
+                case 'L':
+                    e.preventDefault();
+                    this.goLive();
+                    break;
+                case 'f':
+                case 'F':
+                    e.preventDefault();
+                    this.toggleFreezeFrame();
+                    break;
+                case 'h':
+                case 'H':
+                    e.preventDefault();
+                    this.toggleHighContrast(!this.highContrastMode);
+                    break;
+            }
+        });
+    }
+    
+    handleAuthExpired() {
+        this.showError('Session expired. Please login again.');
+        this.logout();
+    }
+    
+    showLoading(show) {
+        const primaryLoading = document.getElementById('primaryLoading');
+        if (primaryLoading) {
+            primaryLoading.style.display = show ? 'flex' : 'none';
+        }
+    }
+    
+    showError(message) {
+        // Update status region for screen readers
+        const statusRegion = document.getElementById('statusRegion');
+        if (statusRegion) {
+            statusRegion.textContent = 'Error: ' + message;
+        }
+        
+        // Show visual error
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-notification';
+        errorDiv.textContent = message;
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #d83b01;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            z-index: 1000;
+            max-width: 400px;
+        `;
+        
+        document.body.appendChild(errorDiv);
+        
+        setTimeout(() => {
+            errorDiv.remove();
+        }, 5000);
+    }
+    
+    showSuccess(message) {
+        // Update status region for screen readers
+        const statusRegion = document.getElementById('statusRegion');
+        if (statusRegion) {
+            statusRegion.textContent = 'Success: ' + message;
+        }
+        
+        // Show visual success
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-notification';
+        successDiv.textContent = message;
+        successDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #107c10;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            z-index: 1000;
+            max-width: 400px;
+        `;
+        
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => {
+            successDiv.remove();
+        }, 3000);
+    }
+    
+    updateStreamStatus(status) {
+        const statusElement = document.getElementById('streamStatus');
+        if (statusElement) {
+            statusElement.textContent = status;
+            statusElement.className = `stream-status ${status}`;
+        }
+    }
+    
+    updateStreamInfo(data) {
+        // Update UI with stream information
+        console.log('Stream info:', data);
+    }
+    
+    updateDVRIndicator() {
+        const dvrIndicator = document.getElementById('dvrIndicator');
+        if (dvrIndicator) {
+            dvrIndicator.style.display = this.isDvrMode ? 'block' : 'none';
+        }
+    }
+    
+    updateLiveIndicator(isLive) {
+        const liveIndicator = document.getElementById('liveIndicator');
+        if (liveIndicator) {
+            liveIndicator.classList.toggle('live', isLive);
+        }
+    }
+    
+    updateFrameIndicator() {
+        if (!this.primaryPlayer) return;
+        
+        const currentTime = this.primaryPlayer.currentTime();
+        const currentFrame = Math.floor(currentTime * this.frameRate);
+        
+        const frameIndicator = document.getElementById('frameIndicator');
+        if (frameIndicator) {
+            frameIndicator.textContent = `Frame: ${currentFrame}`;
+        }
+    }
+    
+    showExportModal() {
+        const modal = document.getElementById('exportModal');
+        const optionsContainer = document.getElementById('exportOptions');
+        
+        // Clear previous options
+        optionsContainer.innerHTML = '';
+        
+        // Add export format options
+        const formatOptions = `
+            <div class="export-format">
+                <h3>Export Format:</h3>
+                <label><input type="radio" name="exportFormat" value="mp4" checked> MP4 (H.264)</label>
+                <label><input type="radio" name="exportFormat" value="webm"> WebM</label>
+                <label><input type="radio" name="exportFormat" value="dicom"> DICOM</label>
+            </div>
+        `;
+        optionsContainer.innerHTML = formatOptions;
+        
+        // Add export options for each marked range
+        this.marks.forEach((mark, index) => {
+            const option = document.createElement('div');
+            option.className = 'export-option';
+            option.innerHTML = `
+                <span>Range ${index + 1}: ${this.formatTime(mark.in)} - ${this.formatTime(mark.out)}</span>
+                <input type="checkbox" checked data-index="${index}">
+            `;
+            optionsContainer.appendChild(option);
+        });
+        
+        modal.style.display = 'block';
+    }
+    
+    showExportProgress(show) {
+        let progressDiv = document.getElementById('exportProgress');
+        
+        if (show) {
+            if (!progressDiv) {
+                progressDiv = document.createElement('div');
+                progressDiv.id = 'exportProgress';
+                progressDiv.innerHTML = `
+                    <div class="export-progress-content">
+                        <h3>Exporting Video...</h3>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="exportProgressFill"></div>
+                        </div>
+                        <div class="progress-text" id="exportProgressText">0%</div>
+                    </div>
+                `;
+                progressDiv.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 2000;
+                `;
+                document.body.appendChild(progressDiv);
+            }
+        } else if (progressDiv) {
+            progressDiv.remove();
+        }
+    }
+    
+    updateExportProgress(progress) {
+        const fill = document.getElementById('exportProgressFill');
+        const text = document.getElementById('exportProgressText');
+        
+        if (fill && text) {
+            fill.style.width = `${progress}%`;
+            text.textContent = `${Math.round(progress)}%`;
+        }
+    }
+    
+    getPatientId() {
+        // In a real implementation, this would get the actual patient ID
+        // from the current context or user input
+        return 'PATIENT_' + Date.now();
+    }
+    
+    jump(seconds) {
+        if (this.primaryHLS) {
+            this.primaryHLS.jump(seconds);
+        }
+    }
+}
+
+// Add high contrast styles
+const style = document.createElement('style');
+style.textContent = `
+    .high-contrast {
+        filter: contrast(1.5);
+    }
+    
+    .high-contrast .control-button {
+        border: 2px solid white;
+    }
+    
+    .high-contrast .control-button:focus {
+        outline: 3px solid yellow;
+        outline-offset: 2px;
+    }
+    
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+    
+    .progress-bar {
+        width: 300px;
+        height: 20px;
+        background: #333;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 20px 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: #0078d4;
+        transition: width 0.3s ease;
+    }
+    
+    .export-progress-content {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    
+    .export-progress-content h3 {
+        color: #333;
+        margin-bottom: 20px;
+    }
+    
+    .progress-text {
+        color: #666;
+        font-size: 18px;
+        font-weight: bold;
+    }
+`;
+document.head.appendChild(style);
+
+// Initialize player when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Load required scripts first
+    const scripts = [
+        'js/streaming-config.js',
+        'js/auth-manager.js',
+        'js/hls-manager.js',
+        'js/medical-export-manager.js'
+    ];
+    
+    Promise.all(scripts.map(src => {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    })).then(() => {
+        // Initialize player after all dependencies are loaded
+        window.streamingPlayer = new StreamingPlayer();
+    }).catch(error => {
+        console.error('Failed to load dependencies:', error);
+    });
+});

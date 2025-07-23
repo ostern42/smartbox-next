@@ -1,0 +1,26 @@
+{
+  "Name": "Orthanc Test Server",
+  "DicomPort": 104,
+  "DicomAet": "ORTHANC",
+  "RemoteAccessAllowed": true,
+  "HttpServerEnabled": true,
+  "HttpPort": 8042,
+  
+  "DicomModalities": {
+    "smartbox": {
+      "AET": "SMARTBOX",
+      "Host": "host.docker.internal",
+      "Port": 104
+    }
+  },
+  
+  "Worklists": {
+    "Enable": true,
+    "Database": "/var/lib/orthanc/worklists",
+    "FilterIssuerAet": false,
+    "Port": 105
+  },
+  
+  "UnknownSopClassAccepted": true,
+  "DicomCheckCalledAet": false
+}

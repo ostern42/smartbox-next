@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+        }
+        
+        h2 {
+            color: #666;
+            font-size: 18px;
+            margin-top: 0;
+        }
+        
+        button {
+            background: #0078d4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            background: #106ebe;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .response {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            color: #107c10;
+        }
+        
+        .error {
+            color: #d83b01;
+        }
+        
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+            width: 200px;
+        }
+        
+        .status {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .status.online {
+            background: #e7f3e7;
+            color: #107c10;
+        }
+        
+        .status.offline {
+            background: #fde7e9;
+            color: #d83b01;
+        }
+    </style>
+</head>
+<body>
+    <h1>SmartBox Streaming API Test</h1>
+    
+    <div class="test-section">
+        <h2>API Status</h2>
+        <div id="apiStatus" class="status offline">Checking API status...</div>
+        <button onclick="checkApiStatus()">Check Status</button>
+        <button onclick="checkDirectUrl()">Test Direct URL</button>
+        <div id="statusResponse" class="response"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Authentication Test</h2>
+        <input type="text" id="username" placeholder="Username" value="admin">
+        <input type="password" id="password" placeholder="Password" value="SmartBox2024!">
+        <button onclick="testLogin()">Test Login</button>
+        <div id="authResponse" class="response"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Streaming Endpoints</h2>
+        <button onclick="testStreamStart()" id="startBtn">Start Stream</button>
+        <button onclick="testStreamStop()" id="stopBtn" disabled>Stop Stream</button>
+        <button onclick="testGetSessions()">Get Sessions</button>
+        <div id="streamResponse" class="response"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test URLs</h2>
+        <p>Copy these URLs to test in your browser:</p>
+        <div class="response">
+Main UI: http://localhost:8080/
+Streaming Player: http://localhost:8080/streaming-player.html
+Test API Page: http://localhost:8080/test-api.html
+API Base: http://localhost:5002/api
+WebSocket: ws://localhost:8081
+
+Test endpoints:
+- http://localhost:5002/api/auth/login (POST)
+- http://localhost:5002/api/stream/start (POST with auth)
+- http://localhost:5002/api/stream/{sessionId}/stream.m3u8 (GET with auth)
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://localhost:5002/api';
+        let authToken = null;
+        let currentSessionId = null;
+        
+        // Check API status on load
+        window.onload = () => {
+            checkApiStatus();
+        };
+        
+        async function checkApiStatus() {
+            const statusEl = document.getElementById('apiStatus');
+            const responseEl = document.getElementById('statusResponse');
+            
+            statusEl.textContent = 'Checking API status...';
+            statusEl.className = 'status offline';
+            
+            // Test multiple endpoints to gather more info
+            const tests = [
+                { url: API_URL + '/health', name: 'Health endpoint' },
+                { url: API_URL + '/', name: 'Root endpoint' },
+                { url: 'http://127.0.0.1:5002/api/health', name: 'IPv4 localhost' },
+                { url: 'http://[::1]:5002/api/health', name: 'IPv6 localhost' }
+            ];
+            
+            let anySuccess = false;
+            let results = [];
+            
+            for (const test of tests) {
+                try {
+                    const response = await fetch(test.url, {
+                        method: 'GET',
+                        mode: 'cors',
+                        signal: AbortSignal.timeout(3000)
+                    });
+                    
+                    if (response.ok || response.status === 404) {
+                        results.push(`✓ ${test.name}: ${response.status} ${response.statusText}`);
+                        anySuccess = true;
+                    } else {
+                        results.push(`✗ ${test.name}: ${response.status} ${response.statusText}`);
+                    }
+                } catch (error) {
+                    results.push(`✗ ${test.name}: ${error.message}`);
+                }
+            }
+            
+            if (anySuccess) {
+                statusEl.textContent = 'API is online at ' + API_URL;
+                statusEl.className = 'status online';
+                responseEl.textContent = 'API Test Results:\n' + results.join('\n');
+                responseEl.className = 'response success';
+            } else {
+                statusEl.textContent = 'API is offline or not accessible';
+                statusEl.className = 'status offline';
+                responseEl.textContent = 'API Test Results:\n' + results.join('\n') +
+                    '\n\nTroubleshooting Steps:\n' +
+                    '1. Run setup-http-listener.bat as Administrator\n' +
+                    '2. Check console for "API verified running on port 5002"\n' +
+                    '3. Check Windows Firewall settings\n' +
+                    '4. Try running SmartBox as Administrator\n' +
+                    '5. Check if another app is using port 5002';
+                responseEl.className = 'response error';
+            }
+        }
+        
+        async function checkDirectUrl() {
+            const responseEl = document.getElementById('statusResponse');
+            
+            try {
+                // Test direct connection
+                const testUrl = 'http://127.0.0.1:5002/api/test';
+                responseEl.textContent = 'Testing direct URL: ' + testUrl + '...';
+                
+                const response = await fetch(testUrl, {
+                    method: 'GET',
+                    mode: 'no-cors' // Try without CORS
+                });
+                
+                responseEl.textContent = 'Direct URL test completed. Check browser Network tab for details.';
+                responseEl.className = 'response';
+            } catch (error) {
+                responseEl.textContent = 'Direct URL test error: ' + error.message;
+                responseEl.className = 'response error';
+            }
+        }
+        
+        async function testLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const responseEl = document.getElementById('authResponse');
+            
+            try {
+                const response = await fetch(API_URL + '/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.access_token;
+                    responseEl.textContent = 'Login successful!\n\n' + JSON.stringify(data, null, 2);
+                    responseEl.className = 'response success';
+                    
+                    // Enable stream buttons
+                    document.getElementById('startBtn').disabled = false;
+                } else {
+                    responseEl.textContent = 'Login failed: ' + JSON.stringify(data, null, 2);
+                    responseEl.className = 'response error';
+                }
+            } catch (error) {
+                responseEl.textContent = 'Error: ' + error.message;
+                responseEl.className = 'response error';
+            }
+        }
+        
+        async function testStreamStart() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const responseEl = document.getElementById('streamResponse');
+            
+            try {
+                const response = await fetch(API_URL + '/stream/start', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        inputType: 0, // Device
+                        deviceName: 'Integrated Camera',
+                        enableDVR: true,
+                        includeAudio: true,
+                        videoBitrate: '2000k',
+                        framerate: 30,
+                        resolution: '1280x720'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentSessionId = data.sessionId;
+                    responseEl.textContent = 'Stream started!\n\n' + JSON.stringify(data, null, 2);
+                    responseEl.className = 'response success';
+                    
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                } else {
+                    responseEl.textContent = 'Start stream failed: ' + JSON.stringify(data, null, 2);
+                    responseEl.className = 'response error';
+                }
+            } catch (error) {
+                responseEl.textContent = 'Error: ' + error.message;
+                responseEl.className = 'response error';
+            }
+        }
+        
+        async function testStreamStop() {
+            if (!authToken || !currentSessionId) {
+                alert('No active stream');
+                return;
+            }
+            
+            const responseEl = document.getElementById('streamResponse');
+            
+            try {
+                const response = await fetch(API_URL + '/stream/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: currentSessionId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseEl.textContent = 'Stream stopped!\n\n' + JSON.stringify(data, null, 2);
+                    responseEl.className = 'response success';
+                    
+                    currentSessionId = null;
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = true;
+                } else {
+                    responseEl.textContent = 'Stop stream failed: ' + JSON.stringify(data, null, 2);
+                    responseEl.className = 'response error';
+                }
+            } catch (error) {
+                responseEl.textContent = 'Error: ' + error.message;
+                responseEl.className = 'response error';
+            }
+        }
+        
+        async function testGetSessions() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const responseEl = document.getElementById('streamResponse');
+            
+            try {
+                const response = await fetch(API_URL + '/stream/sessions', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + authToken
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    responseEl.textContent = 'Active sessions:\n\n' + JSON.stringify(data, null, 2);
+                    responseEl.className = 'response success';
+                } else {
+                    responseEl.textContent = 'Get sessions failed. Status: ' + response.status;
+                    responseEl.className = 'response error';
+                }
+            } catch (error) {
+                responseEl.textContent = 'Error: ' + error.message;
+                responseEl.className = 'response error';
+            }
+        }
+    </script>
+</body>
+</html>

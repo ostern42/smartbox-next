@@ -1,0 +1,85 @@
+{
+  "TestEnvironment": {
+    "Name": "SmartBox Medical Device Test Environment",
+    "Version": "2.0.0",
+    "Environment": "Testing",
+    "LogLevel": "Debug"
+  },
+  "MedicalTesting": {
+    "EnableFDACompliance": true,
+    "EnableHIPAACompliance": true,
+    "EnableGDPRCompliance": true,
+    "ValidatePatientSafety": true,
+    "MaxTestPatients": 100,
+    "MaxTestDuration": "04:00:00",
+    "TestDataDirectory": "TestData",
+    "ComplianceReportDirectory": "Reports/Compliance"
+  },
+  "DICOMTesting": {
+    "TestServerHost": "localhost",
+    "TestServerPort": 11112,
+    "TestCallingAET": "SMARTBOX_TEST",
+    "TestCalledAET": "ORTHANC_TEST",
+    "EnableTLSValidation": true,
+    "TestCertificatePath": "TestData/Certificates",
+    "SupportedSOPClasses": [
+      "1.2.840.10008.5.1.4.1.1.7",
+      "1.2.840.10008.5.1.4.1.1.6.1",
+      "1.2.840.10008.5.1.4.1.1.1"
+    ],
+    "ValidateConformance": true
+  },
+  "SecurityTesting": {
+    "EnablePenetrationTesting": true,
+    "EnableVulnerabilityScanning": true,
+    "ValidateEncryption": true,
+    "TestAccessControls": true,
+    "SecurityScanToolPath": "",
+    "AllowedCipherSuites": [
+      "TLS_AES_256_GCM_SHA384",
+      "TLS_CHACHA20_POLY1305_SHA256",
+      "TLS_AES_128_GCM_SHA256"
+    ],
+    "MinimumKeyLength": 2048,
+    "SecurityTestTimeout": "00:30:00"
+  },
+  "PerformanceTesting": {
+    "MaxConcurrentUsers": 10,
+    "MaxFramesPerSecond": 60,
+    "FourHourTestDuration": "04:00:00",
+    "MemoryLeakThresholdMB": 100,
+    "CPUUsageThresholdPercent": 70.0,
+    "MaxResponseTimeMs": 1000,
+    "PerformanceReportDirectory": "Reports/Performance",
+    "EnableStressTest": true,
+    "EnableEnduranceTest": true
+  },
+  "TestDatabase": {
+    "ConnectionString": "Data Source=:memory:",
+    "DatabaseType": "SQLite",
+    "EnableTransactions": true,
+    "InitializeSchema": true
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft": "Warning",
+      "System": "Warning"
+    },
+    "Console": {
+      "IncludeScopes": true,
+      "TimestampFormat": "yyyy-MM-dd HH:mm:ss.fff"
+    },
+    "File": {
+      "Path": "Logs/test-log-.txt",
+      "RollingInterval": "Day",
+      "RetainedFileCountLimit": 30
+    }
+  },
+  "TestData": {
+    "PatientDataSamples": "TestData/Patients",
+    "DICOMSamples": "TestData/DICOM",
+    "CertificateSamples": "TestData/Certificates",
+    "ImageSamples": "TestData/Images"
+  }
+}

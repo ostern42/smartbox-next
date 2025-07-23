@@ -4,14 +4,24 @@
  */
 
 class StreamingPlayer {
-    constructor() {
+    constructor(container, options = {}) {
         // Use centralized configuration
         this.config = window.StreamingConfig;
         this.authManager = window.AuthManager;
         this.exportManager = window.MedicalExportManager;
         
+        // Container and options for enhanced integration
+        this.container = container;
+        this.options = {
+            sessionId: null,
+            enableFFmpegIntegration: true,
+            enableWebSocketUpdates: true,
+            enableUnifiedThumbnails: true,
+            ...options
+        };
+        
         // Initialize properties
-        this.currentSessionId = null;
+        this.currentSessionId = this.options.sessionId;
         this.primaryPlayer = null;
         this.freezePlayer = null;
         this.primaryHLS = null;
@@ -24,6 +34,13 @@ class StreamingPlayer {
         this.frameRate = this.config.get('medical.frameRate', 30);
         this.highContrastMode = false;
         
+        // Enhanced Phase 1 features
+        this.videoEngine = null;
+        this.wsHandler = null;
+        this.thumbnailCache = new Map();
+        this.isLive = false;
+        this.errorRecovery = null;
+        
         // WebSocket reconnection
         this.wsReconnectAttempts = 0;
         this.wsReconnectTimer = null;
@@ -31,9 +48,519 @@ class StreamingPlayer {
         this.init();
     }
     
-    init() {
+    async init() {
         this.setupEventListeners();
+        await this.setupEngineIntegration();
         this.checkAuthentication();
+    }
+    
+    async setupEngineIntegration() {
+        if (!this.options.enableFFmpegIntegration) {
+            return;
+        }
+        
+        try {
+            // Initialize error recovery system
+            this.errorRecovery = new Phase1ErrorRecovery(this);
+            
+            // Initialize video engine client
+            this.videoEngine = new VideoEngineClient();
+            
+            // Setup event listeners for FFmpeg integration
+            this.videoEngine.on('segmentCompleted', this.onSegmentCompleted.bind(this));
+            this.videoEngine.on('thumbnailReady', this.onThumbnailReady.bind(this));
+            this.videoEngine.on('statusUpdate', this.onEngineStatusUpdate.bind(this));
+            this.videoEngine.on('error', this.onEngineError.bind(this));
+            
+            // Connect to session if specified
+            if (this.options.sessionId && this.options.enableWebSocketUpdates) {
+                await this.connectToSession(this.options.sessionId);
+            }
+            
+            console.log('FFmpeg engine integration initialized');
+        } catch (error) {
+            console.error('Failed to setup FFmpeg integration:', error);
+            
+            // Use error recovery system
+            if (this.errorRecovery) {
+                await this.errorRecovery.handleError(error, { context: 'setupEngineIntegration' });
+            }
+        }
+    }
+    
+    async connectToSession(sessionId) {
+        if (!this.videoEngine) {
+            throw new Error('Video engine not initialized');
+        }
+        
+        try {
+            this.currentSessionId = sessionId;
+            
+            // Use enhanced WebSocket handler for better reconnection and error handling
+            if (this.options.enableWebSocketUpdates) {
+                this.wsHandler = new StreamingWebSocketHandler(this);
+                this.wsHandler.connect(sessionId);
+            }
+            
+            console.log(`Connected to session: ${sessionId}`);
+        } catch (error) {
+            console.error('Failed to connect to session:', error);
+            throw error;
+        }
+    }
+    
+    onSegmentCompleted(segment) {
+        console.log('New segment completed:', segment);
+        
+        // Update timeline with new segment (if timeline exists)
+        if (this.timeline) {
+            this.timeline.addSegment(segment);
+        }
+        
+        // Update HLS playlist if in live mode
+        if (this.isLive && this.primaryHLS) {
+            this.refreshPlaylist();
+        }
+        
+        // Emit event for external listeners
+        this.emit('segmentCompleted', segment);
+    }
+    
+    onThumbnailReady(data) {
+        console.log('Thumbnail ready:', data);
+        
+        // Cache thumbnail
+        this.thumbnailCache.set(data.timestamp, data.url);
+        
+        // Update timeline thumbnail (if timeline exists)
+        if (this.timeline) {
+            this.timeline.updateThumbnail(data.timestamp, data.url);
+        }
+        
+        // Emit event for external listeners
+        this.emit('thumbnailReady', data);
+    }
+    
+    onEngineStatusUpdate(status) {
+        console.log('Engine status update:', status);
+        this.updateRecordingStatus(status);
+    }
+    
+    onEngineError(error) {
+        console.error('Engine error:', error);
+        this.handleStreamError(error);
+    }
+    
+    async loadThumbnail(timestamp, width = 160) {
+        // Normalize timestamp for caching
+        const cacheKey = `${timestamp}_${width}`;
+        
+        // Check cache first
+        if (this.thumbnailCache.has(cacheKey)) {
+            return this.thumbnailCache.get(cacheKey);
+        }
+        
+        let thumbnailUrl = null;
+        
+        // Strategy 1: Use FFmpeg engine's thumbnail API if available
+        if (this.videoEngine && this.currentSessionId && this.options.enableUnifiedThumbnails) {
+            try {
+                thumbnailUrl = await this.videoEngine.getThumbnail(timestamp, width);
+                if (thumbnailUrl) {
+                    this.thumbnailCache.set(cacheKey, thumbnailUrl);
+                    console.log(`Loaded thumbnail from API: ${timestamp}s`);
+                    return thumbnailUrl;
+                }
+            } catch (error) {
+                console.warn('Failed to load thumbnail from API:', error);
+            }
+        }
+        
+        // Strategy 2: Fallback to video frame extraction
+        try {
+            thumbnailUrl = await this.extractVideoFrame(timestamp, width);
+            if (thumbnailUrl) {
+                this.thumbnailCache.set(cacheKey, thumbnailUrl);
+                console.log(`Generated thumbnail from video: ${timestamp}s`);
+                return thumbnailUrl;
+            }
+        } catch (error) {
+            console.warn('Failed to extract video frame:', error);
+        }
+        
+        // Strategy 3: Use placeholder or cached segment thumbnail
+        return this.getFallbackThumbnail(timestamp);
+    }
+    
+    async extractVideoFrame(timestamp, width = 160) {
+        return new Promise((resolve, reject) => {
+            if (!this.primaryPlayer || !this.primaryPlayer.videoWidth) {
+                reject(new Error('Video player not available'));
+                return;
+            }
+            
+            const video = this.primaryPlayer;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Calculate dimensions maintaining aspect ratio
+            const aspectRatio = video.videoWidth / video.videoHeight;
+            canvas.width = width;
+            canvas.height = width / aspectRatio;
+            
+            // Seek to timestamp and capture frame
+            const originalTime = video.currentTime;
+            
+            const onSeeked = () => {
+                try {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            const url = URL.createObjectURL(blob);
+                            resolve(url);
+                        } else {
+                            reject(new Error('Failed to create thumbnail blob'));
+                        }
+                        
+                        // Restore original time
+                        video.currentTime = originalTime;
+                    }, 'image/jpeg', 0.8);
+                } catch (error) {
+                    reject(error);
+                    video.currentTime = originalTime;
+                } finally {
+                    video.removeEventListener('seeked', onSeeked);
+                }
+            };
+            
+            video.addEventListener('seeked', onSeeked);
+            video.currentTime = timestamp;
+        });
+    }
+    
+    getFallbackThumbnail(timestamp) {
+        // Return a placeholder or last known good thumbnail
+        const placeholderUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwIiBoZWlnaHQ9IjkwIiB2aWV3Qm94PSIwIDAgMTYwIDkwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTYwIiBoZWlnaHQ9IjkwIiBmaWxsPSIjZjBmMGYwIi8+CjxwYXRoIGQ9Ik04MCA0NUw2MCAzMEgxMDBMODAgNDVaIiBmaWxsPSIjY2NjY2NjIi8+Cjx0ZXh0IHg9IjgwIiB5PSI2NSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM5OTk5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk5vIFRodW1ibmFpbDwvdGV4dD4KPHN2Zz4K';
+        
+        console.log(`Using fallback thumbnail for ${timestamp}s`);
+        return placeholderUrl;
+    }
+    
+    // Enhanced thumbnail cache management
+    clearThumbnailCache() {
+        // Revoke object URLs to prevent memory leaks
+        for (const [key, url] of this.thumbnailCache.entries()) {
+            if (url.startsWith('blob:')) {
+                URL.revokeObjectURL(url);
+            }
+        }
+        this.thumbnailCache.clear();
+        console.log('Thumbnail cache cleared');
+    }
+    
+    getThumbnailCacheSize() {
+        return this.thumbnailCache.size;
+    }
+    
+    purgeThumbnailCache(maxAge = 300000) { // 5 minutes default
+        const now = Date.now();
+        const keysToDelete = [];
+        
+        for (const [key, value] of this.thumbnailCache.entries()) {
+            if (value.timestamp && (now - value.timestamp) > maxAge) {
+                keysToDelete.push(key);
+                if (value.url && value.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(value.url);
+                }
+            }
+        }
+        
+        keysToDelete.forEach(key => this.thumbnailCache.delete(key));
+        
+        if (keysToDelete.length > 0) {
+            console.log(`Purged ${keysToDelete.length} old thumbnails from cache`);
+        }
+    }
+    
+    // Enhanced methods for WebSocket integration
+    onNewSegment(segment) {
+        console.log('Processing new segment:', segment);
+        
+        // Add to segments list if it doesn't exist
+        if (!this.segments) {
+            this.segments = [];
+        }
+        
+        // Check if segment already exists
+        const existingIndex = this.segments.findIndex(s => s.number === segment.number);
+        if (existingIndex >= 0) {
+            this.segments[existingIndex] = segment;
+        } else {
+            this.segments.push(segment);
+            this.segments.sort((a, b) => a.number - b.number);
+        }
+        
+        // Update timeline if available
+        if (this.timeline) {
+            this.timeline.addSegment(segment);
+        }
+        
+        // Update UI elements
+        this.updateSegmentIndicator(segment);
+        
+        // Emit for external listeners
+        this.emit('newSegment', segment);
+    }
+    
+    updateRecordingStatus(status) {
+        console.log('Recording status update:', status);
+        
+        // Update internal state
+        this.recordingStatus = status;
+        
+        // Update UI indicators
+        this.updateStatusIndicators(status);
+        
+        // Handle status-specific logic
+        switch (status.status) {
+            case 'Recording':
+                this.isRecording = true;
+                this.updateRecordingIndicator(true);
+                break;
+            case 'Stopped':
+                this.isRecording = false;
+                this.updateRecordingIndicator(false);
+                break;
+            case 'Paused':
+                this.isPaused = true;
+                this.updatePauseIndicator(true);
+                break;
+            case 'Error':
+                this.handleRecordingError(status.error);
+                break;
+        }
+        
+        this.emit('statusUpdate', status);
+    }
+    
+    async handleStreamError(error) {
+        console.error('Stream error:', error);
+        
+        // Log error for debugging
+        this.lastError = {
+            timestamp: Date.now(),
+            error: error,
+            type: 'stream'
+        };
+        
+        // Update UI with error state
+        this.showErrorIndicator(error.message || 'Stream error occurred');
+        
+        // Use enhanced error recovery system
+        if (this.errorRecovery) {
+            await this.errorRecovery.handleError(error, { context: 'streamError' });
+        } else {
+            // Fallback to basic recovery
+            this.attemptErrorRecovery(error);
+        }
+        
+        this.emit('streamError', error);
+    }
+    
+    handleRecordingError(error) {
+        console.error('Recording error:', error);
+        
+        this.lastError = {
+            timestamp: Date.now(),
+            error: error,
+            type: 'recording'
+        };
+        
+        this.showErrorIndicator(`Recording error: ${error.message || 'Unknown error'}`);
+        this.emit('recordingError', error);
+    }
+    
+    attemptErrorRecovery(error) {
+        if (!error || !error.code) return;
+        
+        switch (error.code) {
+            case 'NETWORK_ERROR':
+                console.log('Attempting network error recovery');
+                setTimeout(() => {
+                    if (this.wsHandler) {
+                        this.wsHandler.resetReconnection();
+                        this.wsHandler.establishConnection();
+                    }
+                }, 2000);
+                break;
+                
+            case 'MEDIA_ERROR':
+                console.log('Attempting media error recovery');
+                if (this.primaryHLS) {
+                    this.primaryHLS.recoverMediaError();
+                }
+                break;
+                
+            case 'BUFFER_ERROR':
+                console.log('Attempting buffer error recovery');
+                this.clearBuffers();
+                break;
+                
+            default:
+                console.log('No specific recovery available for error:', error.code);
+        }
+    }
+    
+    clearBuffers() {
+        if (this.primaryHLS) {
+            try {
+                this.primaryHLS.destroy();
+                this.initializeHLS();
+            } catch (e) {
+                console.error('Failed to clear buffers:', e);
+            }
+        }
+    }
+    
+    // UI update methods
+    updateSegmentIndicator(segment) {
+        const indicator = document.getElementById('segmentIndicator');
+        if (indicator) {
+            indicator.textContent = `Segment ${segment.number}`;
+            indicator.className = segment.isComplete ? 'segment-complete' : 'segment-processing';
+        }
+    }
+    
+    updateStatusIndicators(status) {
+        const statusElement = document.getElementById('recordingStatus');
+        if (statusElement) {
+            statusElement.textContent = status.status;
+            statusElement.className = `status-${status.status.toLowerCase()}`;
+        }
+        
+        const timeElement = document.getElementById('recordingTime');
+        if (timeElement && status.duration) {
+            timeElement.textContent = this.formatTime(status.duration);
+        }
+    }
+    
+    updateRecordingIndicator(isRecording) {
+        const indicator = document.getElementById('recordingIndicator');
+        if (indicator) {
+            indicator.classList.toggle('recording', isRecording);
+            indicator.textContent = isRecording ? 'REC' : '';
+        }
+    }
+    
+    updatePauseIndicator(isPaused) {
+        const indicator = document.getElementById('pauseIndicator');
+        if (indicator) {
+            indicator.classList.toggle('paused', isPaused);
+            indicator.textContent = isPaused ? 'PAUSED' : '';
+        }
+    }
+    
+    showErrorIndicator(message) {
+        const indicator = document.getElementById('errorIndicator');
+        if (indicator) {
+            indicator.textContent = message;
+            indicator.classList.add('visible');
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                indicator.classList.remove('visible');
+            }, 5000);
+        }
+    }
+    
+    formatTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = Math.floor(seconds % 60);
+        
+        if (hours > 0) {
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        } else {
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+    }
+    
+    // Cleanup method
+    cleanup() {
+        // Clear thumbnail cache
+        this.clearThumbnailCache();
+        
+        // Disconnect WebSocket
+        if (this.wsHandler) {
+            this.wsHandler.disconnect();
+            this.wsHandler = null;
+        }
+        
+        // Cleanup video engine
+        if (this.videoEngine) {
+            this.videoEngine.cleanup();
+            this.videoEngine = null;
+        }
+        
+        // Cleanup error recovery
+        if (this.errorRecovery) {
+            this.errorRecovery.cleanup();
+            this.errorRecovery = null;
+        }
+        
+        // Clear timers
+        if (this.wsReconnectTimer) {
+            clearTimeout(this.wsReconnectTimer);
+            this.wsReconnectTimer = null;
+        }
+        
+        console.log('StreamingPlayer cleanup completed');
+    }
+    
+    async refreshPlaylist() {
+        if (this.primaryHLS && this.primaryHLS.url) {
+            try {
+                this.primaryHLS.loadSource(this.primaryHLS.url);
+            } catch (error) {
+                console.error('Failed to refresh playlist:', error);
+            }
+        }
+    }
+    
+    // Event emitter methods
+    emit(event, data) {
+        if (this.eventHandlers && this.eventHandlers.has(event)) {
+            const handlers = this.eventHandlers.get(event);
+            handlers.forEach(handler => {
+                try {
+                    handler(data);
+                } catch (error) {
+                    console.error(`Error in event handler for ${event}:`, error);
+                }
+            });
+        }
+    }
+    
+    on(event, handler) {
+        if (!this.eventHandlers) {
+            this.eventHandlers = new Map();
+        }
+        if (!this.eventHandlers.has(event)) {
+            this.eventHandlers.set(event, []);
+        }
+        this.eventHandlers.get(event).push(handler);
+    }
+    
+    off(event, handler) {
+        if (!this.eventHandlers || !this.eventHandlers.has(event)) {
+            return;
+        }
+        
+        const handlers = this.eventHandlers.get(event);
+        const index = handlers.indexOf(handler);
+        if (index > -1) {
+            handlers.splice(index, 1);
+        }
     }
     
     setupEventListeners() {

@@ -1,0 +1,394 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SmartBox Cross-Platform Integration Configuration",
+  "description": "Configuration for cross-platform integration layer with medical device compliance",
+  "version": "2.0.0",
+  
+  "CrossPlatformIntegration": {
+    "EnableCloudSync": true,
+    "EnableMobileIntegration": true,
+    "EnableAutoSync": true,
+    "SyncIntervalMinutes": 15,
+    "MaxRetryAttempts": 3,
+    "MinimumSecurityScore": 90.0,
+    "EncryptionAlgorithm": "AES-256-GCM",
+    "CompressionEnabled": true,
+    "MaxFileSize": 104857600,
+    "SupportedPlatforms": [
+      "Windows",
+      "Linux",
+      "macOS",
+      "Android",
+      "iOS"
+    ],
+    "HealthCheckIntervalMinutes": 5,
+    "ConnectionTimeoutSeconds": 30
+  },
+
+  "CloudSync": {
+    "EnableAWSS3": true,
+    "EnableAzureBlob": true,
+    "EnableGoogleCloud": false,
+    "EnableEncryption": true,
+    "EnableCompression": true,
+    "MaxFileSize": 104857600,
+    "RetryAttempts": 3,
+    "TimeoutSeconds": 300,
+    "SyncDirectories": {
+      "DICOM": "./Data/DICOM",
+      "Photos": "./Data/Photos",
+      "Videos": "./Data/Videos",
+      "AuditLogs": "./Data/Logs",
+      "Configuration": "./Configuration"
+    },
+    "CloudProviders": {
+      "AWS_S3": {
+        "BucketName": "smartbox-medical-data",
+        "Region": "us-east-1",
+        "ServerSideEncryption": "AES256",
+        "StorageClass": "STANDARD_IA",
+        "EnableVersioning": true
+      },
+      "Azure_Blob": {
+        "ContainerName": "smartbox-medical-data",
+        "StorageAccount": "smartboxmedical",
+        "AccessTier": "Cool",
+        "EnableEncryption": true,
+        "EnableVersioning": true
+      },
+      "Google_Cloud": {
+        "BucketName": "smartbox-medical-data",
+        "Region": "us-central1",
+        "StorageClass": "NEARLINE",
+        "EnableEncryption": true
+      }
+    },
+    "SyncPolicies": {
+      "DICOM": {
+        "Priority": "High",
+        "RequireEncryption": true,
+        "RequireDigitalSignature": true,
+        "RetentionDays": 2555,
+        "EnableAuditTrail": true
+      },
+      "Media": {
+        "Priority": "Medium",
+        "RequireEncryption": true,
+        "RequireDigitalSignature": false,
+        "RetentionDays": 365,
+        "EnableAuditTrail": true
+      },
+      "Configuration": {
+        "Priority": "High",
+        "RequireEncryption": true,
+        "RequireDigitalSignature": true,
+        "RetentionDays": 1095,
+        "EnableAuditTrail": true
+      }
+    }
+  },
+
+  "MobileIntegration": {
+    "HttpListenerPort": 8080,
+    "WebSocketPort": 8081,
+    "EnableBluetoothDiscovery": true,
+    "EnableWiFiDirectDiscovery": false,
+    "EnableNFCPairing": true,
+    "MinimumSecurityScore": 85.0,
+    "MaxConnectedDevices": 10,
+    "ConnectionTimeoutSeconds": 30,
+    "EnableEncryption": true,
+    "RequireDeviceAuthentication": true,
+    "DeviceDiscoveryIntervalMinutes": 2,
+    "SupportedMobilePlatforms": [
+      "iOS",
+      "Android"
+    ],
+    "MobileAppRequirements": {
+      "MinimumAndroidVersion": "8.0",
+      "MinimumIOSVersion": "13.0",
+      "RequiredPermissions": [
+        "CAMERA",
+        "MICROPHONE",
+        "STORAGE",
+        "NETWORK"
+      ],
+      "SecurityFeatures": [
+        "DeviceEncryption",
+        "ScreenLock",
+        "AppAuthentication"
+      ]
+    },
+    "DataSyncOptions": {
+      "AutoSync": true,
+      "SyncOnConnect": true,
+      "SyncOnDisconnect": false,
+      "SyncTypes": [
+        "DICOM",
+        "Images",
+        "Videos",
+        "PatientData",
+        "Configuration"
+      ],
+      "CompressionLevel": "High",
+      "EncryptionRequired": true
+    }
+  },
+
+  "PlatformSpecific": {
+    "Windows": {
+      "EnableTouchInput": true,
+      "EnableVoiceControl": false,
+      "UseHardwareAcceleration": true,
+      "MinimumWindowsVersion": "10.0.19041",
+      "RequiredFeatures": [
+        "Camera",
+        "Microphone",
+        "Network"
+      ],
+      "DeploymentOptions": {
+        "InstallationType": "MSI",
+        "AutoUpdate": true,
+        "RequireAdminRights": true,
+        "SignCodeCertificate": true
+      }
+    },
+    "Linux": {
+      "SupportedDistributions": [
+        "Ubuntu 20.04+",
+        "CentOS 8+",
+        "RHEL 8+",
+        "Debian 11+"
+      ],
+      "RequiredPackages": [
+        "gstreamer",
+        "ffmpeg",
+        "openssl",
+        "curl"
+      ],
+      "DeploymentOptions": {
+        "PackageFormat": "AppImage",
+        "AutoUpdate": true,
+        "RequireRoot": false,
+        "SystemdService": true
+      }
+    },
+    "macOS": {
+      "MinimumVersion": "11.0",
+      "RequiredFrameworks": [
+        "AVFoundation",
+        "CoreMedia",
+        "Security"
+      ],
+      "DeploymentOptions": {
+        "PackageFormat": "DMG",
+        "CodeSigning": true,
+        "Notarization": true,
+        "AutoUpdate": true
+      }
+    },
+    "Android": {
+      "MinimumAPILevel": 26,
+      "TargetAPILevel": 34,
+      "RequiredPermissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
+      "SecurityFeatures": [
+        "BiometricAuthentication",
+        "DeviceEncryption",
+        "NetworkSecurityConfig"
+      ],
+      "DeploymentOptions": {
+        "SigningConfig": "Production",
+        "ProguardEnabled": true,
+        "SplitAPK": true
+      }
+    },
+    "iOS": {
+      "MinimumVersion": "13.0",
+      "RequiredFrameworks": [
+        "AVFoundation",
+        "CoreMedia",
+        "Security",
+        "LocalAuthentication"
+      ],
+      "RequiredCapabilities": [
+        "camera",
+        "microphone",
+        "wifi"
+      ],
+      "SecurityFeatures": [
+        "FaceID",
+        "TouchID",
+        "AppTransportSecurity",
+        "DataProtection"
+      ],
+      "DeploymentOptions": {
+        "CodeSigning": "Apple Development",
+        "Provisioning": "AdHoc",
+        "Bitcode": true
+      }
+    }
+  },
+
+  "Security": {
+    "EncryptionSettings": {
+      "Algorithm": "AES-256-GCM",
+      "KeyDerivation": "PBKDF2",
+      "KeyIterations": 100000,
+      "SaltLength": 32,
+      "IVLength": 16
+    },
+    "CertificateSettings": {
+      "ValidityPeriodDays": 365,
+      "KeySize": 4096,
+      "SignatureAlgorithm": "SHA256withRSA",
+      "AutoRenewal": true,
+      "CertificateStore": "./Data/Security/certificates"
+    },
+    "NetworkSecurity": {
+      "RequireTLS": true,
+      "MinimumTLSVersion": "1.2",
+      "AllowedCipherSuites": [
+        "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+        "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+        "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384",
+        "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256"
+      ],
+      "EnableHSTS": true,
+      "EnableCertificatePinning": true
+    },
+    "AuthenticationSettings": {
+      "RequireMultiFactor": true,
+      "BiometricEnabled": true,
+      "SessionTimeoutMinutes": 30,
+      "MaxFailedAttempts": 3,
+      "LockoutDurationMinutes": 15
+    }
+  },
+
+  "Compliance": {
+    "HIPAA": {
+      "EnableAuditTrail": true,
+      "RequireEncryption": true,
+      "DataRetentionDays": 2555,
+      "AccessControlEnabled": true,
+      "BreachDetection": true,
+      "ComplianceReporting": true
+    },
+    "FDA": {
+      "DeviceClass": "Class II",
+      "PredocateDevice": "K123456",
+      "QualitySystemCompliance": true,
+      "SoftwareValidation": true,
+      "RiskManagement": "ISO 14971",
+      "ClinicalEvaluation": true
+    },
+    "DICOM": {
+      "ConformanceStatement": "DICOM PS3.x",
+      "SupportedIODs": [
+        "Secondary Capture",
+        "Digital X-Ray",
+        "Ultrasound",
+        "Endoscopy"
+      ],
+      "SecurityProfiles": [
+        "Basic TLS",
+        "AES TLS",
+        "Digital Signature"
+      ],
+      "AuditCompliance": "IHE ATNA"
+    },
+    "GDPR": {
+      "DataMinimization": true,
+      "ConsentManagement": true,
+      "RightToErasure": true,
+      "DataPortability": true,
+      "PrivacyByDesign": true
+    }
+  },
+
+  "Performance": {
+    "OptimizationSettings": {
+      "EnableHardwareAcceleration": true,
+      "UseMultiThreading": true,
+      "MaxConcurrentOperations": 4,
+      "MemoryLimitMB": 1024,
+      "EnableCaching": true,
+      "CacheSizeMB": 256
+    },
+    "MonitoringSettings": {
+      "EnablePerformanceMonitoring": true,
+      "MetricsCollectionInterval": 30,
+      "AlertThresholds": {
+        "CPUUsagePercent": 80,
+        "MemoryUsagePercent": 85,
+        "DiskUsagePercent": 90,
+        "ResponseTimeMs": 5000
+      }
+    },
+    "QualitySettings": {
+      "ImageCompressionQuality": 85,
+      "VideoCompressionProfile": "H.264",
+      "AudioSampleRate": 44100,
+      "AudioBitRate": 192
+    }
+  },
+
+  "Deployment": {
+    "AutoUpdate": {
+      "Enabled": true,
+      "CheckIntervalHours": 24,
+      "UpdateServer": "https://updates.smartbox-medical.com",
+      "RequireUserConsent": true,
+      "BackupBeforeUpdate": true,
+      "RollbackEnabled": true
+    },
+    "Licensing": {
+      "LicenseValidation": true,
+      "OnlineActivation": true,
+      "OfflineGracePeriodDays": 30,
+      "ConcurrentUsers": 1,
+      "DeviceLimit": 5
+    },
+    "Telemetry": {
+      "EnableUsageTracking": true,
+      "EnableErrorReporting": true,
+      "EnablePerformanceMetrics": true,
+      "DataAnonymization": true,
+      "OptOutEnabled": true
+    }
+  },
+
+  "Logging": {
+    "LogLevel": "Information",
+    "EnableFileLogging": true,
+    "EnableEventLogging": true,
+    "LogRetentionDays": 90,
+    "MaxLogFileSizeMB": 100,
+    "LogDirectory": "./Data/Logs",
+    "StructuredLogging": true,
+    "Categories": {
+      "CrossPlatform": "Information",
+      "CloudSync": "Information",
+      "MobileIntegration": "Information",
+      "Security": "Warning",
+      "Compliance": "Information",
+      "Performance": "Warning"
+    }
+  },
+
+  "Testing": {
+    "EnableTestMode": false,
+    "SimulateNetworkIssues": false,
+    "SimulateLowMemory": false,
+    "MockCloudServices": false,
+    "MockMobileDevices": false,
+    "TestDataDirectory": "./TestData",
+    "TestResultsDirectory": "./TestResults"
+  }
+}

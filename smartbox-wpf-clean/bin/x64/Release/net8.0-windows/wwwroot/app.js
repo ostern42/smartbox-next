@@ -17,6 +17,7 @@ class SmartBoxTouchApp {
         this.dialogManager = null;
         this.modeManager = null;
         this.timelineManager = null;
+        this.videoWorkflowManager = null;
         
         // MWL data
         this.mwlData = [];
@@ -36,9 +37,13 @@ class SmartBoxTouchApp {
             this.dialogManager = new TouchDialogManager();
             this.modeManager = new ModeManager();
             this.timelineManager = new TimelineIntegrationManager(this);
+            this.videoWorkflowManager = new VideoWorkflowManager(this);
             
             // Make dialog manager globally available
             window.touchDialogManager = this.dialogManager;
+            
+            // Initialize clock display
+            this.initializeClockDisplay();
             
             // Set up event listeners
             this.setupEventListeners();
@@ -86,7 +91,105 @@ class SmartBoxTouchApp {
         // UI events
         this.setupUIEventListeners();
         
+        // Message handler for WPF communication
+        this.setupMessageHandler();
+        
         console.log('SmartBoxTouchApp: Event listeners set up');
+    }
+    
+    setupMessageHandler() {
+        // Listen for messages from WPF
+        window.addEventListener('message', (event) => {
+            try {
+                const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                
+                if (!message || !message.action) {
+                    console.warn('Invalid message format:', event.data);
+                    return;
+                }
+                
+                console.log('Received message from WPF:', message.action);
+                
+                switch (message.action.toLowerCase()) {
+                    case 'recordingstarted':
+                        this.handleRecordingStarted(message.data);
+                        break;
+                    case 'recordingstopped':
+                        this.handleRecordingStopped(message.data);
+                        break;
+                    default:
+                        console.log('Unhandled message action:', message.action);
+                }
+            } catch (error) {
+                console.error('Error handling message:', error);
+            }
+        });
+    }
+    
+    handleRecordingStarted(data) {
+        console.log('Recording started from WPF:', data);
+        
+        // Update UI to reflect WPF recording state
+        this.isRecording = true;
+        this.recordingStart = new Date(data.startTime);
+        this.updateRecordingUI();
+        this.startRecordingTimer();
+        
+        // Show notification
+        this.showNotification('Hardware-Aufnahme gestartet', `Qualität: ${data.quality}`);
+        
+        // Notify other components
+        document.dispatchEvent(new CustomEvent('hardwareRecordingStarted', { detail: data }));
+    }
+    
+    handleRecordingStopped(data) {
+        console.log('Recording stopped from WPF:', data);
+        
+        // Update UI
+        this.isRecording = false;
+        this.stopRecordingTimer();
+        this.updateRecordingUI();
+        
+        // Show notification with file info
+        const duration = Math.floor(data.duration);
+        const fileSize = (data.fileSize / 1048576).toFixed(1); // Convert to MB
+        this.showNotification(
+            'Hardware-Aufnahme gestoppt', 
+            `Dauer: ${duration}s, Größe: ${fileSize} MB`
+        );
+        
+        // Add to timeline if available
+        if (this.timelineManager) {
+            this.timelineManager.addRecording({
+                filePath: data.filePath,
+                duration: data.duration,
+                fileSize: data.fileSize,
+                timestamp: data.stopTime,
+                source: 'hardware'
+            });
+        }
+        
+        // Notify other components
+        document.dispatchEvent(new CustomEvent('hardwareRecordingStopped', { detail: data }));
+    }
+    
+    showNotification(title, message) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'hardware-notification';
+        notification.innerHTML = `
+            <div class="notification-title">${title}</div>
+            <div class="notification-message">${message}</div>
+        `;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.classList.add('fade-out');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
 
     setupUIEventListeners() {
@@ -160,6 +263,17 @@ class SmartBoxTouchApp {
         // } else {
         //     console.error('Exit button not found!');
         // }
+        
+        // Sidebar settings button
+        const sidebarSettingsButton = document.getElementById('sidebarSettingsButton');
+        if (sidebarSettingsButton) {
+            sidebarSettingsButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Sidebar settings button clicked');
+                this.openSettings();
+            });
+        }
         
         // Back to patient selection button
         const backButton = document.getElementById('backToPatientSelection');
@@ -431,10 +545,47 @@ class SmartBoxTouchApp {
             // Add visual feedback
             row.classList.add('selected');
             
+            // Update patient details in sidebar
+            this.updatePatientDetails(patient);
+            
             // Emit patient selection event
             document.dispatchEvent(new CustomEvent('patientSelected', {
                 detail: patient
             }));
+        }
+    }
+    
+    updatePatientDetails(patient) {
+        // Update patient name
+        const nameElement = document.getElementById('selectedPatientName');
+        if (nameElement) {
+            nameElement.textContent = patient.name;
+        }
+        
+        // Update birth date
+        const birthDateElement = document.getElementById('selectedBirthDate');
+        if (birthDateElement) {
+            birthDateElement.textContent = patient.birthDate;
+        }
+        
+        // Update gender
+        const genderElement = document.getElementById('selectedGender');
+        if (genderElement) {
+            const genderText = patient.gender === 'M' ? 'Männlich' : patient.gender === 'W' ? 'Weiblich' : patient.gender;
+            genderElement.textContent = genderText;
+        }
+        
+        // Update study type
+        const studyTypeElement = document.getElementById('selectedStudyType');
+        if (studyTypeElement) {
+            studyTypeElement.textContent = patient.studyType;
+        }
+        
+        // Update study date
+        const studyDateElement = document.getElementById('selectedStudyDate');
+        if (studyDateElement) {
+            const today = new Date().toLocaleDateString('de-DE');
+            studyDateElement.textContent = today + ' ' + patient.scheduledTime;
         }
     }
     
@@ -689,6 +840,13 @@ class SmartBoxTouchApp {
                 videoButton.classList.add('recording');
             }
             
+            // Dispatch startVideoRecording event for VideoWorkflowManager
+            document.dispatchEvent(new CustomEvent('startVideoRecording', {
+                detail: {
+                    patient: this.modeManager.getCurrentPatient()
+                }
+            }));
+            
             console.log('SmartBoxTouchApp: Video recording started');
             
         } catch (error) {
@@ -724,6 +882,13 @@ class SmartBoxTouchApp {
         if (videoButton) {
             videoButton.classList.remove('recording');
         }
+        
+        // Dispatch stopVideoRecording event for VideoWorkflowManager
+        document.dispatchEvent(new CustomEvent('stopVideoRecording', {
+            detail: {
+                patient: this.modeManager.getCurrentPatient()
+            }
+        }));
     }
 
     onVideoRecordingComplete() {
@@ -743,6 +908,16 @@ class SmartBoxTouchApp {
                     duration: duration,
                     criticalMoments: this.currentRecordingMetadata?.criticalMoments || []
                 });
+                
+                // Dispatch videoCaptured event for VideoWorkflowManager
+                document.dispatchEvent(new CustomEvent('videoCaptured', {
+                    detail: {
+                        captureId: captureId,
+                        videoBlob: blob,
+                        duration: duration,
+                        patient: this.modeManager.getCurrentPatient()
+                    }
+                }));
                 
                 // Reset metadata
                 this.currentRecordingMetadata = null;
@@ -841,6 +1016,11 @@ class SmartBoxTouchApp {
     onExportRequested() {
         console.log('SmartBoxTouchApp: onExportRequested called');
         console.log('SmartBoxTouchApp: modeManager exists:', !!this.modeManager);
+        
+        // Dispatch exportCaptures event for VideoWorkflowManager
+        document.dispatchEvent(new CustomEvent('exportCaptures', {
+            detail: {}
+        }));
         
         // Get captures for export (selected or all)
         const capturesToExport = this.modeManager.getCapturesForExport();
@@ -1038,6 +1218,37 @@ class SmartBoxTouchApp {
                 patientStatus.textContent = 'Kein Patient';
             }
         }
+    }
+
+    initializeClockDisplay() {
+        const updateClock = () => {
+            const clockDisplay = document.getElementById('clockDisplay');
+            if (clockDisplay) {
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                const seconds = now.getSeconds().toString().padStart(2, '0');
+                
+                // Format weekday and date
+                const weekdays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+                const weekday = weekdays[now.getDay()];
+                const day = now.getDate().toString().padStart(2, '0');
+                const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                const year = now.getFullYear();
+                
+                // Update clock display with date and time
+                clockDisplay.innerHTML = `
+                    <div class="date-display">${weekday}<br>${day}.${month}.${year}</div>
+                    <div class="time-display">${hours}:${minutes}:${seconds}</div>
+                `;
+            }
+        };
+        
+        // Update immediately
+        updateClock();
+        
+        // Update every second
+        setInterval(updateClock, 1000);
     }
 
     getDemoMWLData() {

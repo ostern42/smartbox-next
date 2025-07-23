@@ -1,0 +1,301 @@
+{
+  "Files": [
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/app-debug.js",
+      "PackagePath": "staticwebassets/_old_versions/app-debug.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/app-original.js",
+      "PackagePath": "staticwebassets/_old_versions/app-original.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/app-simple.js",
+      "PackagePath": "staticwebassets/_old_versions/app-simple.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/app_backup.js",
+      "PackagePath": "staticwebassets/_old_versions/app_backup.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/app_original_backup.js",
+      "PackagePath": "staticwebassets/_old_versions/app_original_backup.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/app_touch.js",
+      "PackagePath": "staticwebassets/_old_versions/app_touch.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/index_backup.html",
+      "PackagePath": "staticwebassets/_old_versions/index_backup.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/index_original_backup.html",
+      "PackagePath": "staticwebassets/_old_versions/index_original_backup.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/index_touch.html",
+      "PackagePath": "staticwebassets/_old_versions/index_touch.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/js/actions-v2.js",
+      "PackagePath": "staticwebassets/_old_versions/js/actions-v2.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/js/touch_gestures_fixed.js",
+      "PackagePath": "staticwebassets/_old_versions/js/touch_gestures_fixed.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/settings-backup.js",
+      "PackagePath": "staticwebassets/_old_versions/settings-backup.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/settings-fixed.js",
+      "PackagePath": "staticwebassets/_old_versions/settings-fixed.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/styles_backup.css",
+      "PackagePath": "staticwebassets/_old_versions/styles_backup.css"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/styles_original_backup.css",
+      "PackagePath": "staticwebassets/_old_versions/styles_original_backup.css"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_old_versions/styles_touch.css",
+      "PackagePath": "staticwebassets/_old_versions/styles_touch.css"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_test-pages/test-button-actions.html",
+      "PackagePath": "staticwebassets/_test-pages/test-button-actions.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_test-pages/test-buttons.html",
+      "PackagePath": "staticwebassets/_test-pages/test-buttons.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_test-pages/test-fixed.html",
+      "PackagePath": "staticwebassets/_test-pages/test-fixed.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_test-pages/test-keyboard.html",
+      "PackagePath": "staticwebassets/_test-pages/test-keyboard.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_test-pages/test-notifications.html",
+      "PackagePath": "staticwebassets/_test-pages/test-notifications.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_test-pages/test-slide-notifications.html",
+      "PackagePath": "staticwebassets/_test-pages/test-slide-notifications.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_test-pages/test.html",
+      "PackagePath": "staticwebassets/_test-pages/test.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/_test-pages/test_icons.html",
+      "PackagePath": "staticwebassets/_test-pages/test_icons.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/admin-demo.html",
+      "PackagePath": "staticwebassets/admin-demo.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/admin-test.html",
+      "PackagePath": "staticwebassets/admin-test.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/admin.html",
+      "PackagePath": "staticwebassets/admin.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/advanced-settings.html",
+      "PackagePath": "staticwebassets/advanced-settings.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/api-test.html",
+      "PackagePath": "staticwebassets/api-test.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/app.js",
+      "PackagePath": "staticwebassets/app.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/compliance-dashboard.html",
+      "PackagePath": "staticwebassets/compliance-dashboard.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/css/video-editing.css",
+      "PackagePath": "staticwebassets/css/video-editing.css"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/debug-webview.html",
+      "PackagePath": "staticwebassets/debug-webview.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/debug_overlay.js",
+      "PackagePath": "staticwebassets/debug_overlay.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/index.html",
+      "PackagePath": "staticwebassets/index.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/actions.js",
+      "PackagePath": "staticwebassets/js/actions.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/admin-control.js",
+      "PackagePath": "staticwebassets/js/admin-control.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/advanced-features.js",
+      "PackagePath": "staticwebassets/js/advanced-features.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/button-actions.js",
+      "PackagePath": "staticwebassets/js/button-actions.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/layout-manager.js",
+      "PackagePath": "staticwebassets/js/layout-manager.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/medical-annotation-tools.js",
+      "PackagePath": "staticwebassets/js/medical-annotation-tools.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/message-safety.js",
+      "PackagePath": "staticwebassets/js/message-safety.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/mode_manager.js",
+      "PackagePath": "staticwebassets/js/mode_manager.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/performance-monitor.js",
+      "PackagePath": "staticwebassets/js/performance-monitor.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/settings-handler.js",
+      "PackagePath": "staticwebassets/js/settings-handler.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/streaming-player.js",
+      "PackagePath": "staticwebassets/js/streaming-player.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/timeline-component.js",
+      "PackagePath": "staticwebassets/js/timeline-component.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/timeline-integration.js",
+      "PackagePath": "staticwebassets/js/timeline-integration.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/touch_dialogs.js",
+      "PackagePath": "staticwebassets/js/touch_dialogs.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/touch_gestures.js",
+      "PackagePath": "staticwebassets/js/touch_gestures.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/video-editor-component.js",
+      "PackagePath": "staticwebassets/js/video-editor-component.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/video-player-component.js",
+      "PackagePath": "staticwebassets/js/video-player-component.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/js/video-workflow-integration.js",
+      "PackagePath": "staticwebassets/js/video-workflow-integration.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/keyboard.css",
+      "PackagePath": "staticwebassets/keyboard.css"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/keyboard.js",
+      "PackagePath": "staticwebassets/keyboard.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/performance-dashboard.html",
+      "PackagePath": "staticwebassets/performance-dashboard.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/settings.css",
+      "PackagePath": "staticwebassets/settings.css"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/settings.html",
+      "PackagePath": "staticwebassets/settings.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/settings.js",
+      "PackagePath": "staticwebassets/settings.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/smartbox.js",
+      "PackagePath": "staticwebassets/smartbox.js"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/streaming-player.html",
+      "PackagePath": "staticwebassets/streaming-player.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/styles.css",
+      "PackagePath": "staticwebassets/styles.css"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/styles/layout-compact.css",
+      "PackagePath": "staticwebassets/styles/layout-compact.css"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/styles/layout-standard.css",
+      "PackagePath": "staticwebassets/styles/layout-standard.css"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/styles/theme-default.css",
+      "PackagePath": "staticwebassets/styles/theme-default.css"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/styles/theme-night.css",
+      "PackagePath": "staticwebassets/styles/theme-night.css"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/test-api.html",
+      "PackagePath": "staticwebassets/test-api.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/timeline-demo.html",
+      "PackagePath": "staticwebassets/timeline-demo.html"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/tsconfig.json",
+      "PackagePath": "staticwebassets/tsconfig.json"
+    },
+    {
+      "Id": "/mnt/c/Users/oliver.stern/source/repos/projects/smartbox-next/smartbox-wpf-clean/wwwroot/types/messages.d.ts",
+      "PackagePath": "staticwebassets/types/messages.d.ts"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.TimingTestProject.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.build.TimingTestProject.props",
+      "PackagePath": "build\\TimingTestProject.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.buildMultiTargeting.TimingTestProject.props",
+      "PackagePath": "buildMultiTargeting\\TimingTestProject.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.buildTransitive.TimingTestProject.props",
+      "PackagePath": "buildTransitive\\TimingTestProject.props"
+    }
+  ],
+  "ElementsToRemove": []
+}
