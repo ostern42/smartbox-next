@@ -26,6 +26,46 @@
     "EnableHardwareAcceleration": true,
     "PreferredCamera": ""
   },
+  "VideoEngine": {
+    "Type": "FFmpeg",
+    "FFmpegPath": "ffmpeg",
+    "EnableTestSource": true,
+    "Source": {
+      "PreferredType": "MedicalGrabber",
+      "PreferredDevice": "YUAN SC542N6",
+      "FallbackToWebcam": true
+    },
+    "Recording": {
+      "QualityPreset": "Medical",
+      "MasterCodec": "FFV1",
+      "Resolution": "1920x1080",
+      "FrameRate": 60,
+      "PixelFormat": "yuv422p",
+      "PreRecordSeconds": 60,
+      "SegmentDuration": 10
+    },
+    "Preview": {
+      "Codec": "H264",
+      "Bitrate": 5000,
+      "Protocol": "HLS",
+      "Latency": "UltraLow"
+    },
+    "Storage": {
+      "RecordingPath": "D:\\SmartBoxRecordings",
+      "TempPath": "D:\\SmartBoxTemp",
+      "SegmentNaming": "segment_{0:D5}.mkv",
+      "AutoCleanup": true,
+      "RetentionDays": 30
+    },
+    "KnownDevices": [
+      {
+        "Name": "YUAN SC542N6 Medical Capture",
+        "Type": "YUAN",
+        "Path": "YUAN SC542N6"
+      }
+    ],
+    "NetworkSources": []
+  },
   "Application": {
     "Language": "de-DE",
     "Theme": "Light",

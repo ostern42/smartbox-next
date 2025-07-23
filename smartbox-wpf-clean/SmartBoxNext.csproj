@@ -47,6 +47,9 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageReference Include="NBomber" Version="5.4.0" />
     <PackageReference Include="Hl7.Fhir.R4" Version="4.0.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.0.3" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="7.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>
@@ -97,6 +100,9 @@
     <Compile Include="MwlCache.cs" />
     <Compile Include="Medical\MedicalConstants.cs" />
     <Compile Include="Medical\MedicalConfig.cs" />
+    <Compile Include="KestrelStreamingApi.cs" />
+    <Compile Include="KestrelWebServer.cs" />
+    <Compile Include="ApiTester.cs" />
   </ItemGroup>
 
 
