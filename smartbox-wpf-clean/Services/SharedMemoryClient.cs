@@ -408,6 +408,92 @@ namespace SmartBoxNext.Services
             }
         }
 
+        /// <summary>
+        /// Start video recording with specified parameters
+        /// </summary>
+        public async Task<ServiceResponse?> StartRecordingAsync(string filePath, string resolution, int bitrate, string format = "mp4", string codec = "h264")
+        {
+            var parameters = JsonConvert.SerializeObject(new
+            {
+                filePath,
+                resolution,
+                bitrate,
+                format,
+                codec
+            });
+            
+            var response = await SendCommandAsync("startrecording", parameters);
+            _logger.LogInformation("Start recording response: {Success} - {Message}", response?.Success, response?.Message);
+            return response;
+        }
+
+        /// <summary>
+        /// Stop video recording
+        /// </summary>
+        public async Task<ServiceResponse?> StopRecordingAsync()
+        {
+            var response = await SendCommandAsync("stoprecording");
+            _logger.LogInformation("Stop recording response: {Success} - {Message}", response?.Success, response?.Message);
+            return response;
+        }
+
+        /// <summary>
+        /// Get current recording status
+        /// </summary>
+        public async Task<object?> GetRecordingStatusAsync()
+        {
+            var response = await SendCommandAsync("getrecordingstatus");
+            return response?.Data;
+        }
+
+        /// <summary>
+        /// Set video encoding parameters
+        /// </summary>
+        public async Task<bool> SetEncodingParametersAsync(int width, int height, int fps, int bitrate)
+        {
+            var parameters = JsonConvert.SerializeObject(new
+            {
+                width,
+                height,
+                fps,
+                bitrate
+            });
+            
+            var response = await SendCommandAsync("setencodingparams", parameters);
+            return response?.Success == true;
+        }
+
+        /// <summary>
+        /// Get hardware capabilities
+        /// </summary>
+        public async Task<object?> GetHardwareCapabilitiesAsync()
+        {
+            var response = await SendCommandAsync("gethardwarecaps");
+            return response?.Data;
+        }
+
+        /// <summary>
+        /// Enable/disable real-time preview
+        /// </summary>
+        public async Task<bool> SetPreviewEnabledAsync(bool enabled)
+        {
+            var response = await SendCommandAsync("setpreview", enabled.ToString());
+            return response?.Success == true;
+        }
+
+        /// <summary>
+        /// Get preview frame for display
+        /// </summary>
+        public async Task<byte[]?> GetPreviewFrameAsync()
+        {
+            var response = await SendCommandAsync("getpreviewframe");
+            if (response?.Success == true && response.Data is string base64Data)
+            {
+                return Convert.FromBase64String(base64Data);
+            }
+            return null;
+        }
+
         public async Task DisconnectAsync()
         {
             _logger.LogInformation("Disconnecting from capture service...");

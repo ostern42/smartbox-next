@@ -11,7 +11,8 @@ using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SmartBoxNext.Helpers;
-// using SmartBoxNext.Services; // MINA: Excluded services for minimal build
+using SmartBoxNext.Services; // Re-enabled for streaming
+using SmartBoxNext.Services.Video;
 
 namespace SmartBoxNext
 {
@@ -21,20 +22,31 @@ namespace SmartBoxNext
     public partial class MainWindow : Window
     {
         private readonly ILogger<MainWindow> _logger;
-        // MINA: Minimal build - services excluded
-        // private WebServer? _webServer;
-        // private WebSocketServer? _webSocketServer;
+        private WebServer? _webServer;
+        private WebSocketServer? _webSocketServer;
+        private StreamingServerManager? _streamingServerManager;
         private AppConfig? _config;
-        // private DicomExporter? _dicomExporter;
-        // private PacsSender? _pacsSender;
-        // private QueueManager? _queueManager;
-        // private QueueProcessor? _queueProcessor;
-        // private MwlService? _mwlService;
+        private DicomExporter? _dicomExporter;
+        private PacsSender? _pacsSender;
+        private QueueManager? _queueManager;
+        private QueueProcessor? _queueProcessor;
+        private MwlService? _mwlService;
         
         // New unified capture system - EXCLUDED
         // private UnifiedCaptureManager? _unifiedCaptureManager;
         // private OptimizedDicomConverter? _optimizedDicomConverter;
         // private IntegratedQueueManager? _integratedQueueManager;
+        
+        // Recording and Hardware Integration
+        private SharedMemoryClient? _sharedMemoryClient;
+        private bool _isRecording = false;
+        private DateTime _recordingStartTime;
+        private System.Windows.Threading.DispatcherTimer? _recordingTimer;
+        private string? _currentRecordingPath;
+        private long _recordingFileSize = 0;
+        
+        // Video API host
+        private VideoApiHostService? _videoApiHost;
         
         private bool _isInitialized = false;
         
@@ -85,6 +97,22 @@ namespace SmartBoxNext
                 _webSocketServer = new WebSocketServer(webSocketLogger, _config.Application.WebServerPort + 1);
                 _webSocketServer.AdminMessageReceived += OnAdminMessageReceived;
                 await _webSocketServer.StartAsync();
+                
+                // Start streaming server
+                UpdateStatus("Starting streaming server...");
+                var streamingLogger = _loggerFactory.CreateLogger<StreamingServerManager>();
+                var ffmpegService = new FFmpegService(_loggerFactory.CreateLogger<FFmpegService>());
+                _streamingServerManager = new StreamingServerManager(streamingLogger, ffmpegService, 
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "StreamingOutput"));
+                await _streamingServerManager.StartAsync();
+                _logger.LogInformation("Streaming server started on port 5002");
+                
+                // Start video API host
+                UpdateStatus("Starting video engine API...");
+                var videoApiLogger = _loggerFactory.CreateLogger<VideoApiHostService>();
+                _videoApiHost = new VideoApiHostService(_config, videoApiLogger);
+                await _videoApiHost.StartAsync();
+                _logger.LogInformation("Video API started on {BaseUrl}", _videoApiHost.BaseUrl);
                 
                 UpdateStatus("Initializing medical components...");
                 
@@ -1079,7 +1107,7 @@ namespace SmartBoxNext
             _logger.LogInformation("DOM content loaded");
         }
         
-        private void WebView_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+        private async void WebView_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             if (e.IsSuccess)
             {
@@ -1088,6 +1116,9 @@ namespace SmartBoxNext
                 // Hide loading overlay
                 loadingOverlay.Visibility = Visibility.Collapsed;
                 webView.Visibility = Visibility.Visible;
+                
+                // Initialize recording controls after WebView loads
+                await InitializeRecordingControls();
                 
                 // Hide emergency exit button if configured
                 if (_config?.Application.HideExitButton == true)
@@ -1219,6 +1250,18 @@ namespace SmartBoxNext
                 if (_queueProcessor != null)
                 {
                     stopTasks.Add(_queueProcessor.StopAsync());
+                }
+                
+                // Stop streaming server
+                if (_streamingServerManager != null)
+                {
+                    stopTasks.Add(_streamingServerManager.StopAsync());
+                }
+                
+                // Stop video API
+                if (_videoApiHost != null)
+                {
+                    stopTasks.Add(_videoApiHost.StopAsync());
                 }
                 
                 // Stop web server
@@ -3080,5 +3123,362 @@ namespace SmartBoxNext
                 _logger.LogError(ex, "Failed to refresh patients");
             }
         }
+
+        #region WPF Recording Controls
+        
+        /// <summary>
+        /// Initialize hardware connection and recording controls
+        /// </summary>
+        private async Task InitializeRecordingControls()
+        {
+            try
+            {
+                // Initialize SharedMemoryClient for Yuan hardware
+                var sharedMemoryLogger = _loggerFactory.CreateLogger<SharedMemoryClient>();
+                _sharedMemoryClient = new SharedMemoryClient(sharedMemoryLogger);
+                
+                // Set up frame received handler
+                _sharedMemoryClient.FrameReceived += OnFrameReceived;
+                _sharedMemoryClient.ConnectionStateChanged += OnHardwareConnectionStateChanged;
+                
+                // Initialize recording timer
+                _recordingTimer = new System.Windows.Threading.DispatcherTimer();
+                _recordingTimer.Interval = TimeSpan.FromSeconds(1);
+                _recordingTimer.Tick += RecordingTimer_Tick;
+                
+                // Try to connect to hardware
+                await ConnectToHardware();
+                
+                // Show recording controls after WebView loads
+                Dispatcher.Invoke(() =>
+                {
+                    recordingControlsPanel.Visibility = Visibility.Visible;
+                    hardwareStatusPanel.Visibility = Visibility.Visible;
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to initialize recording controls");
+            }
+        }
+        
+        /// <summary>
+        /// Connect to Yuan SC550N1 hardware
+        /// </summary>
+        private async Task<bool> ConnectToHardware()
+        {
+            try
+            {
+                if (_sharedMemoryClient == null) return false;
+                
+                var connected = await _sharedMemoryClient.ConnectAsync();
+                
+                if (connected)
+                {
+                    // Get available inputs
+                    var inputs = await _sharedMemoryClient.GetAvailableInputsAsync();
+                    _logger.LogInformation("Connected to Yuan SC550N1, available inputs: {Inputs}", inputs);
+                    
+                    // Start capture
+                    await _sharedMemoryClient.StartCaptureAsync();
+                }
+                
+                return connected;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to connect to hardware");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// Start video recording button click handler
+        /// </summary>
+        private async void StartVideoRecording_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_isRecording) return;
+                
+                // Check hardware connection
+                if (_sharedMemoryClient == null || !_sharedMemoryClient.IsConnected)
+                {
+                    MessageBox.Show("Hardware not connected. Please connect Yuan SC550N1 first.", 
+                        "Recording Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                
+                // Get selected quality
+                var qualityIndex = recordingQualityCombo.SelectedIndex;
+                var (resolution, bitrate) = GetRecordingQuality(qualityIndex);
+                
+                // Create recording filename
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var recordingsPath = Path.Combine(_config?.Storage?.RecordingsPath ?? "./Data/Recordings");
+                Directory.CreateDirectory(recordingsPath);
+                _currentRecordingPath = Path.Combine(recordingsPath, $"Recording_{timestamp}.mp4");
+                
+                // Send start recording command with parameters
+                var parameters = JsonConvert.SerializeObject(new
+                {
+                    filePath = _currentRecordingPath,
+                    resolution = resolution,
+                    bitrate = bitrate,
+                    format = "mp4",
+                    codec = "h264"
+                });
+                
+                var response = await _sharedMemoryClient.StartRecordingAsync(
+                    _currentRecordingPath, resolution, bitrate, "mp4", "h264");
+                
+                if (response?.Success == true)
+                {
+                    _isRecording = true;
+                    _recordingStartTime = DateTime.Now;
+                    _recordingFileSize = 0;
+                    
+                    // Update UI
+                    Dispatcher.Invoke(() =>
+                    {
+                        startRecordingButton.IsEnabled = false;
+                        stopRecordingButton.IsEnabled = true;
+                        recordingQualityCombo.IsEnabled = false;
+                        recordingIndicator.Visibility = Visibility.Visible;
+                        recordingStatusText.Text = "Recording";
+                        recordingProgressBar.Visibility = Visibility.Visible;
+                    });
+                    
+                    // Start timer
+                    _recordingTimer?.Start();
+                    
+                    // Notify WebView
+                    await SendMessageToWebView(new
+                    {
+                        action = "recordingStarted",
+                        data = new
+                        {
+                            filePath = _currentRecordingPath,
+                            startTime = _recordingStartTime,
+                            quality = GetQualityString(qualityIndex)
+                        }
+                    });
+                    
+                    _logger.LogInformation("Recording started: {Path}", _currentRecordingPath);
+                }
+                else
+                {
+                    MessageBox.Show($"Failed to start recording: {response?.Message}", 
+                        "Recording Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to start recording");
+                MessageBox.Show($"Failed to start recording: {ex.Message}", 
+                    "Recording Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        /// <summary>
+        /// Stop video recording button click handler
+        /// </summary>
+        private async void StopVideoRecording_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!_isRecording) return;
+                
+                // Send stop recording command
+                var response = await _sharedMemoryClient?.StopRecordingAsync();
+                
+                if (response?.Success == true)
+                {
+                    _isRecording = false;
+                    _recordingTimer?.Stop();
+                    
+                    var duration = DateTime.Now - _recordingStartTime;
+                    
+                    // Update UI
+                    Dispatcher.Invoke(() =>
+                    {
+                        startRecordingButton.IsEnabled = true;
+                        stopRecordingButton.IsEnabled = false;
+                        recordingQualityCombo.IsEnabled = true;
+                        recordingIndicator.Visibility = Visibility.Collapsed;
+                        recordingStatusText.Text = "Ready";
+                        recordingProgressBar.Visibility = Visibility.Collapsed;
+                    });
+                    
+                    // Get final file info
+                    if (File.Exists(_currentRecordingPath))
+                    {
+                        var fileInfo = new FileInfo(_currentRecordingPath);
+                        _recordingFileSize = fileInfo.Length;
+                    }
+                    
+                    // Notify WebView
+                    await SendMessageToWebView(new
+                    {
+                        action = "recordingStopped",
+                        data = new
+                        {
+                            filePath = _currentRecordingPath,
+                            duration = duration.TotalSeconds,
+                            fileSize = _recordingFileSize,
+                            stopTime = DateTime.Now
+                        }
+                    });
+                    
+                    _logger.LogInformation("Recording stopped: {Path}, Duration: {Duration}, Size: {Size}", 
+                        _currentRecordingPath, duration, _recordingFileSize);
+                }
+                else
+                {
+                    MessageBox.Show($"Failed to stop recording: {response?.Message}", 
+                        "Recording Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to stop recording");
+                MessageBox.Show($"Failed to stop recording: {ex.Message}", 
+                    "Recording Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        /// <summary>
+        /// Update recording status timer tick
+        /// </summary>
+        private void RecordingTimer_Tick(object? sender, EventArgs e)
+        {
+            if (!_isRecording) return;
+            
+            var duration = DateTime.Now - _recordingStartTime;
+            
+            // Update file size if file exists
+            if (!string.IsNullOrEmpty(_currentRecordingPath) && File.Exists(_currentRecordingPath))
+            {
+                var fileInfo = new FileInfo(_currentRecordingPath);
+                _recordingFileSize = fileInfo.Length;
+            }
+            
+            // Update UI
+            Dispatcher.Invoke(() =>
+            {
+                recordingTimeText.Text = duration.ToString(@"hh\:mm\:ss");
+                recordingSizeText.Text = FormatFileSize(_recordingFileSize);
+            });
+            
+            // Update hardware status
+            UpdateHardwareStatus();
+        }
+        
+        /// <summary>
+        /// Handle frame received from hardware
+        /// </summary>
+        private void OnFrameReceived(object? sender, FrameReceivedEventArgs e)
+        {
+            // Update FPS counter
+            Dispatcher.BeginInvoke(() =>
+            {
+                var fps = _sharedMemoryClient?.FramesReceived ?? 0;
+                hardwareFpsStatus.Text = $"{fps % 30}"; // Simulate 30fps
+            });
+        }
+        
+        /// <summary>
+        /// Handle hardware connection state changes
+        /// </summary>
+        private void OnHardwareConnectionStateChanged(object? sender, bool connected)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                hardwareConnectionStatus.Text = connected ? "Connected" : "Disconnected";
+                hardwareConnectionStatus.Foreground = connected 
+                    ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LightGreen)
+                    : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+                
+                if (connected)
+                {
+                    hardwareInputStatus.Text = "SDI Input 1"; // Default
+                }
+                else
+                {
+                    hardwareInputStatus.Text = "None";
+                    hardwareFpsStatus.Text = "0";
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Update hardware status display
+        /// </summary>
+        private async void UpdateHardwareStatus()
+        {
+            try
+            {
+                if (_sharedMemoryClient?.IsConnected == true)
+                {
+                    var stats = await _sharedMemoryClient.GetServiceStatisticsAsync();
+                    var currentInput = await _sharedMemoryClient.GetCurrentInputAsync();
+                    
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (currentInput.HasValue)
+                        {
+                            hardwareInputStatus.Text = $"SDI Input {currentInput.Value + 1}";
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update hardware status");
+            }
+        }
+        
+        /// <summary>
+        /// Get recording quality settings based on selection
+        /// </summary>
+        private (string resolution, int bitrate) GetRecordingQuality(int qualityIndex)
+        {
+            return qualityIndex switch
+            {
+                0 => ("1280x720", 2000000),    // Low (720p, 2 Mbps)
+                1 => ("1920x1080", 5000000),   // Medium (1080p, 5 Mbps)
+                2 => ("1920x1080", 10000000),  // High (1080p, 10 Mbps)
+                3 => ("3840x2160", 20000000),  // Ultra (4K, 20 Mbps)
+                _ => ("1920x1080", 5000000)    // Default to Medium
+            };
+        }
+        
+        /// <summary>
+        /// Get quality string for display
+        /// </summary>
+        private string GetQualityString(int qualityIndex)
+        {
+            return qualityIndex switch
+            {
+                0 => "Low (720p)",
+                1 => "Medium (1080p)",
+                2 => "High (1080p)",
+                3 => "Ultra (4K)",
+                _ => "Medium"
+            };
+        }
+        
+        /// <summary>
+        /// Format file size for display
+        /// </summary>
+        private string FormatFileSize(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            if (bytes < 1048576) return $"{bytes / 1024.0:F1} KB";
+            if (bytes < 1073741824) return $"{bytes / 1048576.0:F1} MB";
+            return $"{bytes / 1073741824.0:F1} GB";
+        }
+        
+        #endregion
     }
 }

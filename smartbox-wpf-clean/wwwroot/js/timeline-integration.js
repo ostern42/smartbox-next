@@ -16,18 +16,156 @@ class TimelineIntegrationManager {
     }
     
     init() {
-        // Initialize timeline component
-        this.timeline = new VideoTimelineComponent('videoTimeline', {
-            height: 200,
-            timeScales: [5, 10, 20, 60], // minutes
-            prerecordingDurations: [60, 30, 10] // seconds
+        // Get timeline container
+        const timelineContainer = document.querySelector('#videoTimeline .timeline-container');
+        if (!timelineContainer) {
+            console.error('TimelineIntegrationManager: Timeline container not found');
+            return;
+        }
+        
+        // Create playhead controls container
+        const controlsContainer = document.createElement('div');
+        controlsContainer.className = 'playhead-controls-container';
+        timelineContainer.parentElement.insertBefore(controlsContainer, timelineContainer);
+        
+        // Initialize playhead controls
+        this.playheadControls = new PlayheadControls(controlsContainer, {
+            onSeek: (time) => this.adaptiveTimeline?.seek(time),
+            onPlay: () => this.app.onStartVideoRecording?.(),
+            onPause: () => this.app.onStopVideoRecording?.(),
+            onPlaybackRateChange: (rate) => console.log('Playback rate:', rate)
         });
+        
+        // Initialize adaptive timeline
+        this.adaptiveTimeline = new AdaptiveTimeline(timelineContainer, {
+            height: 100,
+            thumbnailWidth: 160,
+            fps: 25,
+            enableWaveform: true,
+            enableThumbnails: true,
+            enableMotionTracking: true
+        });
+        
+        // Connect timeline to playhead controls
+        this.adaptiveTimeline.onSeek = (time) => {
+            this.playheadControls.updateTime(time, this.adaptiveTimeline.state.duration);
+        };
+        
+        // Initialize jogwheel
+        this.initializeJogwheel();
+        
+        // Keep reference to old timeline for compatibility
+        this.timeline = {
+            currentTime: 0,
+            duration: 0,
+            segments: [],
+            thumbnails: [],
+            on: (event, callback) => {
+                // Adapter for old events
+                if (event === 'seek') {
+                    this.adaptiveTimeline.onSeek = (time) => callback({ detail: { time } });
+                }
+            },
+            setScale: (scale) => {
+                // Adapter for scale changes
+                this.adaptiveTimeline.recalculateTimeScale();
+            },
+            addCriticalMarker: (time) => {
+                // Add marker to adaptive timeline
+                const markerId = 'marker_' + Date.now();
+                this.adaptiveTimeline.state.markers.push({ id: markerId, time, type: 'critical' });
+                this.adaptiveTimeline.render();
+                return markerId;
+            },
+            addThumbnail: (thumbnailData, time, type) => {
+                // Store thumbnail data for compatibility
+                this.timeline.thumbnails.push({ data: thumbnailData, time, type });
+                console.log('Thumbnail added at time:', time, 'type:', type);
+            },
+            startRecording: () => {
+                this.recordingStartTime = Date.now();
+                console.log('Timeline: Recording started');
+            },
+            stopRecording: () => {
+                const duration = (Date.now() - this.recordingStartTime) / 1000;
+                this.timeline.duration = duration;
+                console.log('Timeline: Recording stopped, duration:', duration);
+            },
+            updateTime: (time) => {
+                this.timeline.currentTime = time;
+                if (this.adaptiveTimeline) {
+                    this.adaptiveTimeline.updateTime(time);
+                }
+                if (this.playheadControls) {
+                    this.playheadControls.updateTime(time, this.timeline.duration);
+                }
+            },
+            updateStorageUsage: (usage) => {
+                console.log('Storage usage:', usage, 'MB');
+            },
+            updatePrerecordingBuffer: () => {
+                console.log('Prerecording buffer updated');
+            },
+            clear: () => {
+                this.timeline.thumbnails = [];
+                this.timeline.segments = [];
+                this.timeline.currentTime = 0;
+                this.timeline.duration = 0;
+                if (this.adaptiveTimeline) {
+                    this.adaptiveTimeline.state.markers = [];
+                    this.adaptiveTimeline.thumbnailCache.clear();
+                    this.adaptiveTimeline.render();
+                }
+            }
+        };
         
         this.setupTimelineEventListeners();
         this.setupPrerecordingButtons();
         this.setupIntegrationEventListeners();
         
-        console.log('TimelineIntegrationManager: Initialized');
+        console.log('TimelineIntegrationManager: Initialized with Adaptive Timeline');
+    }
+    
+    initializeJogwheel() {
+        // Create jogwheel container inside timeline
+        const timelineEl = document.getElementById('videoTimeline');
+        if (!timelineEl) return;
+        
+        const jogwheelContainer = document.createElement('div');
+        jogwheelContainer.className = 'jogwheel-container';
+        timelineEl.appendChild(jogwheelContainer);
+        
+        // Initialize jogwheel
+        this.jogwheel = new JogwheelControl(jogwheelContainer, {
+            size: 160,
+            sensitivity: 0.5,
+            hapticFeedback: true
+        });
+        
+        // Always show the jogwheel
+        this.jogwheel.show();
+        
+        // Jogwheel events
+        this.jogwheel.on('scrub', (amount) => {
+            if (this.adaptiveTimeline) {
+                const currentTime = this.adaptiveTimeline.state.currentTime;
+                const newTime = currentTime + amount;
+                this.adaptiveTimeline.seek(newTime);
+                
+                // Update playhead controls
+                if (this.playheadControls) {
+                    this.playheadControls.updateTime(newTime, this.adaptiveTimeline.state.duration);
+                }
+            }
+        });
+        
+        // Touch activation for enhanced interaction
+        timelineEl.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                // Two-finger touch could activate special mode
+                e.preventDefault();
+            }
+        });
     }
     
     setupTimelineEventListeners() {
@@ -82,8 +220,10 @@ class TimelineIntegrationManager {
     
     setPrerecordingMode(duration) {
         this.prerecordingMode = duration;
-        this.timeline.prerecordingBuffer = duration;
-        this.timeline.updatePrerecordingBuffer();
+        if (this.timeline) {
+            this.timeline.prerecordingBuffer = duration;
+            this.timeline.updatePrerecordingBuffer();
+        }
         
         console.log(`TimelineIntegrationManager: Prerecording mode set to ${duration}s`);
     }
@@ -94,13 +234,24 @@ class TimelineIntegrationManager {
         this.isTimelineEnabled = true;
         const timelineContainer = document.getElementById('videoTimeline');
         if (timelineContainer) {
-            timelineContainer.style.display = 'flex';
+            timelineContainer.style.display = 'block';
+            
+            // Initialize adaptive timeline with video if available
+            const video = document.getElementById('webcamPreviewLarge');
+            if (video && this.adaptiveTimeline) {
+                // For live recording, set duration to 0 to trigger 30-second initial view
+                this.adaptiveTimeline.setVideo(video, 0);
+                
+                // Start updating the timeline
+                this.updateInterval = setInterval(() => {
+                    if (video.currentTime > 0) {
+                        this.adaptiveTimeline.updateTime(video.currentTime);
+                    }
+                }, 100);
+            }
         }
         
-        // Start thumbnail capture interval when timeline is enabled
-        this.startThumbnailCapture();
-        
-        console.log('TimelineIntegrationManager: Timeline enabled');
+        console.log('TimelineIntegrationManager: Timeline enabled with adaptive thumbnails');
     }
     
     disableTimeline() {
@@ -112,53 +263,25 @@ class TimelineIntegrationManager {
             timelineContainer.style.display = 'none';
         }
         
-        // Stop thumbnail capture
-        this.stopThumbnailCapture();
+        // Stop update interval
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
         
         // Clear timeline
         this.timeline.clear();
         this.criticalMoments = [];
         
+        // Hide jogwheel
+        if (this.jogwheel) {
+            this.jogwheel.hide();
+        }
+        
         console.log('TimelineIntegrationManager: Timeline disabled');
     }
     
-    startThumbnailCapture() {
-        // Capture thumbnails every 5 seconds during video preview
-        this.thumbnailCaptureInterval = setInterval(() => {
-            if (this.isTimelineEnabled) {
-                this.captureThumbnailFrame();
-            }
-        }, 5000);
-    }
-    
-    stopThumbnailCapture() {
-        if (this.thumbnailCaptureInterval) {
-            clearInterval(this.thumbnailCaptureInterval);
-            this.thumbnailCaptureInterval = null;
-        }
-    }
-    
-    captureThumbnailFrame() {
-        try {
-            const video = document.getElementById('webcamPreviewLarge');
-            if (!video || video.videoWidth === 0) return;
-            
-            const canvas = document.createElement('canvas');
-            canvas.width = 120;
-            canvas.height = 68;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            const thumbnailData = canvas.toDataURL('image/jpeg', 0.7);
-            const currentTime = this.timeline.currentTime;
-            
-            this.timeline.addThumbnail(thumbnailData, currentTime, 'frame');
-            
-        } catch (error) {
-            console.warn('TimelineIntegrationManager: Thumbnail capture failed:', error);
-        }
-    }
+    // Thumbnail capture is now handled by AdaptiveTimeline
     
     // Event Handlers
     
@@ -176,18 +299,13 @@ class TimelineIntegrationManager {
         this.timeline.startRecording();
         this.startRecordingTimer();
         
-        // Capture initial thumbnail
-        setTimeout(() => {
-            this.captureThumbnailFrame();
-        }, 1000);
+        // Set adaptive timeline to live recording mode
+        if (this.adaptiveTimeline) {
+            this.adaptiveTimeline.setLiveRecording(true);
+        }
         
-        // Start capturing thumbnails more frequently during recording
-        this.stopThumbnailCapture();
-        this.thumbnailCaptureInterval = setInterval(() => {
-            this.captureThumbnailFrame();
-        }, 2000); // Every 2 seconds during recording
-        
-        console.log('TimelineIntegrationManager: Recording started on timeline');
+        // No need for manual thumbnail capture - adaptive timeline handles it
+        console.log('TimelineIntegrationManager: Recording started on timeline with live thumbnails');
     }
     
     onRecordingStopped() {
@@ -196,14 +314,10 @@ class TimelineIntegrationManager {
         this.timeline.stopRecording();
         this.stopRecordingTimer();
         
-        // Return to normal thumbnail capture rate
-        this.stopThumbnailCapture();
-        this.startThumbnailCapture();
-        
-        // Capture final thumbnail
-        setTimeout(() => {
-            this.captureThumbnailFrame();
-        }, 500);
+        // Exit live recording mode
+        if (this.adaptiveTimeline) {
+            this.adaptiveTimeline.setLiveRecording(false);
+        }
         
         console.log('TimelineIntegrationManager: Recording stopped on timeline');
     }
@@ -301,12 +415,19 @@ class TimelineIntegrationManager {
     updateTimeDisplay(time) {
         // Update any additional time displays
         const formatTime = (seconds) => {
+            if (!isFinite(seconds) || seconds < 0) {
+                seconds = 0;
+            }
             const mins = Math.floor(seconds / 60);
             const secs = Math.floor(seconds % 60);
             return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         };
         
-        // Could update other UI elements here
+        // Update playhead controls if available
+        if (this.playheadControls) {
+            const duration = this.app.isRecording ? time : this.timeline.duration;
+            this.playheadControls.updateTime(time, duration);
+        }
     }
     
     updateStorageEstimate(recordingTime) {

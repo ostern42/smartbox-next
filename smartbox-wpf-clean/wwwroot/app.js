@@ -12,11 +12,18 @@ class SmartBoxTouchApp {
         this.recordingStart = null;
         this.recordingTimer = null;
         
+        // Video engine support
+        this.videoEngine = null;
+        this.useFFmpegBackend = true; // Feature flag for FFmpeg backend
+        this.recordedChunks = []; // For MediaRecorder fallback
+        this.currentRecordingMetadata = null;
+        
         // Initialize managers
         this.gestureManager = null;
         this.dialogManager = null;
         this.modeManager = null;
         this.timelineManager = null;
+        this.videoWorkflowManager = null;
         
         // MWL data
         this.mwlData = [];
@@ -36,15 +43,19 @@ class SmartBoxTouchApp {
             this.dialogManager = new TouchDialogManager();
             this.modeManager = new ModeManager();
             this.timelineManager = new TimelineIntegrationManager(this);
+            this.videoWorkflowManager = new VideoWorkflowManager(this);
             
             // Make dialog manager globally available
             window.touchDialogManager = this.dialogManager;
             
+            // Initialize clock display
+            this.initializeClockDisplay();
+            
             // Set up event listeners
             this.setupEventListeners();
             
-            // Initialize webcam
-            await this.initializeWebcam();
+            // Initialize video system (FFmpeg backend or webcam)
+            await this.initializeVideoSystem();
             
             // Load initial MWL data with saved default period
             await this.loadDefaultMWLData();
@@ -86,7 +97,105 @@ class SmartBoxTouchApp {
         // UI events
         this.setupUIEventListeners();
         
+        // Message handler for WPF communication
+        this.setupMessageHandler();
+        
         console.log('SmartBoxTouchApp: Event listeners set up');
+    }
+    
+    setupMessageHandler() {
+        // Listen for messages from WPF
+        window.addEventListener('message', (event) => {
+            try {
+                const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                
+                if (!message || !message.action) {
+                    console.warn('Invalid message format:', event.data);
+                    return;
+                }
+                
+                console.log('Received message from WPF:', message.action);
+                
+                switch (message.action.toLowerCase()) {
+                    case 'recordingstarted':
+                        this.handleRecordingStarted(message.data);
+                        break;
+                    case 'recordingstopped':
+                        this.handleRecordingStopped(message.data);
+                        break;
+                    default:
+                        console.log('Unhandled message action:', message.action);
+                }
+            } catch (error) {
+                console.error('Error handling message:', error);
+            }
+        });
+    }
+    
+    handleRecordingStarted(data) {
+        console.log('Recording started from WPF:', data);
+        
+        // Update UI to reflect WPF recording state
+        this.isRecording = true;
+        this.recordingStart = new Date(data.startTime);
+        this.updateRecordingUI();
+        this.startRecordingTimer();
+        
+        // Show notification
+        this.showNotification('Hardware-Aufnahme gestartet', `Qualität: ${data.quality}`);
+        
+        // Notify other components
+        document.dispatchEvent(new CustomEvent('hardwareRecordingStarted', { detail: data }));
+    }
+    
+    handleRecordingStopped(data) {
+        console.log('Recording stopped from WPF:', data);
+        
+        // Update UI
+        this.isRecording = false;
+        this.stopRecordingTimer();
+        this.updateRecordingUI();
+        
+        // Show notification with file info
+        const duration = Math.floor(data.duration);
+        const fileSize = (data.fileSize / 1048576).toFixed(1); // Convert to MB
+        this.showNotification(
+            'Hardware-Aufnahme gestoppt', 
+            `Dauer: ${duration}s, Größe: ${fileSize} MB`
+        );
+        
+        // Add to timeline if available
+        if (this.timelineManager) {
+            this.timelineManager.addRecording({
+                filePath: data.filePath,
+                duration: data.duration,
+                fileSize: data.fileSize,
+                timestamp: data.stopTime,
+                source: 'hardware'
+            });
+        }
+        
+        // Notify other components
+        document.dispatchEvent(new CustomEvent('hardwareRecordingStopped', { detail: data }));
+    }
+    
+    showNotification(title, message) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'hardware-notification';
+        notification.innerHTML = `
+            <div class="notification-title">${title}</div>
+            <div class="notification-message">${message}</div>
+        `;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.classList.add('fade-out');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
 
     setupUIEventListeners() {
@@ -161,6 +270,17 @@ class SmartBoxTouchApp {
         //     console.error('Exit button not found!');
         // }
         
+        // Sidebar settings button
+        const sidebarSettingsButton = document.getElementById('sidebarSettingsButton');
+        if (sidebarSettingsButton) {
+            sidebarSettingsButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Sidebar settings button clicked');
+                this.openSettings();
+            });
+        }
+        
         // Back to patient selection button
         const backButton = document.getElementById('backToPatientSelection');
         if (backButton) {
@@ -186,6 +306,119 @@ class SmartBoxTouchApp {
                 this.onSortColumn(sortHeader.dataset.sort);
             }
         });
+    }
+
+    async initializeVideoSystem() {
+        if (this.useFFmpegBackend && window.VideoEngineClient) {
+            try {
+                console.log('SmartBoxTouchApp: Initializing FFmpeg video engine...');
+                
+                // Initialize video engine
+                this.videoEngine = new VideoEngineClient();
+                
+                // Set up event handlers
+                this.setupVideoEngineEventHandlers();
+                
+                // Initialize and select source
+                const source = await this.videoEngine.initialize();
+                
+                if (source) {
+                    console.log('SmartBoxTouchApp: Video engine initialized with source:', source);
+                    this.updateVideoSourceDisplay(source);
+                    
+                    // Still initialize webcam for preview if available
+                    await this.initializeWebcamPreview();
+                } else {
+                    console.warn('SmartBoxTouchApp: No video source available, falling back to MediaRecorder');
+                    this.useFFmpegBackend = false;
+                    await this.initializeWebcam();
+                }
+            } catch (error) {
+                console.error('SmartBoxTouchApp: Failed to initialize video engine:', error);
+                this.useFFmpegBackend = false;
+                await this.initializeWebcam();
+            }
+        } else {
+            // Use existing MediaRecorder implementation
+            await this.initializeWebcam();
+        }
+    }
+    
+    setupVideoEngineEventHandlers() {
+        if (!this.videoEngine) return;
+        
+        // Recording events
+        this.videoEngine.on('recordingStarted', (session) => {
+            console.log('Video engine recording started:', session);
+            this.handleFFmpegRecordingStarted(session);
+        });
+        
+        this.videoEngine.on('recordingStopped', (result) => {
+            console.log('Video engine recording stopped:', result);
+            this.handleFFmpegRecordingStopped(result);
+        });
+        
+        this.videoEngine.on('segmentCompleted', (segment) => {
+            console.log('Video segment completed:', segment);
+            // Update timeline if needed
+            if (this.timelineManager) {
+                this.timelineManager.onSegmentCompleted(segment);
+            }
+        });
+        
+        this.videoEngine.on('error', (error) => {
+            console.error('Video engine error:', error);
+            this.showError('Video-Engine Fehler: ' + error.message);
+        });
+        
+        this.videoEngine.on('statusUpdate', (status) => {
+            console.log('Video engine status:', status);
+        });
+        
+        this.videoEngine.on('thumbnailReady', (thumbnail) => {
+            // Update UI with new thumbnail
+            if (this.timelineManager) {
+                this.timelineManager.updateThumbnail(thumbnail);
+            }
+        });
+    }
+    
+    updateVideoSourceDisplay(source) {
+        // Update UI to show selected video source
+        const sourceDisplay = document.getElementById('videoSourceDisplay');
+        if (sourceDisplay) {
+            sourceDisplay.textContent = source.name;
+            sourceDisplay.title = `${source.type} - ${source.capabilities.maxResolution}@${source.capabilities.maxFrameRate}fps`;
+        }
+    }
+    
+    async initializeWebcamPreview() {
+        // Try to initialize webcam just for local preview (not recording)
+        try {
+            const constraints = {
+                video: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 960 },
+                    facingMode: 'user'
+                },
+                audio: false
+            };
+            
+            this.webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            // Set up preview elements
+            const smallPreview = document.getElementById('webcamPreviewSmall');
+            if (smallPreview) {
+                smallPreview.srcObject = this.webcamStream;
+            }
+            
+            const largePreview = document.getElementById('webcamPreviewLarge');
+            if (largePreview && !this.useFFmpegBackend) {
+                largePreview.srcObject = this.webcamStream;
+            }
+        } catch (error) {
+            console.warn('SmartBoxTouchApp: Could not initialize webcam preview:', error);
+        }
     }
 
     async initializeWebcam() {
@@ -431,10 +664,47 @@ class SmartBoxTouchApp {
             // Add visual feedback
             row.classList.add('selected');
             
+            // Update patient details in sidebar
+            this.updatePatientDetails(patient);
+            
             // Emit patient selection event
             document.dispatchEvent(new CustomEvent('patientSelected', {
                 detail: patient
             }));
+        }
+    }
+    
+    updatePatientDetails(patient) {
+        // Update patient name
+        const nameElement = document.getElementById('selectedPatientName');
+        if (nameElement) {
+            nameElement.textContent = patient.name;
+        }
+        
+        // Update birth date
+        const birthDateElement = document.getElementById('selectedBirthDate');
+        if (birthDateElement) {
+            birthDateElement.textContent = patient.birthDate;
+        }
+        
+        // Update gender
+        const genderElement = document.getElementById('selectedGender');
+        if (genderElement) {
+            const genderText = patient.gender === 'M' ? 'Männlich' : patient.gender === 'W' ? 'Weiblich' : patient.gender;
+            genderElement.textContent = genderText;
+        }
+        
+        // Update study type
+        const studyTypeElement = document.getElementById('selectedStudyType');
+        if (studyTypeElement) {
+            studyTypeElement.textContent = patient.studyType;
+        }
+        
+        // Update study date
+        const studyDateElement = document.getElementById('selectedStudyDate');
+        if (studyDateElement) {
+            const today = new Date().toLocaleDateString('de-DE');
+            studyDateElement.textContent = today + ' ' + patient.scheduledTime;
         }
     }
     
@@ -641,6 +911,70 @@ class SmartBoxTouchApp {
             
             console.log('SmartBoxTouchApp: Starting video recording...');
             
+            // Check if we should use FFmpeg backend
+            if (this.useFFmpegBackend && this.videoEngine) {
+                try {
+                    const patient = this.modeManager.getCurrentPatient();
+                    const session = await this.videoEngine.startRecording({
+                        patientId: patient?.id || 'default',
+                        studyId: patient?.studyId,
+                        lossless: true,
+                        preRecordSeconds: 60, // Enable pre-recording buffer
+                        enablePreview: true
+                    });
+                    
+                    console.log('SmartBoxTouchApp: FFmpeg recording started:', session);
+                    
+                    // Update state
+                    this.isRecording = true;
+                    this.recordingStart = new Date(session.startTime).getTime();
+                    
+                    // Initialize metadata for critical moments
+                    this.currentRecordingMetadata = {
+                        criticalMoments: [],
+                        sessionId: session.sessionId
+                    };
+                    
+                    // Update UI
+                    this.updateRecordingUI();
+                    this.startRecordingTimer();
+                    
+                    // Show critical moment button
+                    const criticalButton = document.getElementById('markCriticalMomentButton');
+                    if (criticalButton) {
+                        criticalButton.classList.remove('hidden');
+                    }
+                    
+                    // Add recording class to container
+                    const captureArea = document.getElementById('captureArea');
+                    if (captureArea) {
+                        captureArea.classList.add('recording-active');
+                    }
+                    
+                    // Update video button state
+                    const videoButton = document.getElementById('toggleVideoButton');
+                    if (videoButton) {
+                        videoButton.classList.add('recording');
+                    }
+                    
+                    // Dispatch startVideoRecording event for VideoWorkflowManager
+                    document.dispatchEvent(new CustomEvent('startVideoRecording', {
+                        detail: {
+                            patient: this.modeManager.getCurrentPatient(),
+                            sessionId: session.sessionId
+                        }
+                    }));
+                    
+                    return;
+                    
+                } catch (error) {
+                    console.error('SmartBoxTouchApp: Failed to start FFmpeg recording:', error);
+                    this.showError('FFmpeg-Aufnahme fehlgeschlagen, verwende Browser-Aufnahme');
+                    this.useFFmpegBackend = false;
+                    // Fall through to MediaRecorder
+                }
+            }
+            
             if (!this.webcamStream) {
                 throw new Error('Webcam not available');
             }
@@ -689,6 +1023,13 @@ class SmartBoxTouchApp {
                 videoButton.classList.add('recording');
             }
             
+            // Dispatch startVideoRecording event for VideoWorkflowManager
+            document.dispatchEvent(new CustomEvent('startVideoRecording', {
+                detail: {
+                    patient: this.modeManager.getCurrentPatient()
+                }
+            }));
+            
             console.log('SmartBoxTouchApp: Video recording started');
             
         } catch (error) {
@@ -697,12 +1038,29 @@ class SmartBoxTouchApp {
         }
     }
 
-    onStopVideoRecording() {
-        if (!this.isRecording || !this.mediaRecorder) return;
+    async onStopVideoRecording() {
+        if (!this.isRecording) return;
         
         console.log('SmartBoxTouchApp: Stopping video recording...');
         
-        this.mediaRecorder.stop();
+        // Check if using FFmpeg backend
+        if (this.useFFmpegBackend && this.videoEngine && this.videoEngine.isRecording()) {
+            try {
+                const result = await this.videoEngine.stopRecording();
+                console.log('SmartBoxTouchApp: FFmpeg recording stopped:', result);
+                
+                // State will be updated by event handlers
+                return;
+                
+            } catch (error) {
+                console.error('SmartBoxTouchApp: Failed to stop FFmpeg recording:', error);
+                this.showError('Fehler beim Stoppen der Aufnahme: ' + error.message);
+            }
+        } else if (this.mediaRecorder) {
+            // MediaRecorder fallback
+            this.mediaRecorder.stop();
+        }
+        
         this.isRecording = false;
         this.stopRecordingTimer();
         this.updateRecordingUI();
@@ -724,6 +1082,13 @@ class SmartBoxTouchApp {
         if (videoButton) {
             videoButton.classList.remove('recording');
         }
+        
+        // Dispatch stopVideoRecording event for VideoWorkflowManager
+        document.dispatchEvent(new CustomEvent('stopVideoRecording', {
+            detail: {
+                patient: this.modeManager.getCurrentPatient()
+            }
+        }));
     }
 
     onVideoRecordingComplete() {
@@ -743,6 +1108,16 @@ class SmartBoxTouchApp {
                     duration: duration,
                     criticalMoments: this.currentRecordingMetadata?.criticalMoments || []
                 });
+                
+                // Dispatch videoCaptured event for VideoWorkflowManager
+                document.dispatchEvent(new CustomEvent('videoCaptured', {
+                    detail: {
+                        captureId: captureId,
+                        videoBlob: blob,
+                        duration: duration,
+                        patient: this.modeManager.getCurrentPatient()
+                    }
+                }));
                 
                 // Reset metadata
                 this.currentRecordingMetadata = null;
@@ -789,6 +1164,83 @@ class SmartBoxTouchApp {
                 resolve(canvas.toDataURL('image/jpeg', 0.6));
             };
         });
+    }
+
+    handleFFmpegRecordingStarted(session) {
+        // Update UI state
+        this.updateRecordingUI();
+        
+        // Show notification
+        this.showNotification('FFmpeg-Aufnahme gestartet', 
+            `Lossless ${session.status} - Session: ${session.sessionId.substring(0, 8)}`);
+    }
+    
+    async handleFFmpegRecordingStopped(result) {
+        try {
+            // Get final segments for processing
+            const segments = await this.videoEngine.getEditableSegments();
+            
+            // Create a capture entry
+            const captureId = this.modeManager.addCapture({
+                type: 'video',
+                data: result.outputPath,
+                thumbnail: null, // Will be generated from segments
+                duration: result.duration,
+                segmentCount: result.segmentCount,
+                totalSize: result.totalSize,
+                criticalMoments: this.currentRecordingMetadata?.criticalMoments || [],
+                sessionId: result.sessionId,
+                isFFmpeg: true
+            });
+            
+            // Update UI
+            this.isRecording = false;
+            this.stopRecordingTimer();
+            this.updateRecordingUI();
+            
+            // Hide critical moment button
+            const criticalButton = document.getElementById('markCriticalMomentButton');
+            if (criticalButton) {
+                criticalButton.classList.add('hidden');
+            }
+            
+            // Remove recording class from container
+            const captureArea = document.getElementById('captureArea');
+            if (captureArea) {
+                captureArea.classList.remove('recording-active');
+            }
+            
+            // Update video button state
+            const videoButton = document.getElementById('toggleVideoButton');
+            if (videoButton) {
+                videoButton.classList.remove('recording');
+            }
+            
+            // Dispatch videoCaptured event for VideoWorkflowManager
+            document.dispatchEvent(new CustomEvent('videoCaptured', {
+                detail: {
+                    captureId: captureId,
+                    sessionId: result.sessionId,
+                    duration: result.duration,
+                    segments: segments,
+                    patient: this.modeManager.getCurrentPatient()
+                }
+            }));
+            
+            // Reset metadata
+            this.currentRecordingMetadata = null;
+            
+            // Show notification
+            const fileSizeMB = (result.totalSize / 1048576).toFixed(1);
+            this.showNotification('FFmpeg-Aufnahme gestoppt', 
+                `${result.segmentCount} Segmente, ${fileSizeMB} MB, ${Math.floor(result.duration)}s`);
+                
+            console.log('SmartBoxTouchApp: FFmpeg recording completed:', result);
+            
+        } catch (error) {
+            console.error('SmartBoxTouchApp: Error handling FFmpeg recording stop:', error);
+            this.showError('Fehler beim Verarbeiten der Aufnahme: ' + error.message);
+        }
     }
 
     updateRecordingUI() {
@@ -841,6 +1293,11 @@ class SmartBoxTouchApp {
     onExportRequested() {
         console.log('SmartBoxTouchApp: onExportRequested called');
         console.log('SmartBoxTouchApp: modeManager exists:', !!this.modeManager);
+        
+        // Dispatch exportCaptures event for VideoWorkflowManager
+        document.dispatchEvent(new CustomEvent('exportCaptures', {
+            detail: {}
+        }));
         
         // Get captures for export (selected or all)
         const capturesToExport = this.modeManager.getCapturesForExport();
@@ -1038,6 +1495,37 @@ class SmartBoxTouchApp {
                 patientStatus.textContent = 'Kein Patient';
             }
         }
+    }
+
+    initializeClockDisplay() {
+        const updateClock = () => {
+            const clockDisplay = document.getElementById('clockDisplay');
+            if (clockDisplay) {
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                const seconds = now.getSeconds().toString().padStart(2, '0');
+                
+                // Format weekday and date
+                const weekdays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+                const weekday = weekdays[now.getDay()];
+                const day = now.getDate().toString().padStart(2, '0');
+                const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                const year = now.getFullYear();
+                
+                // Update clock display with date and time
+                clockDisplay.innerHTML = `
+                    <div class="date-display">${weekday}<br>${day}.${month}.${year}</div>
+                    <div class="time-display">${hours}:${minutes}:${seconds}</div>
+                `;
+            }
+        };
+        
+        // Update immediately
+        updateClock();
+        
+        // Update every second
+        setInterval(updateClock, 1000);
     }
 
     getDemoMWLData() {

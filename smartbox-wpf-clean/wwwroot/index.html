@@ -9,8 +9,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-elegant.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/segoe-fluent-icons/font/SegoeFluentIcons.css">
+    <style>
+        /* Segoe MDL2 Assets für Windows Icons */
+        @font-face {
+            font-family: 'Segoe MDL2 Assets';
+            src: local('Segoe MDL2 Assets');
+        }
+        
+        .icon-mdl2 {
+            font-family: 'Segoe MDL2 Assets', 'Segoe UI Symbol';
+            font-style: normal;
+            font-weight: normal;
+            line-height: 1;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+    <link rel="stylesheet" href="css/video-editing.css">
+    <link rel="stylesheet" href="css/timeline-buttons.css">
 </head>
 <body>
     <div class="app-container">
@@ -21,14 +39,9 @@
                 <div class="patient-status" id="patientStatus">
                     <span id="patientStatusText">Kein Patient</span>
                 </div>
-                <div class="header-buttons">
-                    <button class="header-button" id="settingsButton" data-action="opensettings" aria-label="Einstellungen">
-                        <span style="font-size: 20px;">⚙</span>
-                    </button>
-                    <button class="exit-button" id="exitButton" data-action="exitapp" aria-label="Beenden">
-                        <span style="font-size: 20px; font-weight: bold;">✕</span>
-                    </button>
-                </div>
+                <button class="exit-button" id="exitButton" data-action="exitapp" aria-label="Beenden">
+                    <i class="ms-Icon ms-Icon--ChromeClose"></i>
+                </button>
             </div>
         </header>
 
@@ -37,14 +50,6 @@
             
             <!-- Mode: Patient Selection -->
             <div class="mode-container" id="patientMode">
-                <!-- Pull to Refresh Indicator -->
-                <div class="pull-to-refresh" id="pullToRefresh">
-                    <div class="pull-arrow">
-                        <i class="ms-Icon ms-Icon--ChevronDown"></i>
-                    </div>
-                    <span class="pull-text">Ziehen zum Aktualisieren</span>
-                </div>
-
                 <!-- MWL Table Container -->
                 <div class="mwl-container" id="mwlContainer">
                     <div class="mwl-header">
@@ -115,18 +120,76 @@
                     </div>
                 </div>
 
-                <!-- Small Preview Section -->
-                <div class="preview-small">
-                    <div class="preview-container">
-                        <video id="webcamPreviewSmall" autoplay playsinline muted></video>
-                        <div class="preview-overlay">
-                            <i class="ms-Icon ms-Icon--Camera"></i>
-                            <span>Kamera bereit</span>
+                <!-- Right Sidebar -->
+                <div class="sidebar-container">
+                    <!-- Video Preview Section -->
+                    <div class="preview-section">
+                        <div class="preview-container">
+                            <video id="webcamPreviewSmall" autoplay playsinline muted></video>
+                            <div class="preview-overlay">
+                                <i class="ms-Icon ms-Icon--Camera"></i>
+                                <span>Kamera bereit</span>
+                            </div>
                         </div>
                     </div>
-                    <p class="preview-hint">Wählen Sie einen Patienten aus der Liste</p>
+                    
+                    <!-- Patient Details -->
+                    <div class="patient-details" id="patientDetails">
+                        <div class="detail-section">
+                            <div class="detail-label">Patient</div>
+                            <div class="detail-value large" id="selectedPatientName">Kein Patient ausgewählt</div>
+                        </div>
+                        
+                        <div class="detail-grid">
+                            <div class="detail-section">
+                                <div class="detail-label">Geburtsdatum</div>
+                                <div class="detail-value" id="selectedBirthDate">-</div>
+                            </div>
+                            <div class="detail-section">
+                                <div class="detail-label">Geschlecht</div>
+                                <div class="detail-value" id="selectedGender">-</div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <div class="detail-label">Untersuchung</div>
+                            <div class="detail-value" id="selectedStudyType">-</div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <div class="detail-label">Geplanter Termin</div>
+                            <div class="detail-value" id="selectedStudyDate">-</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Display -->
+                    <div class="status-display">
+                        <div class="status-item">
+                            <div class="status-indicator connected"></div>
+                            <span class="status-label">AET:</span>
+                            <span class="status-value" id="connectedAET">SMARTBOX_01</span>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-indicator connected"></div>
+                            <span class="status-label">IP:</span>
+                            <span class="status-value" id="localIP">192.168.1.100</span>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-indicator" id="pacsIndicator"></div>
+                            <span class="status-label">PACS:</span>
+                            <span class="status-value" id="pacsStatus">Verbunden</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Bottom Bar -->
+                    <div class="bottom-bar">
+                        <div class="clock-display" id="clockDisplay">14:32</div>
+                        <button class="settings-button" id="sidebarSettingsButton" data-action="opensettings">
+                            <i class="ms-Icon ms-Icon--Settings"></i>
+                        </button>
+                    </div>
                 </div>
-
+                
                 <!-- Emergency Patient Swipe Area -->
                 <div class="emergency-swipe-container">
                     <div class="emergency-hint">
@@ -224,7 +287,9 @@
                 </div>
 
                 <!-- Professional Video Timeline -->
-                <div id="videoTimeline" class="video-timeline-container" style="display: none;"></div>
+                <div id="videoTimeline" class="video-timeline-container">
+                    <div class="timeline-container"></div>
+                </div>
 
                 <!-- Thumbnail Strip -->
                 <div class="thumbnail-strip-container">
@@ -301,6 +366,14 @@
     <script src="js/touch_gestures.js"></script>
     <script src="js/touch_dialogs.js"></script>
     <script src="js/mode_manager.js"></script>
+    <script src="js/video-player-component.js"></script>
+    <script src="js/jogwheel-control.js"></script>
+    <script src="js/adaptive-timeline.js"></script>
+    <script src="js/playhead-controls.js"></script>
+    <script src="js/video-editor-component.js"></script>
+    <script src="js/medical-annotation-tools.js"></script>
+    <script src="js/video-workflow-integration.js"></script>
+    <script src="js/video-engine-client.js"></script>
     <script src="app.js"></script>
     <!-- <script src="debug_overlay.js"></script> -->
 </body>

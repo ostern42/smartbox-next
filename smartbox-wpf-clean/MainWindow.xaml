@@ -19,6 +19,149 @@
         <wv2:WebView2 x:Name="webView" 
                       Visibility="Collapsed"/>
         
+        <!-- Recording Controls Overlay -->
+        <Border x:Name="recordingControlsPanel"
+                Background="#EE000000"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Right"
+                Margin="20"
+                CornerRadius="8"
+                Visibility="Collapsed">
+            <Grid Margin="15">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Recording Status -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                    <Ellipse x:Name="recordingIndicator" 
+                             Width="12" Height="12" 
+                             Fill="Red" 
+                             Margin="0,0,8,0"
+                             Visibility="Collapsed">
+                        <Ellipse.Triggers>
+                            <EventTrigger RoutedEvent="Ellipse.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                         From="1.0" To="0.3" 
+                                                         Duration="0:0:0.5" 
+                                                         RepeatBehavior="Forever" 
+                                                         AutoReverse="True"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Ellipse.Triggers>
+                    </Ellipse>
+                    <TextBlock x:Name="recordingStatusText" 
+                               Text="Ready" 
+                               Foreground="White" 
+                               FontSize="14"
+                               FontWeight="Bold"/>
+                </StackPanel>
+                
+                <!-- Recording Time and Size -->
+                <Grid Grid.Row="1" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Duration: " Foreground="#CCCCCC" FontSize="12" Margin="0,0,5,0"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="recordingTimeText" Text="00:00:00" Foreground="White" FontSize="12"/>
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Size: " Foreground="#CCCCCC" FontSize="12" Margin="0,0,5,0"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="recordingSizeText" Text="0 MB" Foreground="White" FontSize="12"/>
+                </Grid>
+                
+                <!-- Quality Selection -->
+                <StackPanel Grid.Row="2" Margin="0,0,0,10">
+                    <TextBlock Text="Quality:" Foreground="#CCCCCC" FontSize="12" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="recordingQualityCombo" 
+                              Width="180"
+                              SelectedIndex="1">
+                        <ComboBoxItem>Low (720p, 2 Mbps)</ComboBoxItem>
+                        <ComboBoxItem>Medium (1080p, 5 Mbps)</ComboBoxItem>
+                        <ComboBoxItem>High (1080p, 10 Mbps)</ComboBoxItem>
+                        <ComboBoxItem>Ultra (4K, 20 Mbps)</ComboBoxItem>
+                    </ComboBox>
+                </StackPanel>
+                
+                <!-- Recording Progress -->
+                <ProgressBar x:Name="recordingProgressBar" 
+                             Grid.Row="3"
+                             Height="4"
+                             Margin="0,0,0,10"
+                             Visibility="Collapsed"
+                             IsIndeterminate="True"
+                             Foreground="#FF4444"/>
+                
+                <!-- Control Buttons -->
+                <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button x:Name="startRecordingButton" 
+                            Content="Start Recording" 
+                            Width="85"
+                            Height="30"
+                            Margin="0,0,5,0"
+                            Click="StartVideoRecording_Click"
+                            Style="{StaticResource MedicalButtonStyle}"/>
+                    
+                    <Button x:Name="stopRecordingButton" 
+                            Content="Stop" 
+                            Width="85"
+                            Height="30"
+                            IsEnabled="False"
+                            Click="StopVideoRecording_Click"
+                            Style="{StaticResource MedicalButtonStyle}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        
+        <!-- Hardware Status Panel -->
+        <Border x:Name="hardwareStatusPanel"
+                Background="#EE000000"
+                VerticalAlignment="Bottom"
+                HorizontalAlignment="Right"
+                Margin="20"
+                CornerRadius="8"
+                Visibility="Collapsed">
+            <StackPanel Margin="10">
+                <TextBlock Text="Yuan SC550N1 Status" 
+                           Foreground="White" 
+                           FontWeight="Bold" 
+                           FontSize="12"
+                           Margin="0,0,0,5"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Connection: " Foreground="#CCCCCC" FontSize="11"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" x:Name="hardwareConnectionStatus" Text="Disconnected" Foreground="#FF4444" FontSize="11"/>
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Input: " Foreground="#CCCCCC" FontSize="11"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="hardwareInputStatus" Text="None" Foreground="White" FontSize="11"/>
+                    
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="FPS: " Foreground="#CCCCCC" FontSize="11"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="hardwareFpsStatus" Text="0" Foreground="White" FontSize="11"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+        
         <!-- Loading Overlay -->
         <Grid x:Name="loadingOverlay" 
               Background="#F0F0F0" 

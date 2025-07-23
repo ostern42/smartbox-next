@@ -1803,3 +1803,55 @@ body {
         height: 45px;
     }
 }
+
+/* Hardware Recording Notification Styles */
+.hardware-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    max-width: 300px;
+    animation: slideIn 0.3s ease-out;
+}
+
+.hardware-notification.fade-out {
+    animation: slideOut 0.3s ease-out forwards;
+}
+
+.notification-title {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.notification-message {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}

@@ -11,25 +11,38 @@ namespace SmartBoxNext
     public partial class MainWindowMinimal : Window
     {
         private readonly ILogger<MainWindowMinimal> _logger;
+        private readonly ILoggerFactory _loggerFactory;
         private AppConfig? _config;
         private bool _isInitialized = false;
+        private KestrelStreamingApi? _streamingApi;
 
         public MainWindowMinimal()
         {
             InitializeComponent();
             
-            var loggerFactory = LoggerFactory.Create(builder =>
+            _loggerFactory = LoggerFactory.Create(builder =>
             {
                 builder.AddConsole();
                 builder.SetMinimumLevel(LogLevel.Information);
             });
-            _logger = loggerFactory.CreateLogger<MainWindowMinimal>();
+            _logger = _loggerFactory.CreateLogger<MainWindowMinimal>();
             
             LoadConfiguration();
             UpdateStatusText("Initializing SmartBox medical capture system...");
             
             // Automatically initialize after window loads
             this.Loaded += async (s, e) => await InitializeInterface();
+            
+            // Cleanup on window closing
+            this.Closing += async (s, e) =>
+            {
+                if (_streamingApi != null)
+                {
+                    _logger.LogInformation("Stopping streaming API...");
+                    await _streamingApi.StopAsync();
+                    _streamingApi.Dispose();
+                }
+            };
         }
 
         private void LoadConfiguration()
@@ -62,6 +75,27 @@ namespace SmartBoxNext
 
             try
             {
+                // Start Kestrel streaming API (no admin rights needed!)
+                UpdateStatusText("Starting streaming API server...");
+                _streamingApi = new KestrelStreamingApi(_loggerFactory.CreateLogger<KestrelStreamingApi>());
+                await _streamingApi.StartAsync();
+                _logger.LogInformation("Streaming API started successfully on port 5002");
+                
+                // Test the API to make sure it's working
+                UpdateStatusText("Testing streaming API...");
+                var apiTester = new ApiTester();
+                var apiWorking = await apiTester.RunAllTestsAsync();
+                apiTester.Dispose();
+                
+                if (apiWorking)
+                {
+                    _logger.LogInformation("✅ API self-test passed - streaming functionality ready");
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ API self-test failed - streaming may not work properly");
+                }
+                
                 UpdateStatusText("Initializing WebView2 medical interface...");
 
                 await InitializeWebView();

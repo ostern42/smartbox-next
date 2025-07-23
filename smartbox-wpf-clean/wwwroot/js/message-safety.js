@@ -15,6 +15,7 @@ class MedicalMessageSafety {
         
         // Medical capture
         'photocaptured', 'savephoto', 'videorecorded', 'savevideo', 'capturehighres',
+        'recordingstarted', 'recordingstopped', 'startrecording', 'stoprecording',
         
         // Yuan capture
         'connectyuan', 'disconnectyuan', 'getyuaninputs', 'selectyuaninput', 'setactivesource',

@@ -89,8 +89,8 @@ class AdminControlInterface {
         }
 
         try {
-            // Try to connect to WebSocket server (assuming it runs on port 5001)
-            this.websocket = new WebSocket('ws://localhost:5001/');
+            // Try to connect to WebSocket server (assuming it runs on port 8081)
+            this.websocket = new WebSocket('ws://localhost:8081/');
             
             this.websocket.onopen = () => {
                 console.log('WebSocket connected');
