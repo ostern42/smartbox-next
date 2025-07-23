@@ -2,6 +2,14 @@
  * StreamingWebSocketHandler
  * Real-time streaming updates handler for Phase 1 Foundation Integration
  * Provides automatic reconnection with exponential backoff and comprehensive message handling
+ * 
+ * Features:
+ * - Automatic reconnection with exponential backoff and jitter
+ * - Message type handling for all streaming events (segments, recordings, thumbnails, markers)
+ * - Error handling and recovery with connection state management
+ * - Heartbeat monitoring for connection health
+ * - Message queuing for offline scenarios
+ * - Session-based WebSocket connections
  */
 
 class StreamingWebSocketHandler {
@@ -11,7 +19,7 @@ class StreamingWebSocketHandler {
         this.url = null;
         this.ws = null;
         
-        // Reconnection management
+        // Reconnection management - matches Phase 1 specs
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 1000; // Base delay in ms
@@ -19,17 +27,70 @@ class StreamingWebSocketHandler {
         this.isConnecting = false;
         this.shouldReconnect = true;
         
-        // Connection state
+        // Connection state tracking
         this.connectionState = 'disconnected'; // disconnected, connecting, connected, error
         
-        // Message queue for offline messages
+        // Message queue for offline scenarios
         this.messageQueue = [];
         this.maxQueueSize = 100;
         
-        // Heartbeat
+        // Heartbeat monitoring for connection health
         this.heartbeatInterval = null;
         this.heartbeatTimeout = 30000; // 30 seconds
         this.lastHeartbeat = null;
+        
+        // Performance metrics
+        this.messageStats = {
+            sent: 0,
+            received: 0,
+            errors: 0,
+            reconnections: 0
+        };
+        
+        // Event handlers registry
+        this.eventHandlers = new Map();
+        this.setupDefaultHandlers();
+    }
+    
+    // Setup default event handlers as per Phase 1 specification
+    setupDefaultHandlers() {
+        // Core streaming events from Phase 1 spec
+        this.eventHandlers.set('SegmentCompleted', (data) => {
+            if (this.player.onNewSegment) {
+                this.player.onNewSegment(data);
+            }
+            this.player.emit('segmentCompleted', data);
+        });
+        
+        this.eventHandlers.set('RecordingStatus', (data) => {
+            if (this.player.updateRecordingStatus) {
+                this.player.updateRecordingStatus(data);
+            }
+            this.player.emit('recordingStatus', data);
+        });
+        
+        this.eventHandlers.set('ThumbnailReady', (data) => {
+            if (this.player.timeline) {
+                this.player.timeline.updateThumbnail(data);
+            } else if (this.player.onThumbnailReady) {
+                this.player.onThumbnailReady(data);
+            }
+            this.player.emit('thumbnailReady', data);
+        });
+        
+        this.eventHandlers.set('MarkerAdded', (data) => {
+            if (this.player.timeline) {
+                this.player.timeline.addMarker(data);
+            }
+            this.player.emit('markerAdded', data);
+        });
+        
+        this.eventHandlers.set('Error', (data) => {
+            if (this.player.handleStreamError) {
+                this.player.handleStreamError(data);
+            }
+            this.player.emit('streamError', data);
+        });
     }
     
     connect(sessionId) {
@@ -60,30 +121,43 @@ class StreamingWebSocketHandler {
     
     setupWebSocketEvents() {
         this.ws.onopen = () => {
-            console.log('Streaming WebSocket connected');
+            console.log(`Streaming WebSocket connected to session: ${this.sessionId}`);
             this.isConnecting = false;
             this.connectionState = 'connected';
+            
+            // Track reconnection stats
+            if (this.reconnectAttempts > 0) {
+                this.messageStats.reconnections++;
+                console.log(`Reconnection successful after ${this.reconnectAttempts} attempts`);
+            }
             this.reconnectAttempts = 0;
             
             // Process queued messages
             this.processMessageQueue();
             
-            // Start heartbeat
+            // Start heartbeat monitoring
             this.startHeartbeat();
             
-            // Notify player
-            this.player.emit('websocketConnected');
+            // Notify player of successful connection
+            this.player.emit('websocketConnected', {
+                sessionId: this.sessionId,
+                url: this.url,
+                reconnected: this.messageStats.reconnections > 0
+            });
         };
         
         this.ws.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
+                this.messageStats.received++;
                 this.handleMessage(message);
                 
-                // Update last heartbeat time
+                // Update last heartbeat time for connection health
                 this.lastHeartbeat = Date.now();
             } catch (error) {
                 console.error('Failed to parse WebSocket message:', error, event.data);
+                this.messageStats.errors++;
+                this.player.emit('messageParseError', { error, data: event.data });
             }
         };
         
@@ -110,54 +184,71 @@ class StreamingWebSocketHandler {
     }
     
     handleMessage(message) {
-        console.log('WebSocket message received:', message.type);
+        console.log(`WebSocket message received: ${message.type} for session ${this.sessionId}`);
         
+        // Use event handlers registry for core Phase 1 events
+        const handler = this.eventHandlers.get(message.type);
+        if (handler) {
+            handler(message.data);
+            return;
+        }
+        
+        // Handle additional message types not in core Phase 1 spec
         switch (message.type) {
-            case 'SegmentCompleted':
-                this.player.onNewSegment(message.data);
-                break;
-                
-            case 'RecordingStatus':
-                this.player.updateRecordingStatus(message.data);
-                break;
-                
-            case 'ThumbnailReady':
-                if (this.player.timeline) {
-                    this.player.timeline.updateThumbnail(message.data);
-                } else {
-                    this.player.onThumbnailReady(message.data);
-                }
-                break;
-                
-            case 'MarkerAdded':
-                if (this.player.timeline) {
-                    this.player.timeline.addMarker(message.data);
-                }
-                this.player.emit('markerAdded', message.data);
-                break;
-                
-            case 'Error':
-                this.player.handleStreamError(message.data);
-                break;
-                
             case 'Warning':
                 console.warn('Stream warning:', message.data);
                 this.player.emit('streamWarning', message.data);
                 break;
                 
             case 'Heartbeat':
-                // Respond to heartbeat
+                // Respond to server heartbeat
                 this.send({ type: 'HeartbeatResponse', timestamp: Date.now() });
                 break;
                 
             case 'SessionInfo':
-                // Update session information
+                // Session metadata updates
                 this.player.emit('sessionInfo', message.data);
                 break;
                 
             case 'BufferStatus':
-                // Buffer health information
+                // Buffer health monitoring
                 this.player.emit('bufferStatus', message.data);
+                break;
+                
+            case 'RecordingStarted':
+                // Recording lifecycle event
+                this.player.emit('recordingStarted', message.data);
+                break;
+                
+            case 'RecordingStopped':
+                // Recording lifecycle event  
+                this.player.emit('recordingStopped', message.data);
+                break;
+                
+            case 'RecordingPaused':
+                // Recording lifecycle event
+                this.player.emit('recordingPaused', message.data);
+                break;
+                
+            case 'RecordingResumed':
+                // Recording lifecycle event
+                this.player.emit('recordingResumed', message.data);
+                break;
+                
+            case 'SnapshotTaken':
+                // Snapshot capture event
+                this.player.emit('snapshotTaken', message.data);
+                break;
+                
+            case 'StatusUpdate':
+                // General status updates
+                this.player.emit('statusUpdate', message.data);
+                break;
+                
+            case 'EngineWarning':
+                // Non-fatal VideoEngine warnings
+                console.warn('VideoEngine warning:', message.data);
+                this.player.emit('engineWarning', message.data);
                 break;
                 
             default:
@@ -231,13 +322,16 @@ class StreamingWebSocketHandler {
         if (this.connectionState === 'connected' && this.ws.readyState === WebSocket.OPEN) {
             try {
                 this.ws.send(JSON.stringify(message));
+                this.messageStats.sent++;
                 return true;
             } catch (error) {
                 console.error('Failed to send WebSocket message:', error);
+                this.messageStats.errors++;
                 this.queueMessage(message);
                 return false;
             }
         } else {
+            // Queue message for later delivery when connection is restored
             this.queueMessage(message);
             return false;
         }
@@ -319,7 +413,7 @@ class StreamingWebSocketHandler {
         this.isConnecting = false;
     }
     
-    // Utility methods
+    // Utility methods for connection management
     isConnected() {
         return this.connectionState === 'connected' && 
                this.ws && 
@@ -334,8 +428,33 @@ class StreamingWebSocketHandler {
         return {
             attempts: this.reconnectAttempts,
             maxAttempts: this.maxReconnectAttempts,
-            isReconnecting: this.isConnecting && this.reconnectAttempts > 0
+            isReconnecting: this.isConnecting && this.reconnectAttempts > 0,
+            nextReconnectDelay: this.calculateNextDelay()
         };
+    }
+    
+    getMessageStats() {
+        return {
+            ...this.messageStats,
+            queueSize: this.messageQueue.length,
+            connectionUptime: this.lastHeartbeat ? Date.now() - this.lastHeartbeat : 0
+        };
+    }
+    
+    // Calculate next reconnection delay with exponential backoff
+    calculateNextDelay() {
+        const baseDelay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
+        return Math.min(baseDelay, 30000); // Max 30 seconds
+    }
+    
+    // Register custom event handler for specific message type
+    registerEventHandler(messageType, handler) {
+        this.eventHandlers.set(messageType, handler);
+    }
+    
+    // Unregister event handler
+    unregisterEventHandler(messageType) {
+        this.eventHandlers.delete(messageType);
     }
     
     // Reset reconnection attempts (useful for manual reconnect)
@@ -345,6 +464,14 @@ class StreamingWebSocketHandler {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
         }
+    }
+    
+    // Force immediate reconnection
+    forceReconnect() {
+        this.disconnect();
+        this.shouldReconnect = true;
+        this.resetReconnection();
+        setTimeout(() => this.establishConnection(), 100);
     }
 }
 
