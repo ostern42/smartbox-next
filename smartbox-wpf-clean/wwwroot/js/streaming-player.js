@@ -1828,6 +1828,466 @@ class StreamingPlayer {
     }
 }
 
+/**
+ * Enhanced Streaming Player
+ * Phase 1 Foundation Integration - Enhanced video-engine integration
+ * Extends StreamingPlayer with direct VideoEngineClient integration
+ */
+class EnhancedStreamingPlayer extends StreamingPlayer {
+    constructor(container, options = {}) {
+        super(container, options);
+        
+        // Initialize VideoEngineClient directly
+        this.videoEngine = new VideoEngineClient();
+        
+        // Enhanced integration setup
+        this.setupEngineIntegration();
+    }
+    
+    async setupEngineIntegration() {
+        // Connect to FFmpeg engine events
+        this.videoEngine.on('segmentCompleted', this.onSegmentCompleted.bind(this));
+        this.videoEngine.on('thumbnailReady', this.onThumbnailReady.bind(this));
+        this.videoEngine.on('recordingStarted', this.onRecordingStarted.bind(this));
+        this.videoEngine.on('recordingStopped', this.onRecordingStopped.bind(this));
+        this.videoEngine.on('recordingPaused', this.onRecordingPaused.bind(this));
+        this.videoEngine.on('recordingResumed', this.onRecordingResumed.bind(this));
+        this.videoEngine.on('statusUpdate', this.onEngineStatusUpdate.bind(this));
+        this.videoEngine.on('error', this.onEngineError.bind(this));
+        this.videoEngine.on('websocketConnected', this.onWebSocketConnected.bind(this));
+        this.videoEngine.on('websocketDisconnected', this.onWebSocketDisconnected.bind(this));
+        this.videoEngine.on('websocketError', this.onWebSocketError.bind(this));
+        this.videoEngine.on('markerAdded', this.onMarkerAdded.bind(this));
+        this.videoEngine.on('warning', this.onEngineWarning.bind(this));
+        
+        // Initialize WebSocket for real-time updates if session is specified
+        if (this.options.sessionId) {
+            await this.connectToSession(this.options.sessionId);
+        }
+        
+        console.log('Enhanced video engine integration setup completed');
+    }
+    
+    async connectToSession(sessionId) {
+        // Use video engine's WebSocket support
+        const wsUrl = `ws://${window.location.host}/ws/video/${sessionId}`;
+        this.videoEngine.connectWebSocket(wsUrl);
+        
+        // Update current session
+        this.currentSessionId = sessionId;
+        
+        console.log(`Enhanced player connected to session: ${sessionId}`);
+    }
+    
+    onSegmentCompleted(segment) {
+        console.log('Enhanced player: Segment completed', segment);
+        
+        // Update timeline with new segment
+        if (this.timeline) {
+            this.timeline.addSegment(segment);
+        }
+        
+        // Update HLS playlist if in live mode
+        if (this.isLive) {
+            this.refreshPlaylist();
+        }
+        
+        // Update segment indicator
+        this.updateSegmentIndicator(segment);
+        
+        // Emit for external listeners
+        this.emit('segmentCompleted', segment);
+    }
+    
+    onThumbnailReady(data) {
+        console.log('Enhanced player: Thumbnail ready', data);
+        
+        // Update timeline thumbnail
+        if (this.timeline) {
+            this.timeline.updateThumbnail(data.timestamp, data.url);
+        }
+        
+        // Cache thumbnail
+        const cacheKey = `${data.timestamp}_160`;
+        this.thumbnailCache.set(cacheKey, data.url);
+        
+        // Emit for external listeners
+        this.emit('thumbnailReady', data);
+    }
+    
+    onRecordingStarted(session) {
+        console.log('Enhanced player: Recording started', session);
+        
+        this.currentSessionId = session.sessionId;
+        this.isRecording = true;
+        this.updateRecordingIndicator(true);
+        
+        // Update UI state
+        this.enableStreamControls(true);
+        this.showRecordingControls(true);
+        
+        // Emit for external listeners
+        this.emit('recordingStarted', session);
+    }
+    
+    onRecordingStopped(result) {
+        console.log('Enhanced player: Recording stopped', result);
+        
+        this.isRecording = false;
+        this.updateRecordingIndicator(false);
+        
+        // Update UI state
+        this.showRecordingControls(false);
+        
+        // Emit for external listeners
+        this.emit('recordingStopped', result);
+    }
+    
+    onRecordingPaused() {
+        console.log('Enhanced player: Recording paused');
+        
+        this.isPaused = true;
+        this.updatePauseIndicator(true);
+        
+        // Emit for external listeners
+        this.emit('recordingPaused');
+    }
+    
+    onRecordingResumed() {
+        console.log('Enhanced player: Recording resumed');
+        
+        this.isPaused = false;
+        this.updatePauseIndicator(false);
+        
+        // Emit for external listeners
+        this.emit('recordingResumed');
+    }
+    
+    onWebSocketConnected() {
+        console.log('Enhanced player: WebSocket connected');
+        
+        // Update connection status
+        this.wsConnected = true;
+        
+        // Enable real-time features
+        this.enableRealTimeFeatures(true);
+        
+        // Emit for external listeners
+        this.emit('websocketConnected');
+    }
+    
+    onWebSocketDisconnected() {
+        console.log('Enhanced player: WebSocket disconnected');
+        
+        // Update connection status
+        this.wsConnected = false;
+        
+        // Show connection status
+        this.showConnectionStatus('Reconnecting...', 'warning');
+        
+        // Emit for external listeners
+        this.emit('websocketDisconnected');
+    }
+    
+    onWebSocketError(error) {
+        console.error('Enhanced player: WebSocket error', error);
+        
+        // Show error status
+        this.showConnectionStatus('Connection Error', 'error');
+        
+        // Emit for external listeners
+        this.emit('websocketError', error);
+    }
+    
+    onMarkerAdded(marker) {
+        console.log('Enhanced player: Marker added', marker);
+        
+        // Add to marks array
+        this.marks.push(marker);
+        
+        // Update timeline markers
+        if (this.timeline) {
+            this.timeline.addMarker(marker);
+        }
+        
+        // Emit for external listeners
+        this.emit('markerAdded', marker);
+    }
+    
+    onEngineWarning(warning) {
+        console.warn('Enhanced player: Engine warning', warning);
+        
+        // Show warning indicator
+        this.showWarningIndicator(warning.message);
+        
+        // Emit for external listeners
+        this.emit('engineWarning', warning);
+    }
+    
+    // Enhanced recording controls
+    async startRecording(config = {}) {
+        if (!this.videoEngine) {
+            throw new Error('Video engine not available');
+        }
+        
+        try {
+            const recordingConfig = {
+                patientId: config.patientId || this.getPatientId(),
+                studyId: config.studyId || this.getStudyId(),
+                lossless: config.lossless || true,
+                frameRate: config.frameRate || this.frameRate,
+                preRecordSeconds: config.preRecordSeconds || 60,
+                enablePreview: config.enablePreview !== false,
+                ...config
+            };
+            
+            const session = await this.videoEngine.startRecording(recordingConfig);
+            
+            console.log('Enhanced player: Recording started with session', session);
+            
+            return session;
+            
+        } catch (error) {
+            console.error('Enhanced player: Failed to start recording', error);
+            
+            // Use error recovery if available
+            if (this.errorRecovery) {
+                await this.errorRecovery.handleError(error, { context: 'startRecording' });
+            }
+            
+            throw error;
+        }
+    }
+    
+    async stopRecording() {
+        if (!this.videoEngine || !this.videoEngine.isRecording()) {
+            console.warn('No active recording to stop');
+            return null;
+        }
+        
+        try {
+            const result = await this.videoEngine.stopRecording();
+            
+            console.log('Enhanced player: Recording stopped', result);
+            
+            return result;
+            
+        } catch (error) {
+            console.error('Enhanced player: Failed to stop recording', error);
+            
+            // Use error recovery if available
+            if (this.errorRecovery) {
+                await this.errorRecovery.handleError(error, { context: 'stopRecording' });
+            }
+            
+            throw error;
+        }
+    }
+    
+    async pauseRecording() {
+        if (!this.videoEngine || !this.videoEngine.isRecording()) {
+            console.warn('No active recording to pause');
+            return false;
+        }
+        
+        try {
+            await this.videoEngine.pauseRecording();
+            return true;
+        } catch (error) {
+            console.error('Enhanced player: Failed to pause recording', error);
+            return false;
+        }
+    }
+    
+    async resumeRecording() {
+        if (!this.videoEngine) {
+            console.warn('Video engine not available');
+            return false;
+        }
+        
+        try {
+            await this.videoEngine.resumeRecording();
+            return true;
+        } catch (error) {
+            console.error('Enhanced player: Failed to resume recording', error);
+            return false;
+        }
+    }
+    
+    async takeSnapshot(format = 'JPEG') {
+        if (!this.videoEngine || !this.videoEngine.isRecording()) {
+            console.warn('No active recording for snapshot');
+            return null;
+        }
+        
+        try {
+            const snapshot = await this.videoEngine.takeSnapshot(format);
+            
+            console.log('Enhanced player: Snapshot taken', snapshot);
+            
+            // Emit event
+            this.emit('snapshotTaken', snapshot);
+            
+            return snapshot;
+            
+        } catch (error) {
+            console.error('Enhanced player: Failed to take snapshot', error);
+            return null;
+        }
+    }
+    
+    async addMarker(timestamp, type = 'Generic', description = '') {
+        if (!this.videoEngine || !this.videoEngine.isRecording()) {
+            console.warn('No active recording for marker');
+            return null;
+        }
+        
+        try {
+            const marker = await this.videoEngine.addMarker(timestamp, type, description);
+            
+            console.log('Enhanced player: Marker added', marker);
+            
+            return marker;
+            
+        } catch (error) {
+            console.error('Enhanced player: Failed to add marker', error);
+            return null;
+        }
+    }
+    
+    // Enhanced thumbnail loading using VideoEngine API
+    async loadThumbnail(timestamp, width = 160) {
+        // Check cache first
+        const cacheKey = `${timestamp}_${width}`;
+        if (this.thumbnailCache.has(cacheKey)) {
+            return this.thumbnailCache.get(cacheKey);
+        }
+        
+        // Use VideoEngine API for thumbnail generation
+        if (this.videoEngine && this.currentSessionId) {
+            try {
+                const thumbnailUrl = await this.videoEngine.getThumbnail(timestamp, width);
+                if (thumbnailUrl) {
+                    this.thumbnailCache.set(cacheKey, thumbnailUrl);
+                    console.log(`Enhanced player: Loaded thumbnail from API: ${timestamp}s`);
+                    return thumbnailUrl;
+                }
+            } catch (error) {
+                console.warn('Enhanced player: API thumbnail failed, using fallback', error);
+            }
+        }
+        
+        // Fallback to parent class implementation
+        return super.loadThumbnail(timestamp, width);
+    }
+    
+    // Enhanced status and UI methods
+    enableRealTimeFeatures(enabled) {
+        this.realTimeFeaturesEnabled = enabled;
+        
+        if (enabled) {
+            console.log('Enhanced player: Real-time features enabled');
+        } else {
+            console.log('Enhanced player: Real-time features disabled');
+        }
+    }
+    
+    showConnectionStatus(message, type = 'info') {
+        const statusElement = document.getElementById('connectionStatus');
+        if (statusElement) {
+            statusElement.textContent = message;
+            statusElement.className = `connection-status ${type}`;
+            statusElement.style.display = 'block';
+            
+            // Auto-hide info messages
+            if (type === 'info') {
+                setTimeout(() => {
+                    statusElement.style.display = 'none';
+                }, 3000);
+            }
+        }
+    }
+    
+    showWarningIndicator(message) {
+        const warningElement = document.getElementById('warningIndicator');
+        if (warningElement) {
+            warningElement.textContent = message;
+            warningElement.classList.add('visible');
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                warningElement.classList.remove('visible');
+            }, 5000);
+        }
+    }
+    
+    showRecordingControls(show) {
+        const controls = document.getElementById('recordingControlsPanel');
+        if (controls) {
+            controls.style.display = show ? 'block' : 'none';
+        }
+        
+        // Show/hide enhanced controls
+        const enhancedControls = ['markCriticalMomentButton'];
+        enhancedControls.forEach(controlId => {
+            const control = document.getElementById(controlId);
+            if (control) {
+                control.classList.toggle('hidden', !show);
+            }
+        });
+    }
+    
+    // Enhanced cleanup
+    async cleanup() {
+        console.log('Enhanced player: Starting cleanup');
+        
+        // Stop any active recording
+        if (this.videoEngine && this.videoEngine.isRecording()) {
+            try {
+                await this.videoEngine.stopRecording();
+            } catch (error) {
+                console.error('Enhanced player: Error stopping recording during cleanup', error);
+            }
+        }
+        
+        // Call parent cleanup
+        super.cleanup();
+        
+        console.log('Enhanced player: Cleanup completed');
+    }
+    
+    // Utility methods
+    getStudyId() {
+        // This would typically come from the current medical study context
+        return 'STUDY_' + Date.now();
+    }
+    
+    // Enhanced refresh playlist with VideoEngine integration
+    async refreshPlaylist() {
+        if (this.primaryHLS && this.primaryHLS.url) {
+            try {
+                // Get latest segments from VideoEngine if available
+                if (this.videoEngine && this.currentSessionId) {
+                    const segments = await this.videoEngine.getEditableSegments();
+                    if (segments && segments.length > 0) {
+                        console.log(`Enhanced player: Found ${segments.length} segments for playlist refresh`);
+                    }
+                }
+                
+                // Refresh HLS playlist
+                this.primaryHLS.loadSource(this.primaryHLS.url);
+                
+            } catch (error) {
+                console.error('Enhanced player: Failed to refresh playlist', error);
+            }
+        }
+    }
+}
+
+// Export both classes for external use
+window.StreamingPlayer = StreamingPlayer;
+window.EnhancedStreamingPlayer = EnhancedStreamingPlayer;
+
 // Add high contrast styles
 const style = document.createElement('style');
 style.textContent = `

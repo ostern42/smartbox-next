@@ -719,6 +719,58 @@ body {
     transform: translateY(0);
 }
 
+.connection-status {
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    text-align: center;
+    min-width: 80px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.connection-status.info {
+    background: rgba(23, 162, 184, 0.9);
+    border-color: #17a2b8;
+    color: white;
+}
+
+.connection-status.warning {
+    background: rgba(255, 193, 7, 0.9);
+    border-color: #ffc107;
+    color: black;
+}
+
+.connection-status.error {
+    background: rgba(220, 53, 69, 0.9);
+    border-color: #dc3545;
+    color: white;
+}
+
+.warning-indicator {
+    padding: 6px 10px;
+    background: rgba(255, 193, 7, 0.95);
+    color: black;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid #ffc107;
+    text-align: center;
+    max-width: 180px;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    transform: translateY(-5px);
+}
+
+.warning-indicator.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
 @keyframes pulse {
     0%, 100% {
         opacity: 1;
