@@ -152,44 +152,77 @@ class StreamingPlayer {
     }
     
     async loadThumbnail(timestamp, width = 160) {
-        // Normalize timestamp for caching
-        const cacheKey = `${timestamp}_${width}`;
+        // Normalize timestamp for caching with precision
+        const normalizedTimestamp = Math.round(timestamp * 100) / 100; // 0.01s precision
+        const cacheKey = `${normalizedTimestamp}_${width}`;
         
-        // Check cache first
+        // Check cache first with enhanced metadata
         if (this.thumbnailCache.has(cacheKey)) {
-            return this.thumbnailCache.get(cacheKey);
+            const cached = this.thumbnailCache.get(cacheKey);
+            // Update access time for LRU eviction
+            if (typeof cached === 'object' && cached.url) {
+                cached.lastAccessed = Date.now();
+                return cached.url;
+            }
+            return cached;
         }
         
+        const startTime = performance.now();
         let thumbnailUrl = null;
+        let source = 'unknown';
         
-        // Strategy 1: Use FFmpeg engine's thumbnail API if available
+        // Strategy 1: FFmpeg API-first approach (Phase 1 specification)
         if (this.videoEngine && this.currentSessionId && this.options.enableUnifiedThumbnails) {
             try {
-                thumbnailUrl = await this.videoEngine.getThumbnail(timestamp, width);
+                console.log(`Requesting thumbnail from FFmpeg API: ${normalizedTimestamp}s @ ${width}px`);
+                
+                // Enhanced API call with timeout and retry
+                thumbnailUrl = await this.callThumbnailAPIWithRetry(normalizedTimestamp, width, 2);
+                
                 if (thumbnailUrl) {
-                    this.thumbnailCache.set(cacheKey, thumbnailUrl);
-                    console.log(`Loaded thumbnail from API: ${timestamp}s`);
+                    source = 'ffmpeg-api';
+                    this.cacheThumbnailWithMetadata(cacheKey, thumbnailUrl, source, startTime);
+                    console.log(`✅ FFmpeg API thumbnail loaded: ${normalizedTimestamp}s (${Math.round(performance.now() - startTime)}ms)`);
                     return thumbnailUrl;
                 }
             } catch (error) {
-                console.warn('Failed to load thumbnail from API:', error);
+                console.warn(`❌ FFmpeg API thumbnail failed for ${normalizedTimestamp}s:`, error.message);
+                // Don't throw, continue to fallback
             }
         }
         
-        // Strategy 2: Fallback to video frame extraction
-        try {
-            thumbnailUrl = await this.extractVideoFrame(timestamp, width);
-            if (thumbnailUrl) {
-                this.thumbnailCache.set(cacheKey, thumbnailUrl);
-                console.log(`Generated thumbnail from video: ${timestamp}s`);
-                return thumbnailUrl;
+        // Strategy 2: Video frame extraction fallback
+        if (this.video && this.video.readyState >= 2) {
+            try {
+                console.log(`Extracting video frame fallback: ${normalizedTimestamp}s`);
+                thumbnailUrl = await this.extractVideoFrame(normalizedTimestamp, width);
+                
+                if (thumbnailUrl) {
+                    source = 'video-extraction';
+                    this.cacheThumbnailWithMetadata(cacheKey, thumbnailUrl, source, startTime);
+                    console.log(`🎬 Video frame extracted: ${normalizedTimestamp}s (${Math.round(performance.now() - startTime)}ms)`);
+                    return thumbnailUrl;
+                }
+            } catch (error) {
+                console.warn(`❌ Video frame extraction failed for ${normalizedTimestamp}s:`, error.message);
             }
-        } catch (error) {
-            console.warn('Failed to extract video frame:', error);
         }
         
-        // Strategy 3: Use placeholder or cached segment thumbnail
-        return this.getFallbackThumbnail(timestamp);
+        // Strategy 3: Smart fallback with segment-based thumbnails
+        thumbnailUrl = await this.getSmartFallbackThumbnail(normalizedTimestamp, width);
+        if (thumbnailUrl) {
+            source = 'smart-fallback';
+            this.cacheThumbnailWithMetadata(cacheKey, thumbnailUrl, source, startTime);
+            console.log(`🔄 Smart fallback thumbnail: ${normalizedTimestamp}s (${Math.round(performance.now() - startTime)}ms)`);
+            return thumbnailUrl;
+        }
+        
+        // Strategy 4: Static placeholder
+        source = 'placeholder';
+        thumbnailUrl = this.getPlaceholderThumbnail(width);
+        console.log(`📷 Placeholder thumbnail used for ${normalizedTimestamp}s`);
+        
+        return thumbnailUrl;
     }
     
     async extractVideoFrame(timestamp, width = 160) {
@@ -238,48 +271,362 @@ class StreamingPlayer {
         });
     }
     
-    getFallbackThumbnail(timestamp) {
-        // Return a placeholder or last known good thumbnail
-        const placeholderUrl = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwIiBoZWlnaHQ9IjkwIiB2aWV3Qm94PSIwIDAgMTYwIDkwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTYwIiBoZWlnaHQ9IjkwIiBmaWxsPSIjZjBmMGYwIi8+CjxwYXRoIGQ9Ik04MCA0NUw2MCAzMEgxMDBMODAgNDVaIiBmaWxsPSIjY2NjY2NjIi8+Cjx0ZXh0IHg9IjgwIiB5PSI2NSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM5OTk5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk5vIFRodW1ibmFpbDwvdGV4dD4KPHN2Zz4K';
-        
-        console.log(`Using fallback thumbnail for ${timestamp}s`);
-        return placeholderUrl;
-    }
-    
-    // Enhanced thumbnail cache management
-    clearThumbnailCache() {
-        // Revoke object URLs to prevent memory leaks
-        for (const [key, url] of this.thumbnailCache.entries()) {
-            if (url.startsWith('blob:')) {
-                URL.revokeObjectURL(url);
+    // Enhanced FFmpeg API call with retry logic and timeout
+    async callThumbnailAPIWithRetry(timestamp, width, maxRetries = 2) {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                // Add timeout to prevent hanging
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('API timeout')), 5000)
+                );
+                
+                const apiPromise = this.videoEngine.getThumbnail(timestamp, width);
+                const thumbnailUrl = await Promise.race([apiPromise, timeoutPromise]);
+                
+                if (thumbnailUrl && this.isValidThumbnailUrl(thumbnailUrl)) {
+                    return thumbnailUrl;
+                }
+                throw new Error('Invalid thumbnail URL returned');
+                
+            } catch (error) {
+                console.warn(`FFmpeg API attempt ${attempt}/${maxRetries} failed:`, error.message);
+                
+                if (attempt === maxRetries) {
+                    throw error;
+                }
+                
+                // Exponential backoff between retries
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100));
             }
         }
+    }
+    
+    // Validate thumbnail URL for security and correctness
+    isValidThumbnailUrl(url) {
+        if (!url || typeof url !== 'string') return false;
+        
+        // Check for valid URL patterns
+        const validPatterns = [
+            /^data:image\/(jpeg|jpg|png|webp);base64,/,
+            /^blob:/,
+            /^https?:\/\/[^\/]+\/api\/thumbnails\//,
+            /^\/api\/thumbnails\//
+        ];
+        
+        return validPatterns.some(pattern => pattern.test(url));
+    }
+    
+    // Cache thumbnail with rich metadata for performance tracking
+    cacheThumbnailWithMetadata(cacheKey, thumbnailUrl, source, startTime) {
+        const metadata = {
+            url: thumbnailUrl,
+            source: source,
+            timestamp: Date.now(),
+            lastAccessed: Date.now(),
+            loadTime: Math.round(performance.now() - startTime),
+            size: this.estimateThumbnailSize(thumbnailUrl)
+        };
+        
+        this.thumbnailCache.set(cacheKey, metadata);
+        
+        // Trigger cache management if needed
+        if (this.thumbnailCache.size > 500) {
+            this.performLRUEviction(100); // Keep most recent 400
+        }
+    }
+    
+    // Estimate thumbnail size for memory management
+    estimateThumbnailSize(url) {
+        if (url.startsWith('data:')) {
+            // Estimate base64 size
+            const base64Data = url.split(',')[1] || '';
+            return Math.round(base64Data.length * 0.75); // Base64 is ~33% overhead
+        } else if (url.startsWith('blob:')) {
+            // Estimate based on dimensions (assuming JPEG compression)
+            return 160 * 90 * 0.5; // Rough estimate for compressed JPEG
+        }
+        return 7200; // Default estimate (160x90 JPEG)
+    }
+    
+    // LRU eviction for thumbnail cache
+    performLRUEviction(targetSize) {
+        const entries = Array.from(this.thumbnailCache.entries())
+            .filter(([_, metadata]) => typeof metadata === 'object' && metadata.lastAccessed)
+            .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
+        
+        const toEvict = entries.slice(0, entries.length - targetSize);
+        
+        toEvict.forEach(([key, metadata]) => {
+            if (metadata.url && metadata.url.startsWith('blob:')) {
+                URL.revokeObjectURL(metadata.url);
+            }
+            this.thumbnailCache.delete(key);
+        });
+        
+        if (toEvict.length > 0) {
+            console.log(`🗑️ Evicted ${toEvict.length} thumbnails from cache (LRU)`);
+        }
+    }
+    
+    // Smart fallback using segment-based thumbnails or timeline data
+    async getSmartFallbackThumbnail(timestamp, width) {
+        // Strategy 1: Use nearest segment thumbnail if available
+        if (this.timeline && this.timeline.segments) {
+            const nearestSegment = this.findNearestSegment(timestamp);
+            if (nearestSegment && nearestSegment.thumbnail) {
+                console.log(`Using segment thumbnail for ${timestamp}s from segment ${nearestSegment.number}`);
+                return nearestSegment.thumbnail;
+            }
+        }
+        
+        // Strategy 2: Use cached thumbnail from nearby timestamp
+        const nearbyThumbnail = this.findNearbyCachedThumbnail(timestamp, width, 5.0); // 5 second tolerance
+        if (nearbyThumbnail) {
+            console.log(`Using nearby cached thumbnail for ${timestamp}s`);
+            return nearbyThumbnail;
+        }
+        
+        // Strategy 3: Generate from current video frame if playing
+        if (this.video && !this.video.paused && Math.abs(this.video.currentTime - timestamp) < 2.0) {
+            try {
+                return await this.extractVideoFrame(this.video.currentTime, width);
+            } catch (error) {
+                console.warn('Failed to extract current frame:', error);
+            }
+        }
+        
+        return null;
+    }
+    
+    // Find nearest segment for thumbnail fallback
+    findNearestSegment(timestamp) {
+        if (!this.timeline || !this.timeline.segments) return null;
+        
+        let nearest = null;
+        let minDistance = Infinity;
+        
+        for (const segment of this.timeline.segments) {
+            const segmentStart = segment.startTime || (segment.number * 10); // Assume 10s segments
+            const distance = Math.abs(timestamp - segmentStart);
+            
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = segment;
+            }
+        }
+        
+        return nearest;
+    }
+    
+    // Find cached thumbnail within tolerance range
+    findNearbyCachedThumbnail(timestamp, width, tolerance) {
+        for (const [key, metadata] of this.thumbnailCache.entries()) {
+            const [cachedTimestamp, cachedWidth] = key.split('_').map(Number);
+            
+            if (cachedWidth === width && 
+                Math.abs(cachedTimestamp - timestamp) <= tolerance) {
+                
+                if (typeof metadata === 'object' && metadata.url) {
+                    metadata.lastAccessed = Date.now();
+                    return metadata.url;
+                }
+                return metadata;
+            }
+        }
+        return null;
+    }
+    
+    // Generate responsive placeholder thumbnail
+    getPlaceholderThumbnail(width = 160) {
+        const height = Math.round(width * 9 / 16); // 16:9 aspect ratio
+        
+        const svg = `
+            <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="${width}" height="${height}" fill="#f8f9fa"/>
+                <rect x="${width/4}" y="${height/3}" width="${width/2}" height="${height/3}" rx="4" fill="#dee2e6"/>
+                <circle cx="${width/2}" cy="${height/2}" r="${Math.min(width, height)/8}" fill="#adb5bd"/>
+                <path d="M${width/2 - 8} ${height/2 - 4}L${width/2 + 8} ${height/2}L${width/2 - 8} ${height/2 + 4}Z" fill="#6c757d"/>
+                <text x="${width/2}" y="${height - 12}" font-family="system-ui" font-size="10" fill="#6c757d" text-anchor="middle">No Preview</text>
+            </svg>
+        `;
+        
+        return `data:image/svg+xml;base64,${btoa(svg)}`;
+    }
+    
+    getFallbackThumbnail(timestamp) {
+        // Legacy method - redirect to smart fallback
+        console.log(`Legacy fallback thumbnail request for ${timestamp}s`);
+        return this.getPlaceholderThumbnail(160);
+    }
+    
+    // Enhanced thumbnail cache management with performance metrics
+    clearThumbnailCache() {
+        let revokedUrls = 0;
+        let totalSize = 0;
+        
+        // Revoke object URLs to prevent memory leaks and calculate metrics
+        for (const [key, cached] of this.thumbnailCache.entries()) {
+            if (typeof cached === 'object' && cached.url) {
+                if (cached.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(cached.url);
+                    revokedUrls++;
+                }
+                totalSize += cached.size || 0;
+            } else if (typeof cached === 'string' && cached.startsWith('blob:')) {
+                URL.revokeObjectURL(cached);
+                revokedUrls++;
+            }
+        }
+        
         this.thumbnailCache.clear();
-        console.log('Thumbnail cache cleared');
+        console.log(`🗑️ Thumbnail cache cleared: ${revokedUrls} blob URLs revoked, ~${Math.round(totalSize/1024)}KB freed`);
     }
     
     getThumbnailCacheSize() {
         return this.thumbnailCache.size;
     }
     
+    // Get detailed cache statistics
+    getThumbnailCacheStats() {
+        let totalSize = 0;
+        let blobCount = 0;
+        let apiCount = 0;
+        let extractedCount = 0;
+        let fallbackCount = 0;
+        const sources = {};
+        
+        for (const [key, cached] of this.thumbnailCache.entries()) {
+            if (typeof cached === 'object' && cached.source) {
+                totalSize += cached.size || 0;
+                sources[cached.source] = (sources[cached.source] || 0) + 1;
+                
+                if (cached.url && cached.url.startsWith('blob:')) blobCount++;
+                
+                switch (cached.source) {
+                    case 'ffmpeg-api': apiCount++; break;
+                    case 'video-extraction': extractedCount++; break;
+                    case 'smart-fallback': 
+                    case 'placeholder': fallbackCount++; break;
+                }
+            }
+        }
+        
+        return {
+            totalCount: this.thumbnailCache.size,
+            estimatedSize: totalSize,
+            estimatedSizeKB: Math.round(totalSize / 1024),
+            blobUrls: blobCount,
+            sourceBreakdown: {
+                ffmpegApi: apiCount,
+                videoExtraction: extractedCount,
+                fallback: fallbackCount
+            },
+            sources
+        };
+    }
+    
+    // Age-based cache purging with performance optimization
     purgeThumbnailCache(maxAge = 300000) { // 5 minutes default
         const now = Date.now();
         const keysToDelete = [];
+        let revokedUrls = 0;
+        let freedSize = 0;
         
-        for (const [key, value] of this.thumbnailCache.entries()) {
-            if (value.timestamp && (now - value.timestamp) > maxAge) {
+        for (const [key, cached] of this.thumbnailCache.entries()) {
+            const isExpired = typeof cached === 'object' && cached.timestamp && 
+                            (now - cached.timestamp) > maxAge;
+            
+            if (isExpired) {
                 keysToDelete.push(key);
-                if (value.url && value.url.startsWith('blob:')) {
-                    URL.revokeObjectURL(value.url);
+                
+                if (cached.url && cached.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(cached.url);
+                    revokedUrls++;
                 }
+                freedSize += cached.size || 0;
             }
         }
         
         keysToDelete.forEach(key => this.thumbnailCache.delete(key));
         
         if (keysToDelete.length > 0) {
-            console.log(`Purged ${keysToDelete.length} old thumbnails from cache`);
+            console.log(`🧹 Purged ${keysToDelete.length} expired thumbnails (${Math.round(freedSize/1024)}KB, ${revokedUrls} blob URLs)`);
         }
+        
+        return {
+            purged: keysToDelete.length,
+            revokedUrls,
+            freedSize,
+            remainingCount: this.thumbnailCache.size
+        };
+    }
+    
+    // Prefetch thumbnails for improved timeline scrubbing performance
+    async prefetchThumbnails(startTime, endTime, interval = 5.0, width = 160) {
+        const timestamps = [];
+        for (let t = startTime; t <= endTime; t += interval) {
+            timestamps.push(Math.round(t * 100) / 100);
+        }
+        
+        console.log(`🔄 Prefetching ${timestamps.length} thumbnails from ${startTime}s to ${endTime}s`);
+        
+        const results = {
+            requested: timestamps.length,
+            successful: 0,
+            cached: 0,
+            failed: 0,
+            totalTime: 0
+        };
+        
+        const startBatch = performance.now();
+        const batchPromises = timestamps.map(async (timestamp) => {
+            try {
+                const cacheKey = `${timestamp}_${width}`;
+                if (this.thumbnailCache.has(cacheKey)) {
+                    results.cached++;
+                    return;
+                }
+                
+                const thumbnailUrl = await this.loadThumbnail(timestamp, width);
+                if (thumbnailUrl) {
+                    results.successful++;
+                } else {
+                    results.failed++;
+                }
+            } catch (error) {
+                console.warn(`Prefetch failed for ${timestamp}s:`, error);
+                results.failed++;
+            }
+        });
+        
+        await Promise.allSettled(batchPromises);
+        results.totalTime = Math.round(performance.now() - startBatch);
+        
+        console.log(`✅ Thumbnail prefetch complete:`, results);
+        return results;
+    }
+    
+    // Memory-aware cache optimization
+    optimizeThumbnailCache() {
+        const stats = this.getThumbnailCacheStats();
+        const maxSizeKB = 50 * 1024; // 50MB limit
+        
+        if (stats.estimatedSizeKB > maxSizeKB) {
+            console.log(`🎯 Cache size (${stats.estimatedSizeKB}KB) exceeds limit (${maxSizeKB}KB), optimizing...`);
+            
+            // First try age-based purging
+            const purgeResult = this.purgeThumbnailCache(60000); // 1 minute
+            
+            // If still too large, perform LRU eviction
+            const newStats = this.getThumbnailCacheStats();
+            if (newStats.estimatedSizeKB > maxSizeKB) {
+                const targetSize = Math.floor(this.thumbnailCache.size * 0.7); // Keep 70%
+                this.performLRUEviction(targetSize);
+                console.log(`🎯 LRU eviction completed, target size: ${targetSize}`);
+            }
+        }
+        
+        return this.getThumbnailCacheStats();
     }
     
     // Enhanced methods for WebSocket integration
@@ -2155,30 +2502,134 @@ class EnhancedStreamingPlayer extends StreamingPlayer {
         }
     }
     
-    // Enhanced thumbnail loading using VideoEngine API
+    // Enhanced thumbnail loading with Phase 1 compliance and medical optimizations
     async loadThumbnail(timestamp, width = 160) {
-        // Check cache first
-        const cacheKey = `${timestamp}_${width}`;
+        // Use parent class enhanced implementation but with medical-specific optimizations
+        const startTime = performance.now();
+        
+        // Enhanced normalized timestamp for medical precision (frame-accurate)
+        const normalizedTimestamp = Math.round(timestamp * 1000) / 1000; // 1ms precision for medical
+        const cacheKey = `${normalizedTimestamp}_${width}`;
+        
+        // Check cache with medical metadata tracking
         if (this.thumbnailCache.has(cacheKey)) {
-            return this.thumbnailCache.get(cacheKey);
+            const cached = this.thumbnailCache.get(cacheKey);
+            if (typeof cached === 'object' && cached.url) {
+                cached.lastAccessed = Date.now();
+                cached.medicalAccess = (cached.medicalAccess || 0) + 1;
+                console.log(`🏥 Enhanced player: Cache hit for ${normalizedTimestamp}s (${cached.medicalAccess} accesses)`);
+                return cached.url;
+            }
+            return cached;
         }
         
-        // Use VideoEngine API for thumbnail generation
+        // Priority 1: VideoEngine API with medical session context
         if (this.videoEngine && this.currentSessionId) {
             try {
-                const thumbnailUrl = await this.videoEngine.getThumbnail(timestamp, width);
-                if (thumbnailUrl) {
-                    this.thumbnailCache.set(cacheKey, thumbnailUrl);
-                    console.log(`Enhanced player: Loaded thumbnail from API: ${timestamp}s`);
+                console.log(`🏥 Enhanced player: Requesting medical thumbnail ${normalizedTimestamp}s from VideoEngine`);
+                
+                // Enhanced API call with medical context
+                const thumbnailUrl = await this.callMedicalThumbnailAPI(normalizedTimestamp, width);
+                
+                if (thumbnailUrl && this.isValidThumbnailUrl(thumbnailUrl)) {
+                    // Cache with medical metadata
+                    this.cacheMedicalThumbnail(cacheKey, thumbnailUrl, 'ffmpeg-api-enhanced', startTime);
+                    console.log(`✅ Enhanced player: Medical thumbnail loaded (${Math.round(performance.now() - startTime)}ms)`);
                     return thumbnailUrl;
                 }
             } catch (error) {
-                console.warn('Enhanced player: API thumbnail failed, using fallback', error);
+                console.warn(`❌ Enhanced player: Medical API failed for ${normalizedTimestamp}s:`, error.message);
             }
         }
         
-        // Fallback to parent class implementation
-        return super.loadThumbnail(timestamp, width);
+        // Priority 2: Use parent class enhanced fallback chain
+        console.log(`🔄 Enhanced player: Using parent fallback for ${normalizedTimestamp}s`);
+        return super.loadThumbnail(normalizedTimestamp, width);
+    }
+    
+    // Medical-specific thumbnail API call with enhanced features
+    async callMedicalThumbnailAPI(timestamp, width, maxRetries = 3) {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                // Medical timeout - faster for real-time procedures
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Medical API timeout')), 3000)
+                );
+                
+                // Enhanced API call with medical metadata
+                const apiCall = this.videoEngine.getThumbnail(timestamp, width, {
+                    sessionId: this.currentSessionId,
+                    medicalContext: true,
+                    quality: 'diagnostic', // Request diagnostic quality
+                    frameAccuracy: true    // Request frame-accurate timing
+                });
+                
+                const thumbnailUrl = await Promise.race([apiCall, timeoutPromise]);
+                
+                if (thumbnailUrl && this.isValidThumbnailUrl(thumbnailUrl)) {
+                    return thumbnailUrl;
+                }
+                throw new Error('Invalid medical thumbnail URL');
+                
+            } catch (error) {
+                console.warn(`Medical API attempt ${attempt}/${maxRetries} failed:`, error.message);
+                
+                if (attempt === maxRetries) {
+                    throw error;
+                }
+                
+                // Faster retry for medical context
+                await new Promise(resolve => setTimeout(resolve, attempt * 50));
+            }
+        }
+    }
+    
+    // Cache thumbnail with medical-specific metadata
+    cacheMedicalThumbnail(cacheKey, thumbnailUrl, source, startTime) {
+        const medicalMetadata = {
+            url: thumbnailUrl,
+            source: source,
+            timestamp: Date.now(),
+            lastAccessed: Date.now(),
+            loadTime: Math.round(performance.now() - startTime),
+            size: this.estimateThumbnailSize(thumbnailUrl),
+            medicalAccess: 1,
+            sessionId: this.currentSessionId,
+            quality: 'diagnostic'
+        };
+        
+        this.thumbnailCache.set(cacheKey, medicalMetadata);
+        
+        // Medical-specific cache management (higher priority)
+        if (this.thumbnailCache.size > 200) { // Lower threshold for medical
+            this.performMedicalCacheOptimization();
+        }
+    }
+    
+    // Medical-optimized cache management
+    performMedicalCacheOptimization() {
+        const entries = Array.from(this.thumbnailCache.entries())
+            .filter(([_, metadata]) => typeof metadata === 'object' && metadata.medicalAccess)
+            .sort((a, b) => {
+                // Prioritize by medical access frequency and recency
+                const scoreA = (a[1].medicalAccess || 0) * 0.7 + (Date.now() - a[1].lastAccessed) * -0.3;
+                const scoreB = (b[1].medicalAccess || 0) * 0.7 + (Date.now() - b[1].lastAccessed) * -0.3;
+                return scoreB - scoreA;
+            });
+        
+        // Keep top 150 medical thumbnails
+        const toEvict = entries.slice(150);
+        
+        toEvict.forEach(([key, metadata]) => {
+            if (metadata.url && metadata.url.startsWith('blob:')) {
+                URL.revokeObjectURL(metadata.url);
+            }
+            this.thumbnailCache.delete(key);
+        });
+        
+        if (toEvict.length > 0) {
+            console.log(`🏥 Medical cache optimized: ${toEvict.length} thumbnails evicted`);
+        }
     }
     
     // Enhanced status and UI methods

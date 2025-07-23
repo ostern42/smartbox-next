@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UnifiedTimeline Integration Test - SmartBox Next</title>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/unified-timeline.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #0f0f0f;
+            color: #fff;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6b 100%);
+            border-radius: 8px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .test-btn {
+            padding: 8px 16px;
+            border: none;
+            background: #007bff;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .test-btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        .test-btn.danger {
+            background: #dc3545;
+        }
+        
+        .test-btn.danger:hover {
+            background: #c82333;
+        }
+        
+        .test-btn.success {
+            background: #28a745;
+        }
+        
+        .test-btn.success:hover {
+            background: #218838;
+        }
+        
+        .status-panel {
+            margin-top: 15px;
+            padding: 15px;
+            background: #2d2d2d;
+            border-radius: 4px;
+            border-left: 4px solid #17a2b8;
+        }
+        
+        .log-output {
+            background: #000;
+            color: #0f0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            padding: 15px;
+            border-radius: 4px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin-top: 15px;
+        }
+        
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .metric-card {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #17a2b8;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        #timelineContainer {
+            margin: 20px 0;
+            min-height: 160px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🔬 UnifiedTimeline Integration Test</h1>
+            <p>Testing Phase 2 Timeline Consolidation with Enhanced StreamingPlayer</p>
+        </div>
+        
+        <!-- Timeline Test -->
+        <div class="test-section">
+            <h2>📊 UnifiedTimeline Component</h2>
+            <div class="test-controls">
+                <button class="test-btn" onclick="initializeTimeline()">Initialize Timeline</button>
+                <button class="test-btn success" onclick="simulateRecording()">Start Recording</button>
+                <button class="test-btn danger" onclick="stopRecording()">Stop Recording</button>
+                <button class="test-btn" onclick="addTestSegments()">Add Test Segments</button>
+                <button class="test-btn" onclick="addCriticalMarker()">Add Critical Marker</button>
+                <button class="test-btn" onclick="loadTestThumbnails()">Load Thumbnails</button>
+                <button class="test-btn" onclick="testMigration()">Test Migration</button>
+            </div>
+            
+            <div id="timelineContainer"></div>
+            
+            <div class="status-panel">
+                <strong>Timeline Status:</strong> <span id="timelineStatus">Not initialized</span>
+            </div>
+        </div>
+        
+        <!-- StreamingPlayer Integration -->
+        <div class="test-section">
+            <h2>🎥 StreamingPlayer Integration</h2>
+            <div class="test-controls">
+                <button class="test-btn" onclick="connectWebSocket()">Connect WebSocket</button>
+                <button class="test-btn" onclick="simulateSegmentStream()">Simulate Segment Stream</button>
+                <button class="test-btn" onclick="testThumbnailAPI()">Test Thumbnail API</button>
+                <button class="test-btn danger" onclick="disconnectWebSocket()">Disconnect</button>
+            </div>
+            
+            <div class="status-panel">
+                <strong>Player Status:</strong> <span id="playerStatus">Disconnected</span>
+            </div>
+        </div>
+        
+        <!-- Performance Metrics -->
+        <div class="test-section">
+            <h2>📈 Performance Metrics</h2>
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="renderTime">0ms</div>
+                    <div class="metric-label">Render Time</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="segmentCount">0</div>
+                    <div class="metric-label">Segments</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="thumbnailCount">0</div>
+                    <div class="metric-label">Thumbnails</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="markerCount">0</div>
+                    <div class="metric-label">Markers</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Log -->
+        <div class="test-section">
+            <h2>📝 Test Log</h2>
+            <div class="log-output" id="testLog"></div>
+            <div class="test-controls">
+                <button class="test-btn" onclick="clearLog()">Clear Log</button>
+                <button class="test-btn" onclick="exportTestResults()">Export Results</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/streaming-websocket-handler.js"></script>
+    <script src="js/streaming-player.js"></script>
+    <script src="js/unified-timeline.js"></script>
+    <script src="js/timeline-migration.js"></script>
+    
+    <script>
+        // Test state
+        let unifiedTimeline = null;
+        let streamingPlayer = null;
+        let wsHandler = null;
+        let testMetrics = {
+            renderTime: 0,
+            segmentCount: 0,
+            thumbnailCount: 0,
+            markerCount: 0
+        };
+        
+        // Logging
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logOutput = document.getElementById('testLog');
+            const color = type === 'error' ? '#ff4444' : 
+                         type === 'success' ? '#44ff44' : 
+                         type === 'warning' ? '#ffaa44' : '#44aaff';
+            
+            logOutput.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            
+            console.log(`[UnifiedTimeline Test] ${message}`);
+        }
+        
+        function clearLog() {
+            document.getElementById('testLog').innerHTML = '';
+        }
+        
+        // Timeline initialization
+        function initializeTimeline() {
+            const startTime = performance.now();
+            
+            try {
+                const container = document.getElementById('timelineContainer');
+                
+                // Initialize UnifiedTimeline with medical mode
+                unifiedTimeline = new UnifiedTimeline(container, {
+                    height: 120,
+                    medicalMode: true,
+                    segmentDuration: 10,
+                    enableTouch: true,
+                    enableWheel: true,
+                    enableKeyboard: true,
+                    thumbnailWidth: 160,
+                    thumbnailHeight: 90,
+                    criticalMomentHighlight: true
+                });
+                
+                // Setup event listeners
+                unifiedTimeline.addEventListener('timeupdate', (e) => {
+                    log(`Time updated: ${e.detail.time.toFixed(2)}s`, 'info');
+                });
+                
+                unifiedTimeline.addEventListener('seek', (e) => {
+                    log(`Seek to: ${e.detail.time.toFixed(2)}s`, 'info');
+                });
+                
+                unifiedTimeline.addEventListener('segmentAdded', (e) => {
+                    testMetrics.segmentCount++;
+                    updateMetrics();
+                    log(`Segment added: #${e.detail.number}`, 'success');
+                });
+                
+                unifiedTimeline.addEventListener('markerAdded', (e) => {
+                    testMetrics.markerCount++;
+                    updateMetrics();
+                    log(`Marker added: ${e.detail.title}`, 'success');
+                });
+                
+                unifiedTimeline.addEventListener('thumbnailLoaded', (e) => {
+                    testMetrics.thumbnailCount++;
+                    updateMetrics();
+                    log(`Thumbnail loaded: ${e.detail.timestamp}s`, 'success');
+                });
+                
+                const renderTime = performance.now() - startTime;
+                testMetrics.renderTime = renderTime;
+                updateMetrics();
+                
+                document.getElementById('timelineStatus').textContent = 'Initialized (Medical Mode)';
+                log(`Timeline initialized in ${renderTime.toFixed(2)}ms`, 'success');
+                
+            } catch (error) {
+                log(`Timeline initialization failed: ${error.message}`, 'error');
+                document.getElementById('timelineStatus').textContent = 'Error';
+            }
+        }
+        
+        // Recording simulation
+        function simulateRecording() {
+            if (!unifiedTimeline) {
+                log('Timeline not initialized', 'warning');
+                return;
+            }
+            
+            unifiedTimeline.startRecording();
+            document.getElementById('timelineStatus').textContent = 'Recording';
+            log('Recording started', 'success');
+            
+            // Simulate time progression
+            let currentTime = 0;
+            const progressInterval = setInterval(() => {
+                currentTime += 0.1;
+                unifiedTimeline.setCurrentTime(currentTime);
+                
+                if (currentTime >= 30) { // Stop after 30 seconds simulation
+                    clearInterval(progressInterval);
+                    stopRecording();
+                }
+            }, 100);
+        }
+        
+        function stopRecording() {
+            if (!unifiedTimeline) {
+                log('Timeline not initialized', 'warning');
+                return;
+            }
+            
+            unifiedTimeline.stopRecording();
+            document.getElementById('timelineStatus').textContent = 'Stopped';
+            log('Recording stopped', 'info');
+        }
+        
+        // Test data
+        function addTestSegments() {
+            if (!unifiedTimeline) {
+                log('Timeline not initialized', 'warning');
+                return;
+            }
+            
+            // Add test segments simulating 10-second FFmpeg segments
+            const segments = [
+                { number: 1, startTime: 0, duration: 10, quality: 'diagnostic' },
+                { number: 2, startTime: 10, duration: 10, quality: 'preview' },
+                { number: 3, startTime: 20, duration: 10, quality: 'thumbnail' },
+                { number: 4, startTime: 30, duration: 10, quality: 'diagnostic' }
+            ];
+            
+            segments.forEach(segment => {
+                unifiedTimeline.addSegment({
+                    ...segment,
+                    isComplete: true,
+                    canEdit: true,
+                    metadata: { medical: true }
+                });
+            });
+            
+            unifiedTimeline.setDuration(40);
+            log(`Added ${segments.length} test segments`, 'success');
+        }
+        
+        function addCriticalMarker() {
+            if (!unifiedTimeline) {
+                log('Timeline not initialized', 'warning');
+                return;
+            }
+            
+            const currentTime = unifiedTimeline.getCurrentTime() || Math.random() * 30;
+            unifiedTimeline.addMarker({
+                id: `test_marker_${Date.now()}`,
+                time: currentTime,
+                type: 'critical',
+                title: 'Test Critical Moment',
+                description: 'Simulated critical medical moment',
+                color: '#dc3545',
+                critical: true
+            });
+            
+            log(`Critical marker added at ${currentTime.toFixed(2)}s`, 'success');
+        }
+        
+        function loadTestThumbnails() {
+            if (!unifiedTimeline) {
+                log('Timeline not initialized', 'warning');
+                return;
+            }
+            
+            // Generate test thumbnails
+            const timestamps = [0, 5, 10, 15, 20, 25, 30];
+            let loadedCount = 0;
+            
+            timestamps.forEach(timestamp => {
+                // Create a test thumbnail (simple colored canvas)
+                const canvas = document.createElement('canvas');
+                canvas.width = 160;
+                canvas.height = 90;
+                const ctx = canvas.getContext('2d');
+                
+                // Generate a gradient based on timestamp
+                const gradient = ctx.createLinearGradient(0, 0, 160, 90);
+                gradient.addColorStop(0, `hsl(${timestamp * 10}, 70%, 50%)`);
+                gradient.addColorStop(1, `hsl(${timestamp * 10 + 60}, 70%, 30%)`);
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 160, 90);
+                
+                // Add timestamp text
+                ctx.fillStyle = '#fff';
+                ctx.font = '12px Arial';
+                ctx.fillText(`${timestamp}s`, 10, 20);
+                
+                const thumbnailUrl = canvas.toDataURL();
+                unifiedTimeline.updateThumbnail(timestamp, thumbnailUrl);
+                loadedCount++;
+            });
+            
+            log(`Generated ${loadedCount} test thumbnails`, 'success');
+        }
+        
+        // WebSocket integration
+        function connectWebSocket() {
+            try {
+                // Simulate StreamingPlayer with WebSocket handler
+                streamingPlayer = new EnhancedStreamingPlayer({
+                    container: 'test-player',
+                    enableWebSocket: true
+                });
+                
+                // Initialize WebSocket handler
+                wsHandler = new StreamingWebSocketHandler(streamingPlayer);
+                
+                // Connect timeline to player events
+                if (unifiedTimeline) {
+                    streamingPlayer.on('segmentCompleted', (data) => {
+                        unifiedTimeline.addSegment({
+                            number: data.segmentNumber,
+                            startTime: data.startTime,
+                            duration: data.duration,
+                            isComplete: true,
+                            quality: data.quality || 'standard'
+                        });
+                        log(`Real segment received: #${data.segmentNumber}`, 'success');
+                    });
+                    
+                    streamingPlayer.on('thumbnailGenerated', (data) => {
+                        unifiedTimeline.updateThumbnail(data.timestamp, data.url);
+                        log(`Real thumbnail received: ${data.timestamp}s`, 'success');
+                    });
+                }
+                
+                document.getElementById('playerStatus').textContent = 'Connected';
+                log('WebSocket handler connected', 'success');
+                
+            } catch (error) {
+                log(`WebSocket connection failed: ${error.message}`, 'error');
+                document.getElementById('playerStatus').textContent = 'Error';
+            }
+        }
+        
+        function simulateSegmentStream() {
+            if (!wsHandler || !unifiedTimeline) {
+                log('WebSocket or Timeline not ready', 'warning');
+                return;
+            }
+            
+            // Simulate incoming segment data
+            let segmentNumber = 1;
+            const segmentInterval = setInterval(() => {
+                const segmentData = {
+                    segmentNumber: segmentNumber,
+                    startTime: (segmentNumber - 1) * 10,
+                    duration: 10,
+                    quality: segmentNumber % 3 === 0 ? 'diagnostic' : 'preview',
+                    timestamp: Date.now()
+                };
+                
+                // Simulate WebSocket message
+                wsHandler.handleMessage({
+                    type: 'SegmentCompleted',
+                    data: segmentData
+                });
+                
+                segmentNumber++;
+                
+                if (segmentNumber > 6) {
+                    clearInterval(segmentInterval);
+                    log('Segment stream simulation completed', 'info');
+                }
+            }, 2000);
+            
+            log('Simulating segment stream...', 'info');
+        }
+        
+        function testThumbnailAPI() {
+            if (!streamingPlayer || !unifiedTimeline) {
+                log('Player or Timeline not ready', 'warning');
+                return;
+            }
+            
+            // Test thumbnail API integration
+            const testTimestamps = [2.5, 7.5, 12.5, 17.5];
+            
+            testTimestamps.forEach(async (timestamp) => {
+                try {
+                    const thumbnailUrl = await streamingPlayer.loadThumbnail(timestamp, 160);
+                    unifiedTimeline.updateThumbnail(timestamp, thumbnailUrl);
+                    log(`API thumbnail loaded: ${timestamp}s`, 'success');
+                } catch (error) {
+                    log(`API thumbnail failed: ${timestamp}s - ${error.message}`, 'error');
+                }
+            });
+        }
+        
+        function disconnectWebSocket() {
+            if (wsHandler) {
+                wsHandler.disconnect();
+                wsHandler = null;
+            }
+            if (streamingPlayer) {
+                streamingPlayer = null;
+            }
+            
+            document.getElementById('playerStatus').textContent = 'Disconnected';
+            log('WebSocket disconnected', 'info');
+        }
+        
+        // Migration test
+        function testMigration() {
+            if (!window.VideoTimelineComponent) {
+                log('VideoTimelineComponent not available for migration test', 'warning');
+                return;
+            }
+            
+            try {
+                // Create a mock VideoTimelineComponent
+                const mockContainer = document.createElement('div');
+                const oldTimeline = new VideoTimelineComponent('mock-container', {
+                    height: 200,
+                    thumbnailWidth: 120
+                });
+                
+                // Add some test data to old timeline
+                oldTimeline.duration = 60;
+                oldTimeline.segments = [
+                    { id: 1, startTime: 0, duration: 10, isComplete: true },
+                    { id: 2, startTime: 10, duration: 10, isComplete: true }
+                ];
+                
+                // Perform migration
+                const migrated = TimelineMigration.migrateFromVideoTimelineComponent(oldTimeline, {
+                    medicalMode: true
+                });
+                
+                // Generate migration report
+                const report = TimelineMigration.createMigrationReport(oldTimeline, migrated);
+                
+                log('Migration test completed successfully', 'success');
+                log(`Migrated ${report.migrated.segments} segments`, 'info');
+                
+                // Cleanup
+                TimelineMigration.cleanupOldTimeline(oldTimeline);
+                
+            } catch (error) {
+                log(`Migration test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Metrics
+        function updateMetrics() {
+            document.getElementById('renderTime').textContent = `${testMetrics.renderTime.toFixed(1)}ms`;
+            document.getElementById('segmentCount').textContent = testMetrics.segmentCount;
+            document.getElementById('thumbnailCount').textContent = testMetrics.thumbnailCount;
+            document.getElementById('markerCount').textContent = testMetrics.markerCount;
+        }
+        
+        function exportTestResults() {
+            const results = {
+                timestamp: new Date().toISOString(),
+                metrics: testMetrics,
+                timeline: unifiedTimeline ? {
+                    duration: unifiedTimeline.getDuration(),
+                    currentTime: unifiedTimeline.getCurrentTime(),
+                    segmentCount: unifiedTimeline.segments.length,
+                    markerCount: unifiedTimeline.markers.length,
+                    thumbnailCount: unifiedTimeline.thumbnails.size
+                } : null,
+                player: streamingPlayer ? {
+                    connected: !!wsHandler,
+                    status: streamingPlayer.getStatus ? streamingPlayer.getStatus() : 'unknown'
+                } : null
+            };
+            
+            const blob = new Blob([JSON.stringify(results, null, 2)], {
+                type: 'application/json'
+            });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `timeline-test-results-${Date.now()}.json`;
+            a.click();
+            
+            log('Test results exported', 'success');
+        }
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            log('Timeline Integration Test loaded', 'info');
+            log('Ready to test UnifiedTimeline with StreamingPlayer', 'info');
+        });
+    </script>
+</body>
+</html>
