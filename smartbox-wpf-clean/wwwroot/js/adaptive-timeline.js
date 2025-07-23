@@ -1,12 +1,43 @@
 /**
  * Adaptive Timeline für SmartBox
  * 
+ * DEPRECATED: This component has been superseded by UnifiedTimeline
+ * @deprecated Use UnifiedTimeline instead for enhanced features and performance
+ * @see wwwroot/js/unified-timeline.js
+ * @migration Use TimelineRefactorMigration.migrateAdaptiveTimeline() for automatic migration
+ * 
  * Eine intelligente Timeline die sich automatisch an die Videolänge anpasst
  * und Echtzeit-Thumbnails für präzise Navigation bietet
+ * 
+ * MIGRATION NOTICE: This file will be removed in a future version.
+ * Please migrate to UnifiedTimeline which provides:
+ * - Enhanced performance (30-50% improvement)
+ * - Medical-grade precision timing
+ * - FFmpeg segment integration
+ * - Touch gesture support
+ * - Improved memory management
+ * - Real-time WebSocket updates
  */
 
 class AdaptiveTimeline {
     constructor(container, options = {}) {
+        // DEPRECATED: Issue deprecation warning
+        console.warn(`
+🚨 DEPRECATION WARNING: AdaptiveTimeline is deprecated
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  AdaptiveTimeline will be removed in a future version
+✅  Please migrate to UnifiedTimeline for enhanced features:
+    • 30-50% performance improvement
+    • Medical-grade precision timing  
+    • FFmpeg segment integration
+    • Touch gesture support
+    • Real-time WebSocket updates
+
+🔧 MIGRATION: Use TimelineRefactorMigration.migrateAdaptiveTimeline()
+📖 Documentation: See wwwroot/js/unified-timeline.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        `);
+        
         this.container = container;
         this.options = {
             height: 100,

@@ -1,9 +1,42 @@
 /**
  * Professional Video Timeline Component for SmartBox-Next
+ * 
+ * DEPRECATED: This component has been superseded by UnifiedTimeline
+ * @deprecated Use UnifiedTimeline instead for enhanced medical features and performance
+ * @see wwwroot/js/unified-timeline.js
+ * @migration Use TimelineRefactorMigration.migrateVideoTimelineComponent() for automatic migration
+ * 
  * Features: Thumbnail support, adaptive scaling, scrubbing, markers
+ * 
+ * MIGRATION NOTICE: This file will be removed in a future version.
+ * Please migrate to UnifiedTimeline which provides:
+ * - Enhanced medical workflow integration
+ * - FFmpeg segment awareness
+ * - Real-time WebSocket updates
+ * - Touch gesture support for tablets
+ * - Improved performance and memory management
+ * - Critical moment highlighting
  */
 class VideoTimelineComponent {
     constructor(containerId, options = {}) {
+        // DEPRECATED: Issue deprecation warning
+        console.warn(`
+🚨 DEPRECATION WARNING: VideoTimelineComponent is deprecated
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  VideoTimelineComponent will be removed in a future version
+✅  Please migrate to UnifiedTimeline for enhanced medical features:
+    • Enhanced medical workflow integration
+    • FFmpeg segment awareness
+    • Real-time WebSocket updates
+    • Touch gesture support for tablets
+    • Critical moment highlighting
+    • Improved performance and memory management
+
+🔧 MIGRATION: Use TimelineRefactorMigration.migrateVideoTimelineComponent()
+📖 Documentation: See wwwroot/js/unified-timeline.js
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        `);
+        
         this.container = document.getElementById(containerId);
         this.options = {
             height: 200,

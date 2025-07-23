@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timeline Migration Test - SmartBox Next</title>
+    
+    <!-- Legacy Timeline Styles -->
+    <style>
+        /* AdaptiveTimeline legacy styles */
+        .adaptive-timeline {
+            position: relative;
+            width: 100%;
+            height: 100px;
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .timeline-ruler {
+            height: 20px;
+            background: #2d2d2d;
+            border-bottom: 1px solid #444;
+            position: relative;
+        }
+        
+        .timeline-timestamps {
+            position: relative;
+            height: 100%;
+        }
+        
+        .timestamp {
+            position: absolute;
+            top: 2px;
+            font-size: 10px;
+            color: #ccc;
+            font-family: monospace;
+        }
+        
+        .timeline-tracks {
+            position: relative;
+            height: calc(100% - 20px);
+        }
+        
+        .timeline-playhead {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background: #ff6b35;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .playhead-time {
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-size: 10px;
+            font-family: monospace;
+        }
+        
+        /* VideoTimelineComponent legacy styles */
+        .video-timeline-container {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: linear-gradient(180deg, #2d2d2d 0%, #252525 100%);
+            border-bottom: 1px solid #444;
+        }
+        
+        .timeline-info {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        
+        .recording-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 11px;
+            background: #28a745;
+            color: #fff;
+        }
+        
+        .timeline-duration {
+            font-family: 'Consolas', monospace;
+            font-weight: 600;
+            color: #17a2b8;
+        }
+        
+        .timeline-scale {
+            color: #6c757d;
+            font-size: 11px;
+        }
+        
+        .timeline-controls {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .timeline-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: #404040;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .timeline-btn:hover {
+            background: #4a90e2;
+        }
+        
+        .timeline-main {
+            position: relative;
+            height: 150px;
+        }
+        
+        .timeline-track-container {
+            height: 100%;
+            position: relative;
+        }
+        
+        .timeline-track {
+            height: 80px;
+            background: #1e1e1e;
+            position: relative;
+        }
+        
+        .thumbnail-track {
+            height: 60px;
+            background: #2d2d2d;
+            border-top: 1px solid #444;
+        }
+        
+        .timeline-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #252525;
+            border-top: 1px solid #444;
+            font-size: 11px;
+        }
+    </style>
+    
+    <!-- Unified Timeline Styles -->
+    <link rel="stylesheet" href="css/unified-timeline.css">
+    
+    <!-- Test Page Styles -->
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #0f0f0f;
+            color: #fff;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6b 100%);
+            border-radius: 8px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .test-btn {
+            padding: 8px 16px;
+            border: none;
+            background: #007bff;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .test-btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        .test-btn.danger {
+            background: #dc3545;
+        }
+        
+        .test-btn.success {
+            background: #28a745;
+        }
+        
+        .test-btn.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .status-panel {
+            margin-top: 15px;
+            padding: 15px;
+            background: #2d2d2d;
+            border-radius: 4px;
+            border-left: 4px solid #17a2b8;
+        }
+        
+        .log-output {
+            background: #000;
+            color: #0f0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            padding: 15px;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin-top: 15px;
+        }
+        
+        .timeline-container {
+            margin: 20px 0;
+            min-height: 120px;
+            border: 2px dashed #444;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .migration-report {
+            background: #2d2d2d;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .report-section {
+            margin-bottom: 15px;
+        }
+        
+        .report-title {
+            font-weight: bold;
+            color: #17a2b8;
+            margin-bottom: 8px;
+        }
+        
+        .migration-success {
+            color: #28a745;
+        }
+        
+        .migration-warning {
+            color: #ffc107;
+        }
+        
+        .migration-error {
+            color: #dc3545;
+        }
+        
+        .performance-metric {
+            display: inline-block;
+            margin: 5px 10px 5px 0;
+            padding: 4px 8px;
+            background: #404040;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🔄 Timeline Migration Test Suite</h1>
+            <p>Testing migration from legacy timeline components to UnifiedTimeline</p>
+        </div>
+        
+        <!-- Legacy Timeline Creation -->
+        <div class="test-section">
+            <h2>📦 Legacy Timeline Creation</h2>
+            <div class="test-controls">
+                <button class="test-btn" onclick="createAdaptiveTimeline()">Create AdaptiveTimeline</button>
+                <button class="test-btn" onclick="createVideoTimelineComponent()">Create VideoTimelineComponent</button>
+                <button class="test-btn" onclick="populateLegacyData()">Populate Test Data</button>
+                <button class="test-btn danger" onclick="clearLegacyTimelines()">Clear Legacy</button>
+            </div>
+            
+            <div id="adaptiveTimelineContainer" class="timeline-container">
+                <div style="text-align: center; color: #666; padding: 20px;">
+                    AdaptiveTimeline will appear here
+                </div>
+            </div>
+            
+            <div id="videoTimelineContainer" class="timeline-container">
+                <div style="text-align: center; color: #666; padding: 20px;">
+                    VideoTimelineComponent will appear here
+                </div>
+            </div>
+            
+            <div class="status-panel">
+                <strong>Legacy Status:</strong> <span id="legacyStatus">No timelines created</span>
+            </div>
+        </div>
+        
+        <!-- Migration Testing -->
+        <div class="test-section">
+            <h2>🚀 Migration Testing</h2>
+            <div class="test-controls">
+                <button class="test-btn success" onclick="executeMigration()">Execute Full Migration</button>
+                <button class="test-btn" onclick="migrateAdaptiveOnly()">Migrate AdaptiveTimeline Only</button>
+                <button class="test-btn" onclick="migrateVideoOnly()">Migrate VideoTimeline Only</button>
+                <button class="test-btn warning" onclick="validateMigration()">Validate Migration</button>
+                <button class="test-btn danger" onclick="rollbackMigration()">Rollback Migration</button>
+            </div>
+            
+            <div id="unifiedTimelineContainer" class="timeline-container">
+                <div style="text-align: center; color: #666; padding: 20px;">
+                    UnifiedTimeline will appear here after migration
+                </div>
+            </div>
+            
+            <div class="status-panel">
+                <strong>Migration Status:</strong> <span id="migrationStatus">Ready for migration</span>
+            </div>
+        </div>
+        
+        <!-- Migration Report -->
+        <div class="test-section">
+            <h2>📊 Migration Report</h2>
+            <div class="test-controls">
+                <button class="test-btn" onclick="generateReport()">Generate Report</button>
+                <button class="test-btn" onclick="exportReport()">Export Report</button>
+                <button class="test-btn" onclick="clearReport()">Clear Report</button>
+            </div>
+            
+            <div id="migrationReport" class="migration-report">
+                <div style="text-align: center; color: #666; padding: 20px;">
+                    Migration report will appear here
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Log -->
+        <div class="test-section">
+            <h2>📝 Test Log</h2>
+            <div class="log-output" id="testLog"></div>
+            <div class="test-controls">
+                <button class="test-btn" onclick="clearLog()">Clear Log</button>
+                <button class="test-btn" onclick="exportLog()">Export Log</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/adaptive-timeline.js"></script>
+    <script src="js/timeline-component.js"></script>
+    <script src="js/unified-timeline.js"></script>
+    <script src="js/timeline-migration.js"></script>
+    <script src="js/timeline-refactor-migration.js"></script>
+    
+    <script>
+        // Test state
+        let adaptiveTimelineInstance = null;
+        let videoTimelineInstance = null;
+        let unifiedTimelineInstance = null;
+        let migrationResults = null;
+        let migrator = null;
+        
+        // Logging
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logOutput = document.getElementById('testLog');
+            const color = type === 'error' ? '#ff4444' : 
+                         type === 'success' ? '#44ff44' : 
+                         type === 'warning' ? '#ffaa44' : '#44aaff';
+            
+            logOutput.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            
+            console.log(`[Migration Test] ${message}`);
+        }
+        
+        function clearLog() {
+            document.getElementById('testLog').innerHTML = '';
+        }
+        
+        function exportLog() {
+            const logContent = document.getElementById('testLog').innerText;
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `timeline-migration-test-log-${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Legacy Timeline Creation
+        function createAdaptiveTimeline() {
+            try {
+                const container = document.getElementById('adaptiveTimelineContainer');
+                container.innerHTML = ''; // Clear existing content
+                
+                adaptiveTimelineInstance = new AdaptiveTimeline(container, {
+                    height: 100,
+                    thumbnailWidth: 160,
+                    timeScales: [30, 60, 120, 300, 600],
+                    enableWaveform: true,
+                    enableThumbnails: true,
+                    enableMotionTracking: true
+                });
+                
+                // Store global reference
+                window.adaptiveTimelineInstance = adaptiveTimelineInstance;
+                
+                log('AdaptiveTimeline created successfully', 'success');
+                updateLegacyStatus();
+                
+            } catch (error) {
+                log(`Failed to create AdaptiveTimeline: ${error.message}`, 'error');
+            }
+        }
+        
+        function createVideoTimelineComponent() {
+            try {
+                const container = document.getElementById('videoTimelineContainer');
+                container.innerHTML = ''; // Clear existing content
+                container.id = 'videoTimelineContainer'; // Ensure ID is set
+                
+                videoTimelineInstance = new VideoTimelineComponent('videoTimelineContainer', {
+                    height: 150,
+                    thumbnailWidth: 120,
+                    timeScales: [5, 10, 20, 60],
+                    prerecordingDurations: [30, 60, 120]
+                });
+                
+                // Store global reference
+                window.videoTimelineInstance = videoTimelineInstance;
+                
+                log('VideoTimelineComponent created successfully', 'success');
+                updateLegacyStatus();
+                
+            } catch (error) {
+                log(`Failed to create VideoTimelineComponent: ${error.message}`, 'error');
+            }
+        }
+        
+        function populateLegacyData() {
+            try {
+                // Populate AdaptiveTimeline with test data
+                if (adaptiveTimelineInstance) {
+                    // Simulate video setup
+                    adaptiveTimelineInstance.state.duration = 120; // 2 minutes
+                    adaptiveTimelineInstance.state.currentTime = 30;
+                    adaptiveTimelineInstance.state.timeScale = 60;
+                    
+                    // Add test markers
+                    adaptiveTimelineInstance.state.markers = [
+                        { id: 'marker1', time: 15, type: 'default', title: 'Test Marker 1' },
+                        { id: 'marker2', time: 45, type: 'important', title: 'Test Marker 2' },
+                        { id: 'marker3', time: 90, type: 'critical', title: 'Critical Moment' }
+                    ];
+                    
+                    // Add test thumbnails to cache
+                    if (adaptiveTimelineInstance.thumbnailCache) {
+                        for (let i = 0; i < 5; i++) {
+                            const frameNumber = i * 25 * 10; // Every 10 seconds at 25fps
+                            const mockThumbnail = document.createElement('img');
+                            mockThumbnail.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwIiBoZWlnaHQ9IjkwIiB2aWV3Qm94PSIwIDAgMTYwIDkwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxNjAiIGhlaWdodD0iOTAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI4MCIgeT0iNDUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+VGh1bWJuYWlsICcgKyBpICsgJzwvdGV4dD48L3N2Zz4=';
+                            adaptiveTimelineInstance.thumbnailCache.set(frameNumber, mockThumbnail);
+                        }
+                    }
+                    
+                    log('AdaptiveTimeline populated with test data', 'success');
+                }
+                
+                // Populate VideoTimelineComponent with test data
+                if (videoTimelineInstance) {
+                    videoTimelineInstance.duration = 180; // 3 minutes
+                    videoTimelineInstance.currentTime = 60;
+                    
+                    // Add test segments
+                    videoTimelineInstance.segments = [
+                        { id: 1, startTime: 0, duration: 30, isComplete: true, canEdit: true },
+                        { id: 2, startTime: 30, duration: 45, isComplete: true, canEdit: true },
+                        { id: 3, startTime: 75, duration: 30, isComplete: false, canEdit: false, isActive: true }
+                    ];
+                    
+                    // Add critical markers
+                    videoTimelineInstance.criticalMarkers = [
+                        { id: 'critical1', time: 25, title: 'Critical Procedure Start' },
+                        { id: 'critical2', time: 85, title: 'Critical Decision Point' },
+                        { id: 'critical3', time: 150, title: 'Emergency Protocol' }
+                    ];
+                    
+                    // Add test thumbnails
+                    videoTimelineInstance.thumbnails = [
+                        { id: 'thumb1', time: 10, imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjY4IiB2aWV3Qm94PSIwIDAgMTIwIDY4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iNjgiIGZpbGw9IiM0NDQiLz48dGV4dCB4PSI2MCIgeT0iMzQiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+TWVkaWNhbCBUaHVtYm5haWwgMTwvdGV4dD48L3N2Zz4=', type: 'frame' },
+                        { id: 'thumb2', time: 50, imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjY4IiB2aWV3Qm94PSIwIDAgMTIwIDY4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iNjgiIGZpbGw9IiM1NTUiLz48dGV4dCB4PSI2MCIgeT0iMzQiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+TWVkaWNhbCBUaHVtYm5haWwgMjwvdGV4dD48L3N2Zz4=', type: 'key' },
+                        { id: 'thumb3', time: 120, imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjY4IiB2aWV3Qm94PSIwIDAgMTIwIDY4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iNjgiIGZpbGw9IiM2NjYiLz48dGV4dCB4PSI2MCIgeT0iMzQiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+TWVkaWNhbCBUaHVtYm5haWwgMzwvdGV4dD48L3N2Zz4=', type: 'photo' }
+                    ];
+                    
+                    log('VideoTimelineComponent populated with test data', 'success');
+                }
+                
+                updateLegacyStatus();
+                
+            } catch (error) {
+                log(`Failed to populate test data: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearLegacyTimelines() {
+            try {
+                // Clear AdaptiveTimeline
+                if (adaptiveTimelineInstance) {
+                    adaptiveTimelineInstance = null;
+                    window.adaptiveTimelineInstance = null;
+                    document.getElementById('adaptiveTimelineContainer').innerHTML = 
+                        '<div style="text-align: center; color: #666; padding: 20px;">AdaptiveTimeline will appear here</div>';
+                }
+                
+                // Clear VideoTimelineComponent
+                if (videoTimelineInstance) {
+                    videoTimelineInstance = null;
+                    window.videoTimelineInstance = null;
+                    document.getElementById('videoTimelineContainer').innerHTML = 
+                        '<div style="text-align: center; color: #666; padding: 20px;">VideoTimelineComponent will appear here</div>';
+                }
+                
+                log('Legacy timelines cleared', 'success');
+                updateLegacyStatus();
+                
+            } catch (error) {
+                log(`Failed to clear legacy timelines: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateLegacyStatus() {
+            const status = [];
+            if (adaptiveTimelineInstance) status.push('AdaptiveTimeline');
+            if (videoTimelineInstance) status.push('VideoTimelineComponent');
+            
+            const statusText = status.length > 0 ? 
+                `Active: ${status.join(', ')}` : 
+                'No timelines created';
+            
+            document.getElementById('legacyStatus').textContent = statusText;
+        }
+        
+        // Migration Functions
+        async function executeMigration() {
+            try {
+                log('Starting full migration process...', 'info');
+                document.getElementById('migrationStatus').textContent = 'Migrating...';
+                
+                // Initialize migrator
+                migrator = new TimelineRefactorMigration();
+                
+                // Execute migration
+                migrationResults = await migrator.migrateAllTimelines({
+                    backupOriginals: true,
+                    validateMigration: true,
+                    fallbackOnError: true,
+                    preserveEventListeners: true,
+                    medicalMode: true
+                });
+                
+                // Display results
+                if (migrationResults.migratedInstances.length > 0) {
+                    const firstMigrated = migrationResults.migratedInstances[0];
+                    unifiedTimelineInstance = firstMigrated.unifiedInstance;
+                    
+                    // Clear the container and show the unified timeline
+                    const container = document.getElementById('unifiedTimelineContainer');
+                    container.innerHTML = '';
+                    container.appendChild(unifiedTimelineInstance.container);
+                    
+                    log(`Migration completed: ${migrationResults.migratedInstances.length} instances migrated`, 'success');
+                    document.getElementById('migrationStatus').textContent = 
+                        `✅ Migrated ${migrationResults.migratedInstances.length} timeline(s)`;
+                } else {
+                    log('No timeline instances found to migrate', 'warning');
+                    document.getElementById('migrationStatus').textContent = '⚠️ No timelines to migrate';
+                }
+                
+                generateReport();
+                
+            } catch (error) {
+                log(`Migration failed: ${error.message}`, 'error');
+                document.getElementById('migrationStatus').textContent = `❌ Migration failed: ${error.message}`;
+            }
+        }
+        
+        async function migrateAdaptiveOnly() {
+            try {
+                if (!adaptiveTimelineInstance) {
+                    log('No AdaptiveTimeline instance to migrate', 'warning');
+                    return;
+                }
+                
+                log('Migrating AdaptiveTimeline only...', 'info');
+                
+                migrator = new TimelineRefactorMigration();
+                const unified = await migrator.migrateAdaptiveTimeline(adaptiveTimelineInstance, {
+                    medicalMode: true,
+                    preserveEventListeners: true
+                });
+                
+                // Display in unified container
+                const container = document.getElementById('unifiedTimelineContainer');
+                container.innerHTML = '';
+                container.appendChild(unified.container);
+                
+                unifiedTimelineInstance = unified;
+                
+                log('AdaptiveTimeline migration completed', 'success');
+                document.getElementById('migrationStatus').textContent = '✅ AdaptiveTimeline migrated';
+                
+            } catch (error) {
+                log(`AdaptiveTimeline migration failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function migrateVideoOnly() {
+            try {
+                if (!videoTimelineInstance) {
+                    log('No VideoTimelineComponent instance to migrate', 'warning');
+                    return;
+                }
+                
+                log('Migrating VideoTimelineComponent only...', 'info');
+                
+                migrator = new TimelineRefactorMigration();
+                const unified = await migrator.migrateVideoTimelineComponent(videoTimelineInstance, {
+                    medicalMode: true,
+                    preserveEventListeners: true
+                });
+                
+                // Display in unified container
+                const container = document.getElementById('unifiedTimelineContainer');
+                container.innerHTML = '';
+                container.appendChild(unified.container);
+                
+                unifiedTimelineInstance = unified;
+                
+                log('VideoTimelineComponent migration completed', 'success');
+                document.getElementById('migrationStatus').textContent = '✅ VideoTimelineComponent migrated';
+                
+            } catch (error) {
+                log(`VideoTimelineComponent migration failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function validateMigration() {
+            try {
+                if (!migrationResults || !migrationResults.migratedInstances.length) {
+                    log('No migration results to validate', 'warning');
+                    return;
+                }
+                
+                log('Validating migration results...', 'info');
+                
+                const validation = await migrator.validateMigrations(migrationResults.migratedInstances);
+                
+                log(`Validation complete: ${validation.passed} passed, ${validation.failed} failed`, 
+                    validation.failed > 0 ? 'warning' : 'success');
+                
+                if (validation.warnings.length > 0) {
+                    validation.warnings.forEach(warning => {
+                        log(`⚠️ ${warning}`, 'warning');
+                    });
+                }
+                
+                generateReport();
+                
+            } catch (error) {
+                log(`Validation failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function rollbackMigration() {
+            try {
+                if (!migrator) {
+                    log('No migration to rollback', 'warning');
+                    return;
+                }
+                
+                log('Rolling back migration...', 'info');
+                
+                // Restore original instances if backed up
+                if (migrationResults && migrationResults.migratedInstances.length > 0) {
+                    migrationResults.migratedInstances.forEach(migration => {
+                        if (migration.originalInstance) {
+                            migrator.restoreOriginal(migration.id);
+                        }
+                    });
+                }
+                
+                // Clear unified timeline container
+                document.getElementById('unifiedTimelineContainer').innerHTML = 
+                    '<div style="text-align: center; color: #666; padding: 20px;">UnifiedTimeline will appear here after migration</div>';
+                
+                unifiedTimelineInstance = null;
+                migrationResults = null;
+                
+                log('Migration rolled back successfully', 'success');
+                document.getElementById('migrationStatus').textContent = '🔄 Migration rolled back';
+                
+            } catch (error) {
+                log(`Rollback failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Report Functions
+        function generateReport() {
+            const reportContainer = document.getElementById('migrationReport');
+            
+            if (!migrationResults) {
+                reportContainer.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No migration data available</div>';
+                return;
+            }
+            
+            const totalTime = Date.now() - migrationResults.startTime;
+            const successCount = migrationResults.migratedInstances.length;
+            const errorCount = migrationResults.errors.length;
+            
+            let reportHTML = `
+                <div class="report-section">
+                    <div class="report-title">📊 Migration Summary</div>
+                    <div class="performance-metric">Total Time: ${totalTime}ms</div>
+                    <div class="performance-metric migration-success">Successful: ${successCount}</div>
+                    <div class="performance-metric migration-error">Errors: ${errorCount}</div>
+                </div>
+            `;
+            
+            // Success details
+            if (successCount > 0) {
+                reportHTML += `
+                    <div class="report-section">
+                        <div class="report-title">✅ Successful Migrations</div>
+                `;
+                
+                migrationResults.migratedInstances.forEach(instance => {
+                    reportHTML += `
+                        <div class="performance-metric">
+                            ${instance.type}: ${instance.migrationTime.toFixed(1)}ms
+                        </div>
+                    `;
+                });
+                
+                reportHTML += '</div>';
+            }
+            
+            // Error details
+            if (errorCount > 0) {
+                reportHTML += `
+                    <div class="report-section">
+                        <div class="report-title">❌ Migration Errors</div>
+                `;
+                
+                migrationResults.errors.forEach(error => {
+                    reportHTML += `
+                        <div class="migration-error">
+                            ${error.type}: ${error.error}
+                        </div>
+                    `;
+                });
+                
+                reportHTML += '</div>';
+            }
+            
+            // Validation details
+            if (migrationResults.validation) {
+                const validation = migrationResults.validation;
+                reportHTML += `
+                    <div class="report-section">
+                        <div class="report-title">🔍 Validation Results</div>
+                        <div class="performance-metric migration-success">Passed: ${validation.passed}</div>
+                        <div class="performance-metric migration-error">Failed: ${validation.failed}</div>
+                `;
+                
+                if (validation.warnings.length > 0) {
+                    reportHTML += '<div style="margin-top: 10px;"><strong>Warnings:</strong></div>';
+                    validation.warnings.forEach(warning => {
+                        reportHTML += `<div class="migration-warning">⚠️ ${warning}</div>`;
+                    });
+                }
+                
+                reportHTML += '</div>';
+            }
+            
+            // Performance analysis
+            if (migrationResults.performance) {
+                const perf = migrationResults.performance;
+                reportHTML += `
+                    <div class="report-section">
+                        <div class="report-title">⚡ Performance Analysis</div>
+                        <div class="performance-metric">Total: ${perf.totalMigrationTime}ms</div>
+                        <div class="performance-metric">Average: ${perf.averageInstanceTime.toFixed(1)}ms</div>
+                    </div>
+                `;
+            }
+            
+            reportContainer.innerHTML = reportHTML;
+        }
+        
+        function exportReport() {
+            if (!migrationResults) {
+                log('No migration report to export', 'warning');
+                return;
+            }
+            
+            const reportData = {
+                timestamp: new Date().toISOString(),
+                migrationResults: migrationResults,
+                testEnvironment: {
+                    userAgent: navigator.userAgent,
+                    url: window.location.href
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(reportData, null, 2)], {
+                type: 'application/json'
+            });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `timeline-migration-report-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            log('Migration report exported', 'success');
+        }
+        
+        function clearReport() {
+            document.getElementById('migrationReport').innerHTML = 
+                '<div style="text-align: center; color: #666; padding: 20px;">Migration report will appear here</div>';
+        }
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            log('Timeline Migration Test Suite loaded', 'info');
+            log('Ready to test timeline migration functionality', 'info');
+        });
+    </script>
+</body>
+</html>
