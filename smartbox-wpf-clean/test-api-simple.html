@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick API Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f0f0f0; }
+        .result { background: #fff; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { border-left: 4px solid green; }
+        .error { border-left: 4px solid red; }
+        button { padding: 10px 15px; margin: 5px; background: #007acc; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #005a9e; }
+    </style>
+</head>
+<body>
+    <h1>SmartBox API Quick Test</h1>
+    
+    <button onclick="testHealth()">Test Health Check</button>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testBadLogin()">Test Bad Login</button>
+    <button onclick="clearResults()">Clear</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'http://localhost:5002/api';
+        
+        function addResult(title, content, isSuccess = true) {
+            const div = document.createElement('div');
+            div.className = `result ${isSuccess ? 'success' : 'error'}`;
+            div.innerHTML = `<strong>${title}</strong><br><pre>${content}</pre>`;
+            document.getElementById('results').appendChild(div);
+        }
+        
+        async function testHealth() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.text();
+                addResult('Health Check', `Status: ${response.status}\nResponse: ${data}`, response.ok);
+            } catch (error) {
+                addResult('Health Check', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testLogin() {
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: 'SmartBox2024!' })
+                });
+                const data = await response.text();
+                addResult('Valid Login', `Status: ${response.status}\nResponse: ${data}`, response.ok);
+            } catch (error) {
+                addResult('Valid Login', `Error: ${error.message}`, false);
+            }
+        }
+        
+        async function testBadLogin() {
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'wrong', password: 'wrong' })
+                });
+                const data = await response.text();
+                addResult('Invalid Login', `Status: ${response.status}\nResponse: ${data}`, response.status === 401);
+            } catch (error) {
+                addResult('Invalid Login', `Error: ${error.message}`, false);
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        // Auto-test on load
+        window.onload = () => {
+            testHealth();
+        };
+    </script>
+</body>
+</html>
