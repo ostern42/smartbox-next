@@ -1,0 +1,345 @@
+/**
+ * Timeline Button Styles with Elegant Design
+ * Using text labels instead of icons for better clarity
+ */
+
+/* Override timeline button styles */
+.timeline-btn {
+    min-width: 60px !important;
+    height: 32px !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    border-radius: 2px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 12px !important;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: #323130 !important;
+    transition: all 0.2s ease !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+.timeline-btn:hover {
+    background: rgba(255, 255, 255, 1) !important;
+    border-color: #1976D2 !important;
+    color: #1976D2 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Hide icons and use text instead */
+.timeline-btn i {
+    display: none !important;
+}
+
+.timeline-btn.scale-btn::after {
+    content: "Zoom";
+}
+
+.timeline-btn.clear-btn::after {
+    content: "Reset";
+}
+
+/* Speed control buttons */
+.speed-option {
+    min-width: 40px !important;
+    height: 28px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 2px !important;
+    color: white !important;
+    font-family: 'Segoe UI', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+
+.speed-option:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.speed-option.active {
+    background: #1976D2 !important;
+    border-color: #1976D2 !important;
+}
+
+/* Jump buttons with better labels */
+.jump-btn {
+    min-width: 70px !important;
+    padding: 0 12px !important;
+}
+
+.jump-btn span {
+    font-family: 'Segoe UI', sans-serif !important;
+    font-weight: 500 !important;
+    margin: 0 4px !important;
+}
+
+/* Control buttons in video player */
+.control-btn {
+    min-width: 44px !important;
+    height: 36px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 2px !important;
+    color: white !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 0 8px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    font-family: 'Segoe UI', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-1px);
+}
+
+/* Add text labels to control buttons */
+#playPauseBtn::after {
+    content: "Play";
+    margin-left: 4px;
+}
+
+#playPauseBtn.playing::after {
+    content: "Pause";
+}
+
+#frameBackBtn::after {
+    content: "-1";
+    font-size: 10px;
+}
+
+#frameForwardBtn::after {
+    content: "+1";
+    font-size: 10px;
+}
+
+#fullscreenBtn::after {
+    content: "Full";
+    margin-left: 4px;
+}
+
+#annotationToggle::after {
+    content: "Notes";
+    margin-left: 4px;
+}
+
+/* Timeline position display */
+.timeline-position,
+.timeline-scale {
+    font-family: 'Segoe UI', sans-serif !important;
+    font-weight: 500 !important;
+    color: #605e5c !important;
+}
+
+/* Prerecording buttons */
+.prerecording-btn {
+    min-width: 50px !important;
+    height: 32px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 2px !important;
+    color: white !important;
+    font-family: 'Segoe UI', sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    margin: 0 4px !important;
+}
+
+.prerecording-btn:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.prerecording-btn.active {
+    background: #1976D2 !important;
+    border-color: #1976D2 !important;
+    color: white !important;
+}
+
+/* Adaptive timeline ruler text */
+.timestamp {
+    font-family: 'Segoe UI', sans-serif !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Jogwheel mode labels */
+.jogwheel-mode {
+    font-family: 'Segoe UI', sans-serif !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ===== Playhead Controls ===== */
+.playhead-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: rgba(0, 0, 0, 0.8);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.transport-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.transport-btn {
+    height: 40px;
+    min-width: 48px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 12px;
+    transition: all 0.2s ease;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.transport-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.transport-btn:active {
+    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Play/Pause button special styling */
+.transport-btn.play-pause {
+    min-width: 60px;
+    background: #1976D2;
+    border-color: #1976D2;
+}
+
+.transport-btn.play-pause:hover {
+    background: #1565C0;
+    border-color: #1565C0;
+}
+
+.transport-btn.play-pause.playing {
+    background: #D32F2F;
+    border-color: #D32F2F;
+}
+
+.transport-btn.play-pause.playing:hover {
+    background: #C62828;
+    border-color: #C62828;
+}
+
+/* Button icons and labels */
+.btn-icon {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.btn-label {
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+/* Time display */
+.time-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 14px;
+    color: white;
+    font-variant-numeric: tabular-nums;
+}
+
+.current-time {
+    font-weight: 600;
+}
+
+.time-separator {
+    opacity: 0.5;
+}
+
+.total-time {
+    opacity: 0.7;
+}
+
+/* Speed controls */
+.speed-controls {
+    display: flex;
+    gap: 4px;
+}
+
+.speed-btn {
+    width: 44px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    color: white;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.speed-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.speed-btn.active {
+    background: #1976D2;
+    border-color: #1976D2;
+}
+
+/* Fixed Jogwheel Position */
+.jogwheel-container {
+    position: absolute !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    opacity: 1 !important;
+    transform: scale(1) !important;
+    pointer-events: all !important;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.video-timeline-container .jogwheel-container {
+    bottom: 200px !important;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}

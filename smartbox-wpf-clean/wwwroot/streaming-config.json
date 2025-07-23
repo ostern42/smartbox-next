@@ -1,0 +1,32 @@
+{
+  "apiUrl": "http://localhost:5002/api",
+  "wsUrl": "ws://localhost:5001",
+  "authRefreshInterval": 900000,
+  "tokenExpiryBuffer": 60000,
+  "reconnectDelay": 5000,
+  "maxReconnectAttempts": 10,
+  "medical": {
+    "minTouchTargetSize": 44,
+    "frameRate": 30,
+    "enableHighContrast": false,
+    "enableAccessibilityMode": true,
+    "exportFormats": ["mp4", "webm", "dicom"],
+    "defaultExportFormat": "mp4",
+    "enableMedicalMetadata": true,
+    "preserveFrameAccuracy": true,
+    "serverSideExport": true
+  },
+  "hlsOptions": {
+    "enableWorker": true,
+    "lowLatencyMode": true,
+    "backBufferLength": 90,
+    "maxBufferLength": 30,
+    "maxMaxBufferLength": 600,
+    "liveSyncDurationCount": 3,
+    "liveMaxLatencyDurationCount": 10,
+    "liveDurationInfinity": true,
+    "enableWebVTT": true,
+    "enableCEA708Captions": true,
+    "forceKeyFrameOnDiscontinuity": true
+  }
+}

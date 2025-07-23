@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBox Video Editor - Design Demo</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #F5F5F5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Demo Header */
+        .demo-header {
+            background: #FFFFFF;
+            border-bottom: 1px solid #E0E0E0;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .demo-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #212121;
+        }
+        
+        .demo-info {
+            font-size: 14px;
+            color: #757575;
+        }
+        
+        /* Editor Container */
+        .editor-demo-container {
+            flex: 1;
+            padding: 20px;
+            overflow: auto;
+        }
+        
+        .demo-section {
+            background: white;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid #E0E0E0;
+        }
+        
+        .section-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #E0E0E0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #212121;
+        }
+        
+        .section-content {
+            padding: 20px;
+        }
+        
+        /* Button Showcase */
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        
+        .btn-demo {
+            padding: 12px 24px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #1976D2;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #1565C0;
+            box-shadow: 0 2px 4px rgba(25,118,210,0.3);
+        }
+        
+        .btn-secondary {
+            background: #FFFFFF;
+            color: #424242;
+            border: 1px solid #E0E0E0;
+        }
+        
+        .btn-secondary:hover {
+            background: #F5F5F5;
+            border-color: #BDBDBD;
+        }
+        
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #D32F2F;
+            color: white;
+        }
+        
+        /* Color Palette */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+        
+        .color-swatch {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        /* Component Examples */
+        .component-example {
+            margin-bottom: 24px;
+        }
+        
+        .example-label {
+            font-size: 13px;
+            color: #757575;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Timeline Demo */
+        .timeline-demo {
+            height: 200px;
+            background: #FAFAFA;
+            border: 1px solid #E0E0E0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .timeline-ruler {
+            height: 24px;
+            background: #F5F5F5;
+            border-bottom: 1px solid #E0E0E0;
+        }
+        
+        .timeline-track {
+            height: 60px;
+            background: #FFFFFF;
+            border-bottom: 1px solid #EEEEEE;
+            position: relative;
+        }
+        
+        .video-clip {
+            position: absolute;
+            top: 4px;
+            left: 20px;
+            right: 20px;
+            bottom: 4px;
+            background: #1976D2;
+            border: 1px solid #1565C0;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .playhead {
+            position: absolute;
+            top: 24px;
+            left: 150px;
+            width: 1px;
+            height: calc(100% - 24px);
+            background: #D32F2F;
+            box-shadow: 0 0 3px rgba(211,47,47,0.5);
+        }
+        
+        /* Input Examples */
+        .input-demo {
+            padding: 8px 12px;
+            border: 1px solid #E0E0E0;
+            background: white;
+            font-size: 14px;
+            font-family: 'Segoe UI', sans-serif;
+            transition: all 0.2s ease;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .input-demo:focus {
+            outline: none;
+            border-color: #1976D2;
+            box-shadow: 0 0 0 2px rgba(25,118,210,0.2);
+        }
+        
+        /* Card Examples */
+        .card-demo {
+            background: white;
+            border: 1px solid #E0E0E0;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+        }
+        
+        .card-demo:hover {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+        }
+        
+        /* Icon Grid */
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 16px;
+            text-align: center;
+        }
+        
+        .icon-demo {
+            width: 60px;
+            height: 60px;
+            background: #F5F5F5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #616161;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .icon-demo:hover {
+            background: #E3F2FD;
+            color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <header class="demo-header">
+        <h1 class="demo-title">SmartBox Video Editor - Elegant Design System</h1>
+        <div class="demo-info">Segoe UI • Whites & Greys • Subtle Shadows • Edgy Shapes</div>
+    </header>
+    
+    <div class="editor-demo-container">
+        <!-- Color Palette -->
+        <div class="demo-section">
+            <div class="section-header">Color Palette</div>
+            <div class="section-content">
+                <div class="color-grid">
+                    <div class="color-swatch" style="background: #FFFFFF; color: #212121; border: 1px solid #E0E0E0;">
+                        White<br>#FFFFFF
+                    </div>
+                    <div class="color-swatch" style="background: #FAFAFA; color: #212121;">
+                        Light Grey<br>#FAFAFA
+                    </div>
+                    <div class="color-swatch" style="background: #F5F5F5; color: #212121;">
+                        Grey 100<br>#F5F5F5
+                    </div>
+                    <div class="color-swatch" style="background: #E0E0E0; color: #212121;">
+                        Grey 300<br>#E0E0E0
+                    </div>
+                    <div class="color-swatch" style="background: #757575; color: white;">
+                        Grey 600<br>#757575
+                    </div>
+                    <div class="color-swatch" style="background: #212121; color: white;">
+                        Dark<br>#212121
+                    </div>
+                    <div class="color-swatch" style="background: #1976D2; color: white;">
+                        Blue (Info)<br>#1976D2
+                    </div>
+                    <div class="color-swatch" style="background: #D32F2F; color: white;">
+                        Red (Recording)<br>#D32F2F
+                    </div>
+                    <div class="color-swatch" style="background: #4CAF50; color: white;">
+                        Green (Success)<br>#4CAF50
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Buttons -->
+        <div class="demo-section">
+            <div class="section-header">Button Styles</div>
+            <div class="section-content">
+                <div class="button-grid">
+                    <button class="btn-demo btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 16 16">
+                            <path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        Primary Action
+                    </button>
+                    <button class="btn-demo btn-secondary">
+                        Secondary Action
+                    </button>
+                    <button class="btn-demo btn-success">
+                        Success Action
+                    </button>
+                    <button class="btn-demo btn-danger">
+                        Recording
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Video Editor Timeline -->
+        <div class="demo-section">
+            <div class="section-header">Video Timeline Component</div>
+            <div class="section-content">
+                <div class="component-example">
+                    <div class="example-label">Timeline with Playhead</div>
+                    <div class="timeline-demo">
+                        <div class="timeline-ruler"></div>
+                        <div class="timeline-track">
+                            <div class="video-clip">Video Clip - 00:45:23</div>
+                        </div>
+                        <div class="timeline-track" style="background: #F5F5F5;">
+                            <div style="position: absolute; top: 8px; left: 20px; right: 20px; bottom: 8px; background: #E3F2FD; border: 1px solid #90CAF9; display: flex; align-items: center; padding: 0 12px; color: #1565C0; font-size: 12px;">
+                                Annotations Track
+                            </div>
+                        </div>
+                        <div class="playhead"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Form Elements -->
+        <div class="demo-section">
+            <div class="section-header">Form Elements</div>
+            <div class="section-content">
+                <div class="component-example">
+                    <div class="example-label">Text Input</div>
+                    <input type="text" class="input-demo" placeholder="Enter patient name...">
+                </div>
+                
+                <div class="component-example">
+                    <div class="example-label">Select Dropdown</div>
+                    <select class="input-demo">
+                        <option>DICOM Video Export</option>
+                        <option>MP4 Export</option>
+                        <option>Frame Sequence</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cards -->
+        <div class="demo-section">
+            <div class="section-header">Card Components</div>
+            <div class="section-content">
+                <div class="card-demo">
+                    <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #212121;">Video Properties</h3>
+                    <p style="margin: 0; color: #757575; font-size: 14px;">1920x1080 @ 30fps • Duration: 00:45:23</p>
+                </div>
+                
+                <div class="card-demo" style="border-color: #1976D2; background: #E3F2FD;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #1565C0;">Selected Clip</h3>
+                    <p style="margin: 0; color: #1976D2; font-size: 14px;">In: 00:12:34 • Out: 00:23:45</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Icons -->
+        <div class="demo-section">
+            <div class="section-header">Icon Examples</div>
+            <div class="section-content">
+                <div class="icon-grid">
+                    <div class="icon-demo">
+                        <svg width="24" height="24" viewBox="0 0 24 24">
+                            <path d="M8 5V19L19 12L8 5Z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <div class="icon-demo">
+                        <svg width="24" height="24" viewBox="0 0 24 24">
+                            <path d="M6 5H10V19H6V5ZM14 5H18V19H14V5Z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <div class="icon-demo">
+                        <svg width="24" height="24" viewBox="0 0 24 24">
+                            <path d="M7 3L10 10L7 17M13 3L10 10L13 17" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                    </div>
+                    <div class="icon-demo">
+                        <svg width="24" height="24" viewBox="0 0 24 24">
+                            <path d="M3 14L14 3L17 6L6 17L3 17V14Z" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actual Video Editor Component -->
+        <div class="demo-section">
+            <div class="section-header">Live Video Editor Component</div>
+            <div class="section-content" style="height: 600px; padding: 0;">
+                <div id="videoEditorDemo" style="height: 100%;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/video-editor-component.js"></script>
+    <script>
+        // Initialize the actual video editor component
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('videoEditorDemo');
+            const editor = new VideoEditorComponent(container, {
+                framerate: 30,
+                enableAnnotations: true,
+                enableDicomExport: true
+            });
+            
+            // Load a demo video (you can replace with actual video)
+            // editor.loadVideo('path/to/demo/video.mp4');
+        });
+    </script>
+</body>
+</html>

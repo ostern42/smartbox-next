@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartBox Medical Streaming Player</title>
+    <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        /* Login Screen */
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
+        }
+        
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-box h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #666;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #0078d4;
+        }
+        
+        .login-button {
+            width: 100%;
+            padding: 12px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .login-button:hover {
+            background: #106ebe;
+        }
+        
+        .login-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .error-message {
+            color: #d83b01;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        /* Main Player Container */
+        .player-container {
+            display: none;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .header {
+            background: #2b2b2b;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #444;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .user-info span {
+            font-size: 14px;
+            color: #ccc;
+        }
+        
+        .logout-button {
+            padding: 6px 16px;
+            background: #d83b01;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        /* Video Area */
+        .video-area {
+            flex: 1;
+            display: flex;
+            background: #000;
+            position: relative;
+        }
+        
+        .primary-video {
+            flex: 1;
+            position: relative;
+        }
+        
+        .secondary-video {
+            width: 300px;
+            background: #111;
+            border-left: 1px solid #333;
+            display: none;
+            position: relative;
+        }
+        
+        .secondary-video.active {
+            display: block;
+        }
+        
+        .video-wrapper {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .video-js {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Controls Panel */
+        .controls-panel {
+            background: #2b2b2b;
+            padding: 20px;
+            border-top: 1px solid #444;
+        }
+        
+        .controls-section {
+            margin-bottom: 20px;
+        }
+        
+        .controls-section h3 {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .control-button {
+            padding: 8px 16px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .control-button:hover {
+            background: #555;
+        }
+        
+        .control-button.active {
+            background: #0078d4;
+        }
+        
+        .control-button:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+        
+        /* Timeline */
+        .timeline-container {
+            background: #1a1a1a;
+            padding: 20px;
+            border-top: 1px solid #333;
+        }
+        
+        .timeline {
+            position: relative;
+            height: 60px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        
+        .timeline-buffered {
+            position: absolute;
+            height: 100%;
+            background: #555;
+            opacity: 0.5;
+        }
+        
+        .timeline-played {
+            position: absolute;
+            height: 100%;
+            background: #0078d4;
+        }
+        
+        .timeline-markers {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .timeline-marker.in {
+            background: #4caf50;
+        }
+        
+        .timeline-marker.out {
+            background: #f44336;
+        }
+        
+        .timeline-playhead {
+            position: absolute;
+            width: 3px;
+            height: 100%;
+            background: white;
+            pointer-events: none;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .timeline-time {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        /* Export Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2b2b2b;
+            padding: 30px;
+            border-radius: 8px;
+            min-width: 400px;
+        }
+        
+        .modal-header {
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h2 {
+            font-size: 20px;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .export-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .export-option {
+            padding: 10px;
+            background: #333;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        /* Loading Overlay */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #333;
+            border-top-color: #0078d4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .secondary-video {
+                width: 200px;
+            }
+            
+            .controls-panel {
+                padding: 15px;
+            }
+            
+            .button-group {
+                gap: 5px;
+            }
+            
+            .control-button {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-box">
+            <h1>SmartBox Medical Streaming</h1>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="login-button" id="loginButton">Login</button>
+                <div class="error-message" id="loginError"></div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Main Player -->
+    <div class="player-container" id="playerContainer">
+        <!-- Header -->
+        <header class="header">
+            <h1>SmartBox Medical Streaming Player</h1>
+            <div class="user-info">
+                <span id="userDisplay">User</span>
+                <button class="logout-button" id="logoutButton">Logout</button>
+            </div>
+        </header>
+        
+        <!-- Video Area -->
+        <div class="video-area">
+            <!-- Primary Video -->
+            <div class="primary-video">
+                <div class="video-wrapper">
+                    <video id="primaryVideo" class="video-js vjs-default-skin vjs-big-play-centered" controls>
+                        <p class="vjs-no-js">
+                            To view this video please enable JavaScript, and consider upgrading to a web browser that
+                            supports HTML5 video.
+                        </p>
+                    </video>
+                </div>
+                <div class="loading-overlay" id="primaryLoading" style="display: none;">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+            
+            <!-- Secondary Video (Freeze Frame) -->
+            <div class="secondary-video" id="secondaryVideo">
+                <div class="video-wrapper">
+                    <video id="freezeVideo" class="video-js vjs-default-skin" controls>
+                    </video>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timeline -->
+        <div class="timeline-container">
+            <div class="timeline" id="timeline">
+                <div class="timeline-buffered" id="timelineBuffered"></div>
+                <div class="timeline-played" id="timelinePlayed"></div>
+                <div class="timeline-markers" id="timelineMarkers"></div>
+                <div class="timeline-playhead" id="timelinePlayhead"></div>
+            </div>
+            <div class="timeline-time">
+                <span id="currentTime">00:00:00</span>
+                <span id="totalTime">00:00:00</span>
+            </div>
+        </div>
+        
+        <!-- Controls Panel -->
+        <div class="controls-panel">
+            <!-- Stream Controls -->
+            <div class="controls-section">
+                <h3>Stream Controls</h3>
+                <div class="button-group">
+                    <button class="control-button" id="startStreamBtn">Start Stream</button>
+                    <button class="control-button" id="stopStreamBtn" disabled>Stop Stream</button>
+                    <button class="control-button" id="toggleDvrBtn">DVR Mode</button>
+                    <button class="control-button" id="goLiveBtn">Go Live</button>
+                </div>
+            </div>
+            
+            <!-- Navigation Controls -->
+            <div class="controls-section">
+                <h3>Navigation</h3>
+                <div class="button-group">
+                    <button class="control-button" id="jumpBack30">-30s</button>
+                    <button class="control-button" id="jumpBack10">-10s</button>
+                    <button class="control-button" id="frameBack">-1 Frame</button>
+                    <button class="control-button" id="playPauseBtn">Play/Pause</button>
+                    <button class="control-button" id="frameForward">+1 Frame</button>
+                    <button class="control-button" id="jumpForward10">+10s</button>
+                    <button class="control-button" id="jumpForward30">+30s</button>
+                </div>
+            </div>
+            
+            <!-- Marking Controls -->
+            <div class="controls-section">
+                <h3>Mark In/Out Points</h3>
+                <div class="button-group">
+                    <button class="control-button" id="markInBtn">Mark In</button>
+                    <button class="control-button" id="markOutBtn">Mark Out</button>
+                    <button class="control-button" id="clearMarksBtn">Clear Marks</button>
+                    <button class="control-button" id="exportRangeBtn">Export Range</button>
+                </div>
+            </div>
+            
+            <!-- Advanced Controls -->
+            <div class="controls-section">
+                <h3>Advanced</h3>
+                <div class="button-group">
+                    <button class="control-button" id="freezeFrameBtn">Freeze Frame</button>
+                    <button class="control-button" id="speed05x">0.5x</button>
+                    <button class="control-button" id="speed1x" class="active">1x</button>
+                    <button class="control-button" id="speed2x">2x</button>
+                    <button class="control-button" id="speed4x">4x</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Export Video Range</h2>
+            </div>
+            <div class="modal-body">
+                <div class="export-options" id="exportOptions">
+                    <!-- Export options will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="control-button" id="cancelExportBtn">Cancel</button>
+                <button class="control-button" id="confirmExportBtn">Export</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Core dependencies are loaded dynamically by streaming-player.js -->
+    <script src="js/streaming-player.js"></script>
+</body>
+</html>
