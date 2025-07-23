@@ -20,7 +20,7 @@ After extensive testing with WinUI3, we made the strategic decision to migrate t
 ```
 SmartBoxNext.exe (.NET 8 WPF Shell)
 ├── WebView2 (Full Window)
-├── Local Web Server (Port 5000)
+├── Local Web Server (Port 8080)
 ├── Medical Components
 │   ├── DICOM Exporter (fo-dicom)
 │   ├── PACS Sender (C-STORE)
@@ -182,7 +182,7 @@ smartbox-wpf-clean/
 
 ### WebView2 not loading?
 - Ensure WebView2 Runtime is installed
-- Check Windows Firewall for port 5000
+- Check Windows Firewall for port 8080
 - Look in `logs/` folder for errors
 
 ### PACS connection failing?
