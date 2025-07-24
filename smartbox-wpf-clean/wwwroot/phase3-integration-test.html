@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 3 Playback Enhancements - Integration Test</title>
+    <link rel="stylesheet" href="styles-elegant.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .test-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .test-header {
+            background: linear-gradient(135deg, #0078d4, #106ebe);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .test-header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .test-header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .test-content {
+            padding: 30px;
+        }
+        
+        .video-container {
+            background: #000;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #testVideo {
+            width: 100%;
+            height: 400px;
+            display: block;
+        }
+        
+        .controls-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #0078d4;
+        }
+        
+        .controls-section h3 {
+            margin: 0 0 15px;
+            color: #0078d4;
+            font-weight: 600;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            min-width: 120px;
+        }
+        
+        .test-button {
+            background: #0078d4;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        
+        .test-button:hover {
+            background: #106ebe;
+        }
+        
+        .test-button.secondary {
+            background: #6c757d;
+        }
+        
+        .test-button.danger {
+            background: #dc3545;
+        }
+        
+        .test-button.success {
+            background: #28a745;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .status-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .status-card h4 {
+            margin: 0 0 10px;
+            color: #495057;
+            font-size: 1.1em;
+        }
+        
+        .status-value {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+        
+        .metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        .metrics-table th,
+        .metrics-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .metrics-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .test-log {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+        }
+        
+        .log-entry.error {
+            color: #ff4444;
+        }
+        
+        .log-entry.warning {
+            color: #ffaa00;
+        }
+        
+        .log-entry.success {
+            color: #44ff44;
+        }
+        
+        .hls-test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .url-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        
+        .frame-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .frame-info {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin: 0 10px;
+        }
+        
+        .medical-mode-toggle {
+            margin: 20px 0;
+            padding: 15px;
+            background: #d4edda;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            margin-left: 10px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: #28a745;
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+        
+        .performance-meter {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .meter-bar {
+            flex: 1;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .adaptation-log {
+            max-height: 150px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🎯 Phase 3: Playback Enhancements</h1>
+            <p>Integration Test Suite - Adaptive Bitrate | Medical Buffering | Frame Controls</p>
+        </div>
+        
+        <div class="test-content">
+            <!-- Video Player Section -->
+            <div class="video-container">
+                <video id="testVideo" controls crossorigin="anonymous">
+                    <source src="https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            
+            <!-- Medical Mode Toggle -->
+            <div class="medical-mode-toggle">
+                <label>
+                    <strong>🏥 Medical Mode:</strong>
+                    <span class="toggle-switch">
+                        <input type="checkbox" id="medicalModeToggle">
+                        <span class="toggle-slider"></span>
+                    </span>
+                    <span id="medicalModeStatus">Disabled</span>
+                </label>
+                <p style="margin: 10px 0 0; font-size: 0.9em; opacity: 0.8;">
+                    Enables enhanced precision, medical-grade buffering, and specialized controls
+                </p>
+            </div>
+            
+            <!-- HLS Test Section -->
+            <div class="hls-test-section">
+                <h3>🌐 HLS Stream Testing</h3>
+                <div class="control-group">
+                    <label>HLS URL:</label>
+                    <input type="text" id="hlsUrl" class="url-input" 
+                           placeholder="Enter HLS stream URL (optional - uses sample HLS stream)">
+                </div>
+                <div class="control-group">
+                    <button class="test-button" onclick="loadHLSStream()">Load HLS Stream</button>
+                    <button class="test-button secondary" onclick="loadSampleHLS()">Load Sample HLS</button>
+                    <button class="test-button danger" onclick="destroyHLS()">Stop HLS</button>
+                </div>
+            </div>
+            
+            <!-- Phase 3 Components Status -->
+            <div class="status-grid">
+                <!-- Adaptive Bitrate Manager Status -->
+                <div class="status-card">
+                    <h4>🎛️ Adaptive Bitrate Manager</h4>
+                    <div class="status-value" id="abrStatus">Not initialized</div>
+                    <table class="metrics-table">
+                        <tr><th>Current Level</th><td id="currentLevel">-</td></tr>
+                        <tr><th>Bandwidth</th><td id="averageBandwidth">-</td></tr>
+                        <tr><th>Buffer Health</th><td id="bufferHealth">-</td></tr>
+                        <tr><th>Auto Mode</th><td id="autoMode">-</td></tr>
+                        <tr><th>Switches</th><td id="totalSwitches">-</td></tr>
+                    </table>
+                </div>
+                
+                <!-- Medical Buffering Config Status -->
+                <div class="status-card">
+                    <h4>🏥 Medical Buffering</h4>
+                    <div class="status-value" id="bufferingStatus">Not configured</div>
+                    <table class="metrics-table">
+                        <tr><th>Configuration</th><td id="bufferConfig">-</td></tr>
+                        <tr><th>Back Buffer</th><td id="backBuffer">-</td></tr>
+                        <tr><th>Max Buffer</th><td id="maxBuffer">-</td></tr>
+                        <tr><th>Seek Precision</th><td id="seekPrecision">-</td></tr>
+                        <tr><th>Mode</th><td id="configMode">-</td></tr>
+                    </table>
+                </div>
+                
+                <!-- Frame Accurate Controls Status -->
+                <div class="status-card">
+                    <h4>🎯 Frame Controls</h4>
+                    <div class="status-value" id="frameControlsStatus">Not initialized</div>
+                    <table class="metrics-table">
+                        <tr><th>Frame Rate</th><td id="detectedFrameRate">-</td></tr>
+                        <tr><th>Current Frame</th><td id="currentFrame">-</td></tr>
+                        <tr><th>Total Frames</th><td id="totalFrames">-</td></tr>
+                        <tr><th>Seek Performance</th><td id="seekPerformance">-</td></tr>
+                        <tr><th>Enabled Features</th><td id="enabledFeatures">-</td></tr>
+                    </table>
+                </div>
+                
+                <!-- Performance Metrics -->
+                <div class="status-card">
+                    <h4>📊 Performance Metrics</h4>
+                    <div class="performance-meter">
+                        <span>CPU Usage:</span>
+                        <div class="meter-bar">
+                            <div class="meter-fill" id="cpuMeter"></div>
+                        </div>
+                        <span id="cpuValue">0%</span>
+                    </div>
+                    <div class="performance-meter">
+                        <span>Memory:</span>
+                        <div class="meter-bar">
+                            <div class="meter-fill" id="memoryMeter"></div>
+                        </div>
+                        <span id="memoryValue">0MB</span>
+                    </div>
+                    <table class="metrics-table">
+                        <tr><th>Initialization Time</th><td id="initTime">-</td></tr>
+                        <tr><th>HLS Load Time</th><td id="hlsLoadTime">-</td></tr>
+                        <tr><th>Error Count</th><td id="errorCount">0</td></tr>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Control Panels -->
+            <div class="controls-section">
+                <h3>🎛️ Adaptive Bitrate Controls</h3>
+                <div class="control-group">
+                    <button class="test-button" onclick="toggleAutoMode()">Toggle Auto Mode</button>
+                    <button class="test-button" onclick="forceQualityUp()">Force Quality Up</button>
+                    <button class="test-button" onclick="forceQualityDown()">Force Quality Down</button>
+                    <button class="test-button secondary" onclick="setMedicalPreset('diagnostic')">Diagnostic Mode</button>
+                    <button class="test-button secondary" onclick="setMedicalPreset('surgical')">Surgical Mode</button>
+                </div>
+                <div class="adaptation-log" id="adaptationLog">
+                    Adaptive bitrate events will appear here...
+                </div>
+            </div>
+            
+            <div class="controls-section">
+                <h3>🎯 Frame-Accurate Controls</h3>
+                <div class="frame-controls">
+                    <button class="test-button" onclick="stepFrameBackward()">◀ -1 Frame</button>
+                    <button class="test-button" onclick="stepFrameForward()">▶ +1 Frame</button>
+                    <button class="test-button secondary" onclick="stepFrameBackward(10)">◀◀ -10 Frames</button>
+                    <button class="test-button secondary" onclick="stepFrameForward(10)">▶▶ +10 Frames</button>
+                    <div class="frame-info" id="frameInfo">Frame: 0 / 0</div>
+                </div>
+                <div class="control-group">
+                    <label>Speed Preset:</label>
+                    <select id="speedPreset" onchange="changeSpeedPreset()">
+                        <option value="surgical">Surgical (0.1x - 1x)</option>
+                        <option value="review" selected>Review (0.5x - 4x)</option>
+                        <option value="scan">Scan (1x - 16x)</option>
+                        <option value="diagnostic">Diagnostic (0.25x - 2x)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="controls-section">
+                <h3>🏥 Medical Buffering Controls</h3>
+                <div class="control-group">
+                    <label>Workflow:</label>
+                    <select id="workflowSelect" onchange="changeWorkflow()">
+                        <option value="general">General</option>
+                        <option value="endoscopy">Endoscopy</option>
+                        <option value="surgery">Surgery</option>
+                        <option value="radiology">Radiology</option>
+                        <option value="cardiology">Cardiology</option>
+                        <option value="emergency">Emergency</option>
+                    </select>
+                    <button class="test-button" onclick="validateMedicalCompliance()">Validate Compliance</button>
+                    <button class="test-button secondary" onclick="optimizeBuffering()">Optimize Buffering</button>
+                </div>
+            </div>
+            
+            <!-- Test Actions -->
+            <div class="controls-section">
+                <h3>🧪 Test Actions</h3>
+                <div class="control-group">
+                    <button class="test-button success" onclick="runFullTest()">Run Full Integration Test</button>
+                    <button class="test-button" onclick="testSeekAccuracy()">Test Seek Accuracy</button>
+                    <button class="test-button" onclick="testAdaptiveBitrate()">Test Adaptive Bitrate</button>
+                    <button class="test-button" onclick="benchmarkPerformance()">Benchmark Performance</button>
+                    <button class="test-button secondary" onclick="exportTestResults()">Export Results</button>
+                    <button class="test-button danger" onclick="clearLog()">Clear Log</button>
+                </div>
+            </div>
+            
+            <!-- Test Log -->
+            <div class="controls-section">
+                <h3>📋 Test Log</h3>
+                <div class="test-log" id="testLog">
+                    <div class="log-entry">Phase 3 Integration Test initialized...</div>
+                    <div class="log-entry">Waiting for test actions...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include HLS.js -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <!-- Include Phase 3 Components -->
+    <script src="js/medical-buffering-config.js"></script>
+    <script src="js/adaptive-bitrate-manager.js"></script>
+    <script src="js/frame-accurate-controls.js"></script>
+    
+    <script>
+        // Global test variables
+        let player = null;
+        let hls = null;
+        let adaptiveBitrateManager = null;
+        let frameAccurateControls = null;
+        let testStartTime = Date.now();
+        let currentConfig = null;
+        let testResults = [];
+        
+        // Mock player object for testing
+        const testVideo = document.getElementById('testVideo');
+        player = {
+            video: testVideo,
+            controlsContainer: document.createElement('div'),
+            emit: function(event, data) {
+                logEvent(`🎵 Player Event: ${event}`, data);
+            },
+            on: function(event, handler) {
+                testVideo.addEventListener(event, handler);
+            }
+        };
+        
+        // Append controls container to video parent
+        testVideo.parentNode.appendChild(player.controlsContainer);
+        
+        // Initialize Phase 3 components
+        function initializePhase3Components() {
+            const medicalMode = document.getElementById('medicalModeToggle').checked;
+            
+            logEvent('🚀 Initializing Phase 3 components...', { medicalMode });
+            
+            try {
+                // Initialize Medical Buffering Config
+                currentConfig = MedicalBufferingConfig.getMedicalConfig(
+                    medicalMode ? 'review' : 'production',
+                    { enableLogging: true }
+                );
+                updateBufferingStatus();
+                
+                // Initialize Frame Accurate Controls
+                frameAccurateControls = new FrameAccurateControls(player, {
+                    medicalMode: medicalMode,
+                    frameRate: 30,
+                    enableKeyboardShortcuts: true,
+                    hapticFeedback: true,
+                    visualFeedback: true
+                });
+                updateFrameControlsStatus();
+                
+                logEvent('✅ Phase 3 components initialized successfully');
+                updateComponentStatuses();
+                
+            } catch (error) {
+                logEvent(`❌ Error initializing Phase 3 components: ${error.message}`, null, 'error');
+            }
+        }
+        
+        // Load HLS stream
+        function loadHLSStream() {
+            const url = document.getElementById('hlsUrl').value || 
+                       'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+            
+            if (Hls.isSupported()) {
+                logEvent('🌐 Loading HLS stream...', { url });
+                const startTime = Date.now();
+                
+                // Destroy existing HLS instance
+                if (hls) {
+                    hls.destroy();
+                }
+                
+                // Create new HLS instance with medical buffering config
+                hls = new Hls(currentConfig || {});
+                
+                // Initialize Adaptive Bitrate Manager
+                if (adaptiveBitrateManager) {
+                    adaptiveBitrateManager.destroy();
+                }
+                
+                adaptiveBitrateManager = new AdaptiveBitrateManager(player, hls, {
+                    medicalMode: document.getElementById('medicalModeToggle').checked,
+                    evaluationInterval: 2000,
+                    safetyMargin: 0.7
+                });
+                
+                hls.loadSource(url);
+                hls.attachMedia(testVideo);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    const loadTime = Date.now() - startTime;
+                    logEvent('✅ HLS manifest loaded', { loadTime: `${loadTime}ms` });
+                    document.getElementById('hlsLoadTime').textContent = `${loadTime}ms`;
+                    updateComponentStatuses();
+                });
+                
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    logEvent('❌ HLS Error', data, 'error');
+                    incrementErrorCount();
+                });
+                
+            } else if (testVideo.canPlayType('application/vnd.apple.mpegurl')) {
+                logEvent('🍎 Using native HLS support (Safari)');
+                testVideo.src = url;
+            } else {
+                logEvent('❌ HLS not supported in this browser', null, 'error');
+            }
+        }
+        
+        // Load sample HLS stream
+        function loadSampleHLS() {
+            document.getElementById('hlsUrl').value = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+            loadHLSStream();
+        }
+        
+        // Destroy HLS
+        function destroyHLS() {
+            if (hls) {
+                hls.destroy();
+                hls = null;
+                logEvent('🗑️ HLS instance destroyed');
+            }
+            if (adaptiveBitrateManager) {
+                adaptiveBitrateManager.destroy();
+                adaptiveBitrateManager = null;
+                logEvent('🗑️ Adaptive Bitrate Manager destroyed');
+            }
+            updateComponentStatuses();
+        }
+        
+        // Medical mode toggle
+        document.getElementById('medicalModeToggle').addEventListener('change', function() {
+            const enabled = this.checked;
+            document.getElementById('medicalModeStatus').textContent = enabled ? 'Enabled' : 'Disabled';
+            logEvent(`🏥 Medical mode ${enabled ? 'enabled' : 'disabled'}`);
+            
+            // Reinitialize components with new medical mode
+            if (frameAccurateControls) {
+                frameAccurateControls.destroy();
+            }
+            
+            setTimeout(() => {
+                initializePhase3Components();
+            }, 100);
+        });
+        
+        // Control functions
+        function toggleAutoMode() {
+            if (adaptiveBitrateManager) {
+                const currentMode = adaptiveBitrateManager.autoMode;
+                adaptiveBitrateManager.setAutoMode(!currentMode);
+                logEvent(`🎛️ Auto mode: ${!currentMode ? 'enabled' : 'disabled'}`);
+                updateComponentStatuses();
+            }
+        }
+        
+        function forceQualityUp() {
+            if (adaptiveBitrateManager && hls) {
+                const currentLevel = hls.currentLevel;
+                const targetLevel = Math.min(currentLevel + 1, hls.levels.length - 1);
+                adaptiveBitrateManager.setQualityLevel(targetLevel);
+                logEvent(`⬆️ Quality forced up to level ${targetLevel}`);
+            }
+        }
+        
+        function forceQualityDown() {
+            if (adaptiveBitrateManager && hls) {
+                const currentLevel = hls.currentLevel;
+                const targetLevel = Math.max(currentLevel - 1, 0);
+                adaptiveBitrateManager.setQualityLevel(targetLevel);
+                logEvent(`⬇️ Quality forced down to level ${targetLevel}`);
+            }
+        }
+        
+        function setMedicalPreset(preset) {
+            if (adaptiveBitrateManager) {
+                adaptiveBitrateManager.setQualityPreset(preset);
+                logEvent(`🏥 Medical preset changed to: ${preset}`);
+                updateComponentStatuses();
+            }
+        }
+        
+        function stepFrameBackward(frames = 1) {
+            if (frameAccurateControls) {
+                frameAccurateControls.stepFrames(-frames);
+                updateFrameInfo();
+            }
+        }
+        
+        function stepFrameForward(frames = 1) {
+            if (frameAccurateControls) {
+                frameAccurateControls.stepFrames(frames);
+                updateFrameInfo();
+            }
+        }
+        
+        function changeSpeedPreset() {
+            const preset = document.getElementById('speedPreset').value;
+            if (frameAccurateControls && frameAccurateControls.speedControl) {
+                frameAccurateControls.speedControl.currentPreset = preset;
+                frameAccurateControls.speedControl.updateSpeedButtons();
+                logEvent(`🎯 Speed preset changed to: ${preset}`);
+            }
+        }
+        
+        function changeWorkflow() {
+            const workflow = document.getElementById('workflowSelect').value;
+            currentConfig = MedicalBufferingConfig.createWorkflowConfig(workflow);
+            
+            // Apply new config if HLS is active
+            if (hls) {
+                logEvent(`🏥 Workflow changed to: ${workflow}`, currentConfig);
+                // Note: Would need to restart HLS with new config for full effect
+            }
+            
+            updateBufferingStatus();
+        }
+        
+        function validateMedicalCompliance() {
+            if (currentConfig) {
+                const compliance = MedicalBufferingConfig.validateMedicalCompliance(currentConfig);
+                logEvent('🏥 Medical compliance validation', compliance);
+                
+                if (compliance.errors.length > 0) {
+                    logEvent(`❌ Compliance errors: ${compliance.errors.join(', ')}`, null, 'error');
+                }
+                if (compliance.warnings.length > 0) {
+                    logEvent(`⚠️ Compliance warnings: ${compliance.warnings.join(', ')}`, null, 'warning');
+                }
+                if (compliance.recommendations.length > 0) {
+                    logEvent(`💡 Recommendations: ${compliance.recommendations.join(', ')}`);
+                }
+            }
+        }
+        
+        function optimizeBuffering() {
+            if (currentConfig) {
+                // Apply optimization suggestions
+                const optimized = {
+                    ...currentConfig,
+                    maxBufferLength: Math.max(currentConfig.maxBufferLength, 60),
+                    fragLoadingMaxRetry: Math.max(currentConfig.fragLoadingMaxRetry, 6),
+                    startFragPrefetch: true
+                };
+                
+                currentConfig = optimized;
+                logEvent('⚡ Buffering optimized', optimized);
+                updateBufferingStatus();
+            }
+        }
+        
+        // Test functions
+        function runFullTest() {
+            logEvent('🧪 Starting full integration test...');
+            
+            const tests = [
+                testInitialization,
+                testHLSLoading,
+                testAdaptiveBitrate,
+                testFrameAccuracy,
+                testMedicalCompliance,
+                testPerformance
+            ];
+            
+            let currentTest = 0;
+            
+            function runNextTest() {
+                if (currentTest < tests.length) {
+                    tests[currentTest]().then(() => {
+                        currentTest++;
+                        setTimeout(runNextTest, 1000);
+                    }).catch(error => {
+                        logEvent(`❌ Test failed: ${error.message}`, null, 'error');
+                        currentTest++;
+                        setTimeout(runNextTest, 1000);
+                    });
+                } else {
+                    logEvent('✅ Full integration test completed');
+                    generateTestReport();
+                }
+            }
+            
+            runNextTest();
+        }
+        
+        async function testInitialization() {
+            logEvent('🔧 Testing component initialization...');
+            const startTime = Date.now();
+            
+            // Reinitialize all components
+            initializePhase3Components();
+            
+            const initTime = Date.now() - startTime;
+            document.getElementById('initTime').textContent = `${initTime}ms`;
+            
+            if (frameAccurateControls && currentConfig) {
+                logEvent('✅ Initialization test passed', { initTime: `${initTime}ms` });
+                return Promise.resolve();
+            } else {
+                throw new Error('Component initialization failed');
+            }
+        }
+        
+        async function testHLSLoading() {
+            logEvent('🌐 Testing HLS loading...');
+            
+            return new Promise((resolve, reject) => {
+                if (!Hls.isSupported()) {
+                    logEvent('⚠️ HLS not supported, skipping test', null, 'warning');
+                    resolve();
+                    return;
+                }
+                
+                const timeout = setTimeout(() => {
+                    reject(new Error('HLS loading timeout'));
+                }, 10000);
+                
+                const testUrl = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+                const testHls = new Hls(currentConfig);
+                
+                testHls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    clearTimeout(timeout);
+                    testHls.destroy();
+                    logEvent('✅ HLS loading test passed');
+                    resolve();
+                });
+                
+                testHls.on(Hls.Events.ERROR, (event, data) => {
+                    clearTimeout(timeout);
+                    testHls.destroy();
+                    reject(new Error(`HLS error: ${data.type}`));
+                });
+                
+                testHls.loadSource(testUrl);
+            });
+        }
+        
+        async function testAdaptiveBitrate() {
+            logEvent('🎛️ Testing adaptive bitrate...');
+            
+            if (!adaptiveBitrateManager) {
+                throw new Error('Adaptive Bitrate Manager not initialized');
+            }
+            
+            // Test auto mode toggle
+            const originalMode = adaptiveBitrateManager.autoMode;
+            adaptiveBitrateManager.setAutoMode(!originalMode);
+            adaptiveBitrateManager.setAutoMode(originalMode);
+            
+            // Test quality level setting
+            if (hls && hls.levels && hls.levels.length > 1) {
+                adaptiveBitrateManager.setQualityLevel(0);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                adaptiveBitrateManager.setQualityLevel(-1); // Auto
+            }
+            
+            logEvent('✅ Adaptive bitrate test passed');
+            return Promise.resolve();
+        }
+        
+        async function testFrameAccuracy() {
+            logEvent('🎯 Testing frame accuracy...');
+            
+            if (!frameAccurateControls) {
+                throw new Error('Frame Accurate Controls not initialized');
+            }
+            
+            const startTime = testVideo.currentTime;
+            
+            // Test frame stepping
+            frameAccurateControls.stepFrames(1);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            frameAccurateControls.stepFrames(-1);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const endTime = testVideo.currentTime;
+            const accuracy = Math.abs(endTime - startTime);
+            
+            if (accuracy < 0.1) { // Within 100ms
+                logEvent('✅ Frame accuracy test passed', { accuracy: `${accuracy.toFixed(4)}s` });
+                return Promise.resolve();
+            } else {
+                throw new Error(`Frame accuracy too low: ${accuracy.toFixed(4)}s`);
+            }
+        }
+        
+        async function testMedicalCompliance() {
+            logEvent('🏥 Testing medical compliance...');
+            
+            const compliance = MedicalBufferingConfig.validateMedicalCompliance(currentConfig);
+            
+            if (compliance.errors.length === 0) {
+                logEvent('✅ Medical compliance test passed');
+                return Promise.resolve();
+            } else {
+                throw new Error(`Medical compliance failed: ${compliance.errors.join(', ')}`);
+            }
+        }
+        
+        async function testPerformance() {
+            logEvent('📊 Testing performance...');
+            
+            const startTime = performance.now();
+            
+            // Simulate intensive operations
+            for (let i = 0; i < 100; i++) {
+                if (frameAccurateControls) {
+                    frameAccurateControls.updateDisplay();
+                }
+                if (adaptiveBitrateManager) {
+                    adaptiveBitrateManager.getPerformanceMetrics();
+                }
+            }
+            
+            const duration = performance.now() - startTime;
+            
+            if (duration < 1000) { // Under 1 second
+                logEvent('✅ Performance test passed', { duration: `${duration.toFixed(2)}ms` });
+                return Promise.resolve();
+            } else {
+                throw new Error(`Performance too slow: ${duration.toFixed(2)}ms`);
+            }
+        }
+        
+        function testSeekAccuracy() {
+            logEvent('🎯 Testing seek accuracy...');
+            
+            if (!frameAccurateControls) {
+                logEvent('❌ Frame controls not initialized', null, 'error');
+                return;
+            }
+            
+            const testTimes = [1.0, 2.5, 5.0, 10.0];
+            let testIndex = 0;
+            
+            function runSeekTest() {
+                if (testIndex < testTimes.length) {
+                    const targetTime = testTimes[testIndex];
+                    const startTime = performance.now();
+                    
+                    frameAccurateControls.seekToTime(targetTime);
+                    
+                    setTimeout(() => {
+                        const seekDuration = performance.now() - startTime;
+                        const accuracy = Math.abs(testVideo.currentTime - targetTime);
+                        
+                        logEvent(`🎯 Seek to ${targetTime}s: accuracy ±${(accuracy * 1000).toFixed(1)}ms, duration ${seekDuration.toFixed(1)}ms`);
+                        
+                        testIndex++;
+                        setTimeout(runSeekTest, 500);
+                    }, 100);
+                } else {
+                    logEvent('✅ Seek accuracy test completed');
+                }
+            }
+            
+            runSeekTest();
+        }
+        
+        function benchmarkPerformance() {
+            logEvent('📊 Running performance benchmark...');
+            
+            const iterations = 1000;
+            const tests = [
+                () => frameAccurateControls?.updateDisplay(),
+                () => adaptiveBitrateManager?.getPerformanceMetrics(),
+                () => MedicalBufferingConfig.validateMedicalCompliance(currentConfig)
+            ];
+            
+            tests.forEach((test, index) => {
+                const startTime = performance.now();
+                
+                for (let i = 0; i < iterations; i++) {
+                    test();
+                }
+                
+                const duration = performance.now() - startTime;
+                const avgTime = duration / iterations;
+                
+                logEvent(`📊 Test ${index + 1}: ${avgTime.toFixed(3)}ms avg (${iterations} iterations)`);
+            });
+            
+            logEvent('✅ Performance benchmark completed');
+        }
+        
+        function exportTestResults() {
+            const results = {
+                timestamp: new Date().toISOString(),
+                testDuration: Date.now() - testStartTime,
+                components: {
+                    adaptiveBitrateManager: adaptiveBitrateManager?.getStatus(),
+                    frameAccurateControls: frameAccurateControls?.getStatus(),
+                    medicalBuffering: currentConfig
+                },
+                testResults: testResults,
+                browserInfo: {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    language: navigator.language
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `phase3-test-results-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            logEvent('📄 Test results exported');
+        }
+        
+        // Update functions
+        function updateComponentStatuses() {
+            updateABRStatus();
+            updateFrameControlsStatus();
+            updateBufferingStatus();
+        }
+        
+        function updateABRStatus() {
+            const element = document.getElementById('abrStatus');
+            
+            if (adaptiveBitrateManager) {
+                const status = adaptiveBitrateManager.getStatus();
+                element.textContent = 'Initialized and running';
+                
+                document.getElementById('currentLevel').textContent = status.currentLevel;
+                document.getElementById('averageBandwidth').textContent = 
+                    (status.averageBandwidth / 1000000).toFixed(2) + ' Mbps';
+                document.getElementById('bufferHealth').textContent = 
+                    status.bufferHealth.isHealthy ? 'Healthy' : 'Unhealthy';
+                document.getElementById('autoMode').textContent = status.autoMode ? 'Enabled' : 'Disabled';
+                document.getElementById('totalSwitches').textContent = status.metrics.totalSwitches;
+            } else {
+                element.textContent = 'Not initialized';
+            }
+        }
+        
+        function updateFrameControlsStatus() {
+            const element = document.getElementById('frameControlsStatus');
+            
+            if (frameAccurateControls) {
+                const status = frameAccurateControls.getStatus();
+                element.textContent = 'Initialized and ready';
+                
+                document.getElementById('detectedFrameRate').textContent = status.frameRate + ' fps';
+                document.getElementById('currentFrame').textContent = status.currentFrame;
+                document.getElementById('totalFrames').textContent = status.totalFrames;
+                document.getElementById('seekPerformance').textContent = 
+                    status.seekPerformance.averageSeekTime.toFixed(1) + ' ms avg';
+                document.getElementById('enabledFeatures').textContent = 
+                    Object.keys(status.enabledFeatures).filter(key => status.enabledFeatures[key]).length;
+            } else {
+                element.textContent = 'Not initialized';
+            }
+        }
+        
+        function updateBufferingStatus() {
+            const element = document.getElementById('bufferingStatus');
+            
+            if (currentConfig) {
+                element.textContent = 'Configured';
+                
+                document.getElementById('bufferConfig').textContent = currentConfig.medicalMode || 'Standard';
+                document.getElementById('backBuffer').textContent = currentConfig.backBufferLength + 's';
+                document.getElementById('maxBuffer').textContent = currentConfig.maxBufferLength + 's';
+                document.getElementById('seekPrecision').textContent = (currentConfig.nudgeOffset * 1000) + 'ms';
+                document.getElementById('configMode').textContent = 
+                    currentConfig.medicalPrecisionMode ? 'Medical Precision' : 'Standard';
+            } else {
+                element.textContent = 'Not configured';
+            }
+        }
+        
+        function updateFrameInfo() {
+            if (frameAccurateControls) {
+                const status = frameAccurateControls.getStatus();
+                document.getElementById('frameInfo').textContent = 
+                    `Frame: ${status.currentFrame} / ${status.totalFrames}`;
+            }
+        }
+        
+        // Utility functions
+        function logEvent(message, data = null, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('testLog');
+            const adaptationElement = document.getElementById('adaptationLog');
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            
+            let logText = `[${timestamp}] ${message}`;
+            if (data) {
+                logText += ` - ${JSON.stringify(data)}`;
+            }
+            
+            entry.textContent = logText;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            // Also add to adaptation log if it's an ABR event
+            if (message.includes('Quality') || message.includes('Bandwidth') || message.includes('Auto mode')) {
+                const adaptEntry = document.createElement('div');
+                adaptEntry.textContent = logText;
+                adaptationElement.appendChild(adaptEntry);
+                adaptationElement.scrollTop = adaptationElement.scrollHeight;
+            }
+            
+            // Store in test results
+            testResults.push({
+                timestamp: Date.now(),
+                message,
+                data,
+                type
+            });
+        }
+        
+        function clearLog() {
+            document.getElementById('testLog').innerHTML = '';
+            document.getElementById('adaptationLog').innerHTML = '';
+            testResults = [];
+            logEvent('📋 Test log cleared');
+        }
+        
+        function incrementErrorCount() {
+            const element = document.getElementById('errorCount');
+            const current = parseInt(element.textContent) || 0;
+            element.textContent = current + 1;
+        }
+        
+        function generateTestReport() {
+            const report = {
+                summary: 'Phase 3 Integration Test Completed',
+                duration: Date.now() - testStartTime,
+                components: 3,
+                errors: parseInt(document.getElementById('errorCount').textContent) || 0,
+                performance: 'Good'
+            };
+            
+            logEvent('📊 Test Report Generated', report);
+        }
+        
+        // Performance monitoring
+        function startPerformanceMonitoring() {
+            setInterval(() => {
+                // Simulate performance metrics (in real scenario, use Performance API)
+                const cpuUsage = Math.random() * 30 + 10; // 10-40%
+                const memoryUsage = Math.random() * 100 + 50; // 50-150MB
+                
+                document.getElementById('cpuMeter').style.width = cpuUsage + '%';
+                document.getElementById('cpuValue').textContent = cpuUsage.toFixed(1) + '%';
+                
+                document.getElementById('memoryMeter').style.width = (memoryUsage / 200 * 100) + '%';
+                document.getElementById('memoryValue').textContent = memoryUsage.toFixed(0) + 'MB';
+            }, 2000);
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            logEvent('🚀 Phase 3 Integration Test Page Loaded');
+            
+            // Initialize components
+            setTimeout(() => {
+                initializePhase3Components();
+                startPerformanceMonitoring();
+                
+                // Auto-update frame info
+                setInterval(updateFrameInfo, 500);
+                
+                // Auto-update component statuses
+                setInterval(updateComponentStatuses, 2000);
+                
+                logEvent('✅ Test environment initialized');
+            }, 1000);
+        });
+        
+        // Keyboard shortcuts for testing
+        document.addEventListener('keydown', function(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+            
+            switch(e.key) {
+                case 'F1':
+                    runFullTest();
+                    e.preventDefault();
+                    break;
+                case 'F2':
+                    testSeekAccuracy();
+                    e.preventDefault();
+                    break;
+                case 'F3':
+                    benchmarkPerformance();
+                    e.preventDefault();
+                    break;
+            }
+        });
+        
+    </script>
+</body>
+</html>
